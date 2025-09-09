@@ -1,6 +1,6 @@
 ﻿# Ukkis Snowmobile Safari Reservation System
 
-# DISCLAIMER: Program still in initializing phase.
+# DISCLAIMER: Program still in early development.
 
 A comprehensive digital booking platform designed for Ukkis Hotel, enabling guests to easily reserve snowmobile safaris and adventure excursions.
 
@@ -48,4 +48,5 @@ cd reservation-backend
 npm i
 ```
 3. Config the database:
+
 
