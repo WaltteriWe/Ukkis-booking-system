@@ -4,6 +4,7 @@ import "./globals.css";
 import { routes } from "../lib/constants";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,11 +34,7 @@ export default function RootLayout({
         <Navigation />
         <main className="container mx-auto px-6 py-8">
           {children}
-          <footer className="mt-8 border-t pt-4 font-bold">
-            <p className="text-center text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Ukkis Safaris. All rights reserved.
-            </p>
-          </footer>
+        <Footer />    
         </main>
       </body>
     </html>

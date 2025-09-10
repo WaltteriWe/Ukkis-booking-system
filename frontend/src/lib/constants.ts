@@ -15,4 +15,5 @@ export const colors = {
   accent: '#4F46E5', // Indigo-600
   background: '#F9FAFB', // Gray-100
   text: '#111827', // Gray-900
+  
 };
