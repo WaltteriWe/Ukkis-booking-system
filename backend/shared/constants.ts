@@ -14,7 +14,7 @@ export const VALIDATION = {
   MAX_EMAIL_LENGTH: 255,
 } as const;
 
-export const STATUS = {
+export const BOOKING_STATUS = {
   PENDING: "pending",
   CONFIRMED: "confirmed",
   CANCELLED: "cancelled",
