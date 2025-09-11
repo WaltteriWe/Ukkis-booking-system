@@ -52,7 +52,7 @@ function Home() {
         <p className="mt-4 text-lg text-gray-700">
           Discover the beauty of nature with Ukkis Safaris. We offer a variety
           of tours and adventures that allow you to explore the stunning
-          landscapes and wildlife of our region. Whether you're looking for a
+          landscapes and wildlife of our region. Whether you&apos;re looking for a
           thrilling snowmobile ride, a peaceful nature walk, or a cultural
           experience, we have something for everyone.
         </p>
