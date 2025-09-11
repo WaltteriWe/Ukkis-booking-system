@@ -1,15 +1,18 @@
 // Shared types between frontend and backend
 
-export interface CreateReservationDTO {
-  guestEmail: string;
-  guestName?: string;
-  phone?: string;
-  startDate: string; // ISO date string
+export interface CreateBookingDTO {
+  packageId: number;
+  departureId: number;
   participants: number;
+  guestEmail: string;
+  guestName: string;
+  phone?: string;
   notes?: string;
 }
 
-export interface PaginationQuery {
-  page?: number;
-  limit?: number;
+export interface ListDeparturesQuery {
+  packageId?: number;
+  from?: string;
+  to?: string;
+  onlyAvailable?: boolean;
 }

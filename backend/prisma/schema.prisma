@@ -21,19 +21,51 @@ model Guest {
   phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  reservations Reservation[]
+  bookings  Booking[]
 }
 
-model Reservation {
-  id Int @id @default(autoincrement())
-  guestId Int
-  startTime DateTime
-  participants Int
-  notes String?
+model SafariPackage {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  name      String   
+  description String?
+  basePrice Decimal  @db.decimal(10,2)
+  durationMin Int
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  departures Departure[]
+}
 
-  guest Guest @relation(fields: [guestId], references: [id])
+model Departure {
+  id        Int      @id @default(autoincrement())
+  packageId Int
+  startTime DateTime
+  capacity  Int
+  reserved  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+  package   SafariPackage @relation(fields: [packageId], references[id])
+  bookings  Booking[]
+
+model Booking {
+  id            Int        @id @default(autoincrement())
+  guestId       Int
+  departureId   Int
+  participants  Int
+  totalPrice    Decimal    @db.Decimal(10,2)
+  status        String     @default("confirmed")
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  guest         Guest       @relation(fields: [guestId], references: [id])
+  departure     Departure   @relation(fields: [departureId], references: [id])
 
   @@index([guestId])
+  @@index([departureId])
 }
+
+
