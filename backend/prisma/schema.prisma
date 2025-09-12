@@ -29,7 +29,7 @@ model SafariPackage {
   slug      String   @unique
   name      String   
   description String?
-  basePrice Decimal  @db.decimal(10,2)
+  basePrice Decimal  @db.Decimal(10,2)
   durationMin Int
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -45,10 +45,11 @@ model Departure {
   reserved  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-  package   SafariPackage @relation(fields: [packageId], references[id])
+  package   SafariPackage @relation(fields: [packageId], references: [id])
   bookings  Booking[]
+  @@index([packageId, startTime])
+}
 
 model Booking {
   id            Int        @id @default(autoincrement())
