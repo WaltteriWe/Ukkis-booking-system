@@ -4,17 +4,19 @@
   "description": "Backend for Ukkis Snowmobile Safari Reservation System",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@fastify/cors": "^8.0.0",
     "@prisma/client": "^6.16.1",
     "dotenv": "^17.2.2",
     "fastify": "^4.24.0",
+    "nodemon": "^3.1.10",
     "zod": "^3.22.0"
   },
   "devDependencies": {
