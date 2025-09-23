@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Clock2Icon, RouteIcon, Shield } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import Card from "@/components/Card";
 
 function Home() {
   return (
@@ -98,6 +99,37 @@ function Home() {
           </p>
         </div>
       </div>
+            <div className="container mx-auto px-6 py-12 bg-white">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Choose Your Adventure Vehicle
+          </h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Select from our premium fleet of Arctic vehicles, each designed for different types of adventures and skill levels
+          </p>
+        </div>
+
+   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Card
+          description="Experience the thrill of racing through snow-covered forests and frozen lakes on our premium snowmobiles. Perfect for all skill levels."
+          imageSrc="/images/snowmobile.jpg"
+          title="Snowmobiles"
+        ></Card>
+
+        <Card
+          description="For the ultimate adrenaline rush, tackle challenging Arctic terrain on our specialized winter enduro bikes."
+          imageSrc="/images/enduro-bike.jpg" 
+          title="Enduro Bikes"
+        ></Card>
+        <Card
+          description="Explore rugged Arctic landscapes with stability and comfort on our all-terrain vehicles. Great for families and beginners."
+          imageSrc="/images/atv.jpg"
+          title="ATVs">
+
+          </Card>
+      </div>
+    </div>
+
     </>
   );
 }
