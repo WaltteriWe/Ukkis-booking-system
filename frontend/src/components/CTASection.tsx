@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const CTASection = () => {
   return (
-    <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 py-20">
+    <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 py-20 mt-8">
       <div className="container mx-auto px-6 text-center">
         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
           Ready for Your Arctic Adventure?
@@ -21,7 +21,7 @@ const CTASection = () => {
           </Link>
           <Link
             href="/categories"
-            className="border-2 border-white text-white hover:bg-white hover:text-purple-900 font-bold px-8 py-4 rounded-full text-lg transition-colors"
+            className="border-2 border-white text-white hover:bg-white hover:text-blue-900 font-bold px-8 py-4 rounded-full text-lg transition-colors"
           >
             View All Tours
           </Link>
