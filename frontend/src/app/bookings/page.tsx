@@ -23,7 +23,7 @@ const TOURS: Tour[] = [
     capacity: "Max 8 people",
     difficulty: "Moderate",
     price: 120,
-    image: "/images/snowmobile.jpg",
+    image: "/images/atv.jpg", // ATV kuva ensimmäiseksi
   },
   {
     id: "family",
@@ -32,7 +32,7 @@ const TOURS: Tour[] = [
     capacity: "Max 12 people",
     difficulty: "Easy",
     price: 85,
-    image: "/images/enduro-bike.jpg",
+    image: "/images/enduro-bike.jpg", // Enduro bike kuva
   },
   {
     id: "extreme",
@@ -41,7 +41,7 @@ const TOURS: Tour[] = [
     capacity: "Max 6 people",
     difficulty: "Advanced",
     price: 180,
-    image: "/images/atv.jpg",
+    image: "/images/snowmobile.jpg", // Snowmobile kuva
   },
 ];
 
@@ -145,12 +145,16 @@ export default function Bookings() {
                     key={t.id}
                     onClick={() => setSelectedTour(t)}
                     className={
-                      "relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
+                      "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
                       (active ? "border-[#ffb64d] ring-2 ring-[#ffb64d]/40" : "border-gray-200")
                     }
                   >
-                    <div className="overflow-hidden rounded-t-3xl">
-                      <img src={t.image} alt={t.title} className="h-56 w-full object-cover" />
+                    <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
+                      <img 
+                        src={t.image} 
+                        alt={t.title} 
+                        className="h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
+                      />
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-bold text-[#101651] hover:underline">
