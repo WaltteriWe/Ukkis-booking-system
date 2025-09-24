@@ -23,7 +23,7 @@ const SafetySection = () => {
   ];
 
   return (
-    <div className="bg-gray-100 py-16">
+    <div className="bg-gray-100 py-16 my-8">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -59,8 +59,8 @@ const SafetySection = () => {
           </div>
           
           <div className="relative">
-            <div className="bg-gradient-to-br from-purple-200 to-purple-400 rounded-3xl h-96 flex items-center justify-center">
-              <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl w-48 h-32 transform rotate-12"></div>
+            <div className="bg-gradient-to-br from-blue-200 to-blue-400 rounded-3xl h-96 flex items-center justify-center">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl w-48 h-32 transform rotate-12"></div>
             </div>
           </div>
         </div>

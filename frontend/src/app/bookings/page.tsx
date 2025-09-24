@@ -23,7 +23,7 @@ const TOURS: Tour[] = [
     capacity: "Max 8 people",
     difficulty: "Moderate",
     price: 120,
-    image: "/images/tour-1.jpg",
+    image: "/images/snowmobile.jpg",
   },
   {
     id: "family",
@@ -32,7 +32,7 @@ const TOURS: Tour[] = [
     capacity: "Max 12 people",
     difficulty: "Easy",
     price: 85,
-    image: "/images/tour-2.jpg",
+    image: "/images/enduro-bike.jpg",
   },
   {
     id: "extreme",
@@ -41,7 +41,7 @@ const TOURS: Tour[] = [
     capacity: "Max 6 people",
     difficulty: "Advanced",
     price: 180,
-    image: "/images/tour-3.jpg",
+    image: "/images/atv.jpg",
   },
 ];
 
