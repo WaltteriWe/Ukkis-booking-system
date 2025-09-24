@@ -1,10 +1,10 @@
+import Card from "@/components/Card";
 import { routes } from "@/lib/constants";
 import { colors } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Clock2Icon, RouteIcon, Shield } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import Card from "@/components/Card";
 
 function Home() {
   return (
@@ -99,7 +99,7 @@ function Home() {
           </p>
         </div>
       </div>
-            <div className="container mx-auto px-6 py-12 bg-white">
+ <div className="container mx-auto px-6 py-12 bg-white">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Choose Your Adventure Vehicle
@@ -108,28 +108,57 @@ function Home() {
             Select from our premium fleet of Arctic vehicles, each designed for different types of adventures and skill levels
           </p>
         </div>
-
    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card
           description="Experience the thrill of racing through snow-covered forests and frozen lakes on our premium snowmobiles. Perfect for all skill levels."
           imageSrc="/images/snowmobile.jpg"
           title="Snowmobiles"
-        ></Card>
+          badgeText="Most Popular"
+          badgeColor="bg-amber-400"
+          features={[
+            "Professional safety gear included",
+            "Expert guide accompanies all tours",
+            "No prior experience required"
+          ]}
+          buttonText="View Snowmobile Tours"
+          buttonColor="bg-amber-400 hover:bg-amber-500"
+          buttonHref="/tours/snowmobile"
+        />
 
         <Card
-          description="For the ultimate adrenaline rush, tackle challenging Arctic terrain on our specialized winter enduro bikes."
+          description="For the ultimate adrenaline rush, tackle challenging Arctic terrain on our specialized winter enduro motorcycles."
           imageSrc="/images/enduro-bike.jpg" 
           title="Enduro Bikes"
-        ></Card>
+          badgeText="Advanced"
+          badgeColor="bg-purple-600"
+          features={[
+            "Specialized winter tires",
+            "Advanced safety training",
+            "Motorcycle experience required"
+          ]}
+          buttonText="View Enduro Adventures"
+          buttonColor="bg-purple-600 hover:bg-purple-700"
+          buttonHref="/tours/enduro"
+        />
+        
         <Card
-          description="Explore rugged Arctic landscapes with stability and comfort on our all-terrain vehicles. Great for families and beginners."
+          description="Explore rugged Arctic landscapes with stability and comfort on our all-terrain vehicles, perfect for families and groups."
           imageSrc="/images/atv.jpg"
-          title="ATVs">
-
-          </Card>
+          title="ATVs"
+          badgeText="Family Friendly"
+          badgeColor="bg-blue-400"
+          features={[
+            "Stable and easy to control",
+            "Suitable for all ages (16+)",
+            "Group-friendly adventures"
+          ]}
+          buttonText="View ATV Tours"
+          buttonColor="bg-blue-400 hover:bg-blue-500"
+          buttonHref="/tours/atv"
+        />
       </div>
-    </div>
 
+    </div>
     </>
   );
 }
