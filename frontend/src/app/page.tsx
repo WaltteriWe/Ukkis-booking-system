@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import SafetySection from "@/components/SafetySection";
+import CTASection from "@/components/CTASection";
 import { routes } from "@/lib/constants";
 import { colors } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -159,6 +161,12 @@ function Home() {
       </div>
 
     </div>
+
+
+      <SafetySection />
+
+
+      <CTASection />
     </>
   );
 }
