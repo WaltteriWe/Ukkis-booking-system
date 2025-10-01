@@ -25,16 +25,19 @@ model Guest {
 }
 
 model SafariPackage {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique
-  name      String   
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  name        String   
   description String?
-  basePrice Decimal  @db.Decimal(10,2)
+  basePrice   Decimal  @db.Decimal(10,2)
   durationMin Int
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  departures Departure[]
+  capacity    Int      @default(8)
+  difficulty  String   @default("Easy") // Easy, Moderate, Advanced
+  imageUrl    String?  // Kuva URL
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  departures  Departure[]
 }
 
 model Departure {

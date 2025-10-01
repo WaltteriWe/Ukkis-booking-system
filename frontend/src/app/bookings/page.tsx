@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { createBooking, sendConfirmationEmail, sendSMSConfirmation, getPackages } from "@/lib/api";
+import type { CreateBookingRequest } from "@/lib/api";
 
 // Korjaa Stripe-alustus
 const stripePromise = loadStripe(
@@ -14,44 +16,56 @@ const stripePromise = loadStripe(
 // const stripePromise = null;
 
 type Tour = {
-  id: string;
-  title: string;
-  duration: string;
-  capacity: string;
+  id: number;
+  slug: string;
+  name: string;
+  description?: string;
+  basePrice: number;
+  durationMin: number;
+  capacity?: number ;
   difficulty: "Easy" | "Moderate" | "Advanced";
-  price: number; // €/person
-  image: string; // käytä public/ -polkuja esim. /images/tour-1.jpg
+  imageUrl?: string;
+  active: boolean;
 };
 
 type Addon = { id: string; title: string; desc: string; price: number };
 
 const TOURS: Tour[] = [
   {
-    id: "wilderness",
-    title: "Arctic Wilderness Safari",
-    duration: "4 hours",
-    capacity: "Max 8 people",
+    id: 1,
+    slug: "wilderness",
+    name: "Arctic Wilderness Safari",
+    description: "Explore the Arctic wilderness with our expert guides.",
+    basePrice: 120,
+    durationMin: 240, // 4 hours
+    capacity: 8,
     difficulty: "Moderate",
-    price: 120,
-    image: "/images/atv.jpg", // ATV kuva ensimmäiseksi
+    imageUrl: "/images/atv.jpg",
+    active: true,
   },
   {
-    id: "family",
-    title: "Family Adventure",
-    duration: "2.5 hours",
-    capacity: "Max 12 people",
+    id: 2,
+    slug: "family",
+    name: "Family Adventure",
+    description: "A safe and fun experience suitable for the whole family.",
+    basePrice: 85,
+    durationMin: 150, // 2.5 hours
+    capacity: 12,
     difficulty: "Easy",
-    price: 85,
-    image: "/images/enduro-bike.jpg", // Enduro bike kuva
+    imageUrl: "/images/enduro-bike.jpg",
+    active: true,
   },
   {
-    id: "extreme",
-    title: "Extreme Arctic",
-    duration: "6 hours",
-    capacity: "Max 6 people",
+    id: 3,
+    slug: "extreme",
+    name: "Extreme Arctic",
+    description: "For thrill-seekers looking for an advanced challenge.",
+    basePrice: 180,
+    durationMin: 360, // 6 hours
+    capacity: 6,
     difficulty: "Advanced",
-    price: 180,
-    image: "/images/snowmobile.jpg", // Snowmobile kuva
+    imageUrl: "/images/snowmobile.jpg",
+    active: true,
   },
 ];
 
@@ -65,8 +79,13 @@ export default function Bookings() {
   // stepper (1: select, 2: customize, 3: confirm)
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  // Tours from database
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // state
-  const [selectedTour, setSelectedTour] = useState<Tour | null>(TOURS[0]);
+  const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
   const [date, setDate] = useState<string>("");
   const [time, setTime] = useState<string>("10:00");
   const [participants, setParticipants] = useState<number>(2);
@@ -88,13 +107,40 @@ export default function Bookings() {
 
   const toggleAddon = (id: string) => setAddons((a) => ({ ...a, [id]: !a[id] }));
 
+  // Load tours from database
+  useEffect(() => {
+    async function loadTours() {
+      try {
+        setLoading(true);
+        const response = await getPackages(true); // Only active packages
+        setTours(response.items);
+        
+        // Set first tour as default selected
+        if (response.items.length > 0 && !selectedTour) {
+          setSelectedTour(response.items[0]);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Failed to load tours:', err);
+        setError('Failed to load tours. Using demo data.');
+        // Fallback to demo data
+        setTours(TOURS);
+        setSelectedTour(TOURS[0]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadTours();
+  }, []);
+
   const selectedAddons = Object.entries(addons)
     .filter(([, v]) => v)
     .map(([k]) => ADDONS.find((x) => x.id === k)!)
     .filter(Boolean);
 
   const total =
-    (selectedTour?.price ?? 0) * participants +
+    (selectedTour?.basePrice ?? 0) * participants +
     selectedAddons.reduce((sum, a) => sum + a.price, 0);
 
   // Success screen
@@ -132,7 +178,7 @@ export default function Bookings() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#3b4463]">Tour:</span>
-                <span>{selectedTour?.title}</span>
+                <span>{selectedTour?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#3b4463]">Date:</span>
@@ -236,7 +282,19 @@ export default function Bookings() {
             </p>
 
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {TOURS.map((t) => {
+              {loading ? (
+                <div className="col-span-full text-center py-8">
+                  <div className="animate-spin h-8 w-8 border-2 border-[#ffb64d] border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-gray-500">Loading tours...</p>
+                </div>
+              ) : error ? (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-red-500 mb-2">⚠️ {error}</p>
+                  <p className="text-gray-500">Showing demo tours instead</p>
+                </div>
+              ) : null}
+              
+              {tours.map((t) => {
                 const active = selectedTour?.id === t.id;
                 return (
                   <button
@@ -252,22 +310,27 @@ export default function Bookings() {
                   >
                     <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
                       <img
-                        src={t.image}
-                        alt={t.title}
+                        src={t.imageUrl || "/images/atv.jpg"}
+                        alt={t.name}
                         className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-bold text-[#101651] hover:underline">
-                        {t.title}
+                        {t.name}
                       </h3>
+                      {t.description && (
+                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                          {t.description}
+                        </p>
+                      )}
                       <ul className="mt-3 space-y-1 text-[#3b4463]">
-                        <li>🕒 {t.duration}</li>
-                        <li>👥 {t.capacity}</li>
+                        <li>🕒 {Math.floor(t.durationMin / 60)}h {t.durationMin % 60}min</li>
+                        <li>👥 Max {t.capacity || 8} people</li>
                         <li>⭐ Difficulty: {t.difficulty}</li>
                       </ul>
                       <div className="mt-4 text-2xl font-extrabold text-[#ff8c3a]">
-                        €{t.price}
+                        €{t.basePrice}
                         <span className="text-base font-semibold text-[#3b4463]">
                           /person
                         </span>
@@ -423,7 +486,7 @@ export default function Bookings() {
                     Booking Details
                   </h3>
                   <div className="space-y-3">
-                    <Row label="Tour" value={selectedTour?.title ?? "-"} />
+                    <Row label="Tour" value={selectedTour?.name ?? "-"} />
                     <Row label="Date" value={date || "-"} />
                     <Row label="Start time" value={time} />
                     <Row label="Participants" value={participants} />
@@ -489,7 +552,17 @@ export default function Bookings() {
                     </Elements>
                   ) : (
                     // Fallback demo-maksu ilman Stripe
-                    <DemoPayment total={total} onSuccess={() => setBookingComplete(true)} />
+                    <DemoPayment 
+                      total={total} 
+                      onSuccess={() => setBookingComplete(true)}
+                      bookingData={{
+                        selectedTour,
+                        customerInfo,
+                        date,
+                        time,
+                        participants
+                      }}
+                    />
                   )
                 ) : (
                   <div className="rounded-2xl bg-white p-6 shadow">
@@ -501,7 +574,7 @@ export default function Bookings() {
                         <span className="text-[#3b4463]">
                           Tour ({participants} person{participants > 1 ? "s" : ""})
                         </span>
-                        <span>€{(selectedTour?.price ?? 0) * participants}</span>
+                        <span>€{(selectedTour?.basePrice ?? 0) * participants}</span>
                       </div>
                       {selectedAddons.map((addon) => (
                         <div key={addon.id} className="flex justify-between text-sm">
@@ -566,18 +639,90 @@ function Row({ label, value }: { label: string; value: string | number }) {
 }
 
 // Demo-maksu ilman Stripe
-function DemoPayment({ total, onSuccess }: { total: number; onSuccess: () => void }) {
+function DemoPayment({ 
+  total, 
+  onSuccess,
+  bookingData 
+}: { 
+  total: number; 
+  onSuccess: () => void;
+  bookingData: {
+    selectedTour: Tour | null;
+    customerInfo: {
+      name: string;
+      email: string;
+      phone: string;
+    };
+    date: string;
+    time: string;
+    participants: number;
+  };
+}) {
   const [processing, setProcessing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
     
-    // Simuloi maksu
-    setTimeout(() => {
+    try {
+      // Luo booking backendiin
+      const bookingRequest: CreateBookingRequest = {
+        packageId: 1, // Demo: käytä ensimmäistä package ID:tä
+        departureId: 1, // Demo: käytä ensimmäistä departure ID:tä
+        participants: bookingData.participants,
+        guestEmail: bookingData.customerInfo.email,
+        guestName: bookingData.customerInfo.name,
+        phone: bookingData.customerInfo.phone || undefined,
+        notes: `Tour: ${bookingData.selectedTour?.name}, Date: ${bookingData.date}, Time: ${bookingData.time}`
+      };
+      
+      const result = await createBooking(bookingRequest);
+      console.log('✅ Booking created:', result);
+      
+      // Lähetä vahvistus email
+      if (bookingData.customerInfo.email) {
+        try {
+          await sendConfirmationEmail({
+            email: bookingData.customerInfo.email,
+            name: bookingData.customerInfo.name,
+            tour: bookingData.selectedTour?.name || 'Arctic Adventure',
+            date: bookingData.date,
+            time: bookingData.time,
+            total: total,
+            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`
+          });
+          console.log('✅ Confirmation email sent');
+        } catch (emailError) {
+          console.error('❌ Email sending failed:', emailError);
+          // Jatka vaikka email epäonnistuu
+        }
+      }
+      
+      // Lähetä SMS jos puhelinnumero on annettu
+      if (bookingData.customerInfo.phone) {
+        try {
+          await sendSMSConfirmation({
+            phone: bookingData.customerInfo.phone,
+            name: bookingData.customerInfo.name,
+            tour: bookingData.selectedTour?.name || 'Arctic Adventure',
+            date: bookingData.date,
+            time: bookingData.time,
+            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`
+          });
+          console.log('✅ SMS confirmation sent');
+        } catch (smsError) {
+          console.error('❌ SMS sending failed:', smsError);
+          // Jatka vaikka SMS epäonnistuu
+        }
+      }
+      
       setProcessing(false);
       onSuccess();
-    }, 2000);
+    } catch (error) {
+      console.error('❌ Booking failed:', error);
+      setProcessing(false);
+      alert('Booking failed. Please try again.');
+    }
   };
 
   return (

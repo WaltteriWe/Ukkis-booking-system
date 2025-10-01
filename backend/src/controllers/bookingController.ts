@@ -61,3 +61,37 @@ export async function createBooking(body: unknown) {
         return booking;
     }, { isolationLevel: "Serializable" });
 }
+
+export async function getBookings() {
+    return await prisma.booking.findMany({
+        include: {
+            guest: true,
+            departure: {
+                include: { 
+                    package: true 
+                }
+            }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+export async function getBookingById(id: number) {
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: {
+            guest: true,
+            departure: {
+                include: { 
+                    package: true 
+                }
+            }
+        }
+    });
+    
+    if (!booking) {
+        throw { status: 404, error: "Booking not found" };
+    }
+    
+    return booking;
+}
