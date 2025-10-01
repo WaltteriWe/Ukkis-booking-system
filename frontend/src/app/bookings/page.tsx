@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import BookingSteps from "@/components/BookingSteps";
+import TourSelection from "@/components/TourSelection";
+import CustomizeSection from "@/components/CustomizeSection";
+import ConfirmPaymentSection from "@/components/ConfirmPaymentSection";
 
 // Korjaa Stripe-alustus
 const stripePromise = loadStripe(
@@ -169,575 +172,72 @@ export default function Bookings() {
   return (
     <div className="min-h-screen bg-[#f7fbf9]">
       {/* Header + Stepper */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
-          <div className="text-2xl font-extrabold text-[#101651]">
-            Ukkis <span className="text-[#101651]">Safaris</span>
-          </div>
+      <BookingSteps step={step} />
 
-          <a
-            href="/booking"
-            className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-5 py-2 text-white font-semibold shadow"
-          >
-            Book Now
-          </a>
-        </div>
+     {/* CONTENT */}
+<main className="mx-auto max-w-6xl px-4 py-10 space-y-12">
+  {/* STEP 1: SELECT TOUR */}
+  {step === 1 && (
+    <TourSelection
+      tours={TOURS}
+      selectedId={selectedTour?.id ?? null}
+      onSelect={(id) => {
+        const t = TOURS.find((x) => x.id === id);
+        if (t) setSelectedTour(t);
+      }}
+      onContinue={() => setStep(2)}
+    />
+  )}
 
-        {/* Stepper */}
-        <div className="mx-auto max-w-6xl px-4 pb-6">
-          <div className="grid grid-cols-3 gap-6">
-            {[
-              { n: 1, label: "Select Tour" },
-              { n: 2, label: "Customize" },
-              { n: 3, label: "Confirm" },
-            ].map((s) => (
-              <div key={s.n} className="flex items-center gap-3">
-                <div
-                  className={
-                    "h-10 w-10 rounded-full grid place-items-center text-white font-bold " +
-                    (step >= (s.n as 1 | 2 | 3) ? "bg-[#ffb64d]" : "bg-gray-300")
-                  }
-                >
-                  {s.n}
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-[#101651]">
-                    {s.label}
-                  </div>
-                  <div className="mt-1 h-1 w-full rounded bg-gray-200">
-                    <div
-                      className={
-                        "h-1 rounded " +
-                        (step > (s.n as 1 | 2 | 3)
-                          ? "w-full bg-[#ffb64d]"
-                          : step === s.n
-                          ? "w-1/3 bg-[#ffb64d]"
-                          : "w-0")
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </header>
+  {/* STEP 2: CUSTOMIZE */}
+  {step === 2 && (
+    <CustomizeSection
+      date={date}
+      time={time}
+      participants={participants}
+      total={total}
+      addons={addons}
+      addonList={ADDONS}
+      onChangeDate={setDate}
+      onChangeTime={setTime}
+      onChangeParticipants={setParticipants}
+      onToggleAddon={toggleAddon}
+      onContinue={() => setStep(3)}
+    />
+  )}
 
-      {/* CONTENT */}
-      <main className="mx-auto max-w-6xl px-4 py-10 space-y-12">
-        {/* STEP 1: SELECT TOUR */}
-        {step === 1 && (
-          <section>
-            <h1 className="text-4xl font-extrabold text-[#101651]">
-              Choose Your Arctic Adventure
-            </h1>
-            <p className="mt-2 text-lg text-[#3b4463]">
-              Select from our premium collection of Lapland experiences
-            </p>
-
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {TOURS.map((t) => {
-                const active = selectedTour?.id === t.id;
-                return (
-                  <button
-                    type="button"
-                    key={t.id}
-                    onClick={() => setSelectedTour(t)}
-                    className={
-                      "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
-                      (active
-                        ? "border-[#ffb64d] ring-2 ring-[#ffb64d]/40"
-                        : "border-gray-200")
-                    }
-                  >
-                    <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
-                      <img
-                        src={t.image}
-                        alt={t.title}
-                        className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-[#101651] hover:underline">
-                        {t.title}
-                      </h3>
-                      <ul className="mt-3 space-y-1 text-[#3b4463]">
-                        <li>🕒 {t.duration}</li>
-                        <li>👥 {t.capacity}</li>
-                        <li>⭐ Difficulty: {t.difficulty}</li>
-                      </ul>
-                      <div className="mt-4 text-2xl font-extrabold text-[#ff8c3a]">
-                        €{t.price}
-                        <span className="text-base font-semibold text-[#3b4463]">
-                          /person
-                        </span>
-                      </div>
-                    </div>
-                    {active && (
-                      <span className="absolute left-4 top-4 rounded-full bg-[#ffb64d] px-3 py-1 text-sm font-semibold text-white shadow">
-                        Selected
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <button
-                onClick={() => setStep(2)}
-                className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold shadow hover:opacity-95"
-              >
-                Continue
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 2: CUSTOMIZE */}
-        {step === 2 && (
-          <section className="grid gap-10 md:grid-cols-2">
-            <div>
-              <h2 className="text-3xl font-extrabold text-[#101651]">
-                Customize Your Experience
-              </h2>
-              <p className="mt-1 text-[#3b4463]">
-                Personalize your Arctic adventure
-              </p>
-
-              <div className="mt-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-[#101651]">
-                    Select Date
-                  </label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-[#101651]">
-                    Select Start Time
-                  </label>
-                  <select
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                  >
-                    {["09:00", "10:00", "12:00", "14:00"].map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-[#101651]">
-                    Number of Participants
-                  </label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <button
-                      onClick={() => setParticipants((p) => Math.max(1, p - 1))}
-                      className="h-10 w-10 rounded-xl border border-gray-300 bg-white text-xl"
-                    >
-                      –
-                    </button>
-                    <div className="w-10 text-center text-xl font-bold">
-                      {participants}
-                    </div>
-                    <button
-                      onClick={() => setParticipants((p) => p + 1)}
-                      className="h-10 w-10 rounded-xl border border-gray-300 bg-white text-xl"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-2xl font-extrabold text-[#101651]">
-                Add-on Services
-              </h3>
-              <div className="mt-4 space-y-4">
-                {ADDONS.map((a) => (
-                  <label
-                    key={a.id}
-                    className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={!!addons[a.id]}
-                        onChange={() => toggleAddon(a.id)}
-                        className="mt-1 h-5 w-5 rounded border-gray-300"
-                      />
-                      <div>
-                        <div className="font-semibold text-[#101651]">{a.title}</div>
-                        <div className="text-sm text-[#3b4463]">{a.desc}</div>
-                      </div>
-                    </div>
-                    <div className="shrink-0 font-semibold text-[#ff8c3a]">
-                      +€{a.price}
-                    </div>
-                  </label>
-                ))}
-              </div>
-
-              <div className="mt-6 rounded-2xl bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#101651]">Estimated Total</span>
-                  <span className="text-2xl font-extrabold text-[#ff8c3a]">€{total}</span>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setStep(3)}
-                  className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold shadow"
-                >
-                  Continue to Booking →
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 3: CONFIRM & PAYMENT */}
-        {step === 3 && (
-          <section className="max-w-4xl">
-            <h2 className="text-3xl font-extrabold text-[#101651]">
-              {!showPayment ? "Confirm Your Booking" : "Complete Payment"}
-            </h2>
-
-            <div className="mt-8 grid gap-8 lg:grid-cols-2">
-              {/* Left Column - Booking Summary */}
-              <div className="space-y-6">
-                <div className="rounded-2xl bg-white p-6 shadow">
-                  <h3 className="text-lg font-bold text-[#101651] mb-4">
-                    Booking Details
-                  </h3>
-                  <div className="space-y-3">
-                    <Row label="Tour" value={selectedTour?.title ?? "-"} />
-                    <Row label="Date" value={date || "-"} />
-                    <Row label="Start time" value={time} />
-                    <Row label="Participants" value={participants} />
-                    <Row
-                      label="Add-ons"
-                      value={
-                        selectedAddons.length
-                          ? selectedAddons.map((a) => a.title).join(", ")
-                          : "None"
-                      }
-                    />
-                    <div className="border-t pt-3">
-                      <Row label="Total Amount" value={`€${total}`} />
-                    </div>
-                  </div>
-                </div>
-
-                {!showPayment && (
-                  <div className="rounded-2xl bg-white p-6 shadow">
-                    <h3 className="text-lg font-bold text-[#101651] mb-4">
-                      Contact Information
-                    </h3>
-                    <div className="space-y-4">
-                      <input
-                        type="text"
-                        placeholder="Full Name"
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                        value={customerInfo.name}
-                        onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, name: e.target.value })
-                        }
-                      />
-                      <input
-                        type="email"
-                        placeholder="Email Address"
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                        value={customerInfo.email}
-                        onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, email: e.target.value })
-                        }
-                      />
-                      <input
-                        type="tel"
-                        placeholder="Phone Number"
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                        value={customerInfo.phone}
-                        onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, phone: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column - Payment */}
-              <div>
-                {showPayment ? (
-                  // Tarkista onko Stripe käytössä
-                  stripePromise ? (
-                    <Elements stripe={stripePromise}>
-                      <StripeCheckout total={total} onSuccess={() => setBookingComplete(true)} />
-                    </Elements>
-                  ) : (
-                    // Fallback demo-maksu ilman Stripe
-                    <DemoPayment total={total} onSuccess={() => setBookingComplete(true)} />
-                  )
-                ) : (
-                  <div className="rounded-2xl bg-white p-6 shadow">
-                    <h3 className="text-lg font-bold text-[#101651] mb-4">
-                      Payment Summary
-                    </h3>
-                    <div className="space-y-2 mb-6">
-                      <div className="flex justify-between">
-                        <span className="text-[#3b4463]">
-                          Tour ({participants} person{participants > 1 ? "s" : ""})
-                        </span>
-                        <span>€{(selectedTour?.price ?? 0) * participants}</span>
-                      </div>
-                      {selectedAddons.map((addon) => (
-                        <div key={addon.id} className="flex justify-between text-sm">
-                          <span className="text-[#3b4463]">{addon.title}</span>
-                          <span>€{addon.price}</span>
-                        </div>
-                      ))}
-                      <div className="border-t pt-2 flex justify-between font-bold text-lg">
-                        <span className="text-[#101651]">Total</span>
-                        <span className="text-[#ff8c3a]">€{total}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-sm text-[#3b4463] space-y-1">
-                      <p>✓ Secure demo payment system</p>
-                      <p>✓ Full refund if cancelled 24h before</p>
-                      <p>✓ Instant confirmation</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-8 flex items-center justify-between">
-              <button
-                onClick={() => (showPayment ? setShowPayment(false) : setStep(2))}
-                className="rounded-full border border-gray-300 bg-white px-6 py-3 font-semibold text-[#101651] hover:bg-gray-50"
-                disabled={processing}
-              >
-                Back
-              </button>
-
-              {!showPayment && (
-                <button
-                  onClick={() => {
-                    if (!customerInfo.name || !customerInfo.email) {
-                      alert("Please fill in your contact information");
-                      return;
-                    }
-                    setShowPayment(true);
-                  }}
-                  className="rounded-full bg-gradient-to-r from-[#33c38b] to-[#0ea676] px-6 py-3 text-white font-semibold shadow hover:opacity-95"
-                >
-                  Proceed to Payment →
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex justify-between border-b border-gray-100 pb-3 last:border-0">
-      <span className="text-[#3b4463]">{label}</span>
-      <span className="font-semibold text-[#101651]">{value}</span>
-    </div>
-  );
-}
-
-// Demo-maksu ilman Stripe
-function DemoPayment({ total, onSuccess }: { total: number; onSuccess: () => void }) {
-  const [processing, setProcessing] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    
-    // Simuloi maksu
-    setTimeout(() => {
-      setProcessing(false);
-      onSuccess();
-    }, 2000);
-  };
-
-  return (
-    <div className="rounded-2xl bg-white p-6 shadow">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-bold text-[#101651]">Demo Payment</h3>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Cardholder Name"
-          className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-        />
-        <input
-          type="text"
-          placeholder="1234 5678 9012 3456"
-          className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="MM/YY"
-            className="rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-          />
-          <input
-            type="text"
-            placeholder="CVV"
-            className="rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-          />
-        </div>
-
-        <div className="rounded-xl bg-gray-50 p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-[#3b4463]">Total Amount</span>
-            <span className="text-2xl font-bold text-[#101651]">€{total}</span>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={processing}
-          className={`w-full rounded-full px-6 py-4 text-white font-semibold text-lg shadow transition-all ${
-            processing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#33c38b] to-[#0ea676] hover:opacity-95'
-          }`}
-        >
-          {processing ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-              Processing Payment...
-            </div>
-          ) : (
-            `Pay €${total} Securely`
-          )}
-        </button>
-
-        <div className="text-center text-sm text-gray-500">
-          🔒 Demo mode - No real payment processed
-        </div>
-      </form>
-    </div>
-  );
-}
-
-// StripeCheckout component (vain jos Stripe-avain on asetettu)
-function StripeCheckout({ total, onSuccess }: { total: number; onSuccess: () => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    setError(null);
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError('Card element not found');
-      setProcessing(false);
-      return;
-    }
-
-    // Demo: simuloi onnistunut maksu
-    setTimeout(() => {
-      setProcessing(false);
-      onSuccess();
-    }, 2000);
-  };
-
-  return (
-    <div className="rounded-2xl bg-white p-6 shadow">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-bold text-[#101651]">Secure Payment with Stripe</h3>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-semibold text-[#101651] mb-2">
-            Card Details
-          </label>
-          <div className="rounded-xl border border-gray-300 bg-white px-4 py-3 focus-within:ring-2 focus-within:ring-[#ffb64d]">
-            <CardElement 
-              options={{ 
-                style: { 
-                  base: { 
-                    fontSize: "16px",
-                    color: '#101651',
-                    '::placeholder': { color: '#9CA3AF' }
-                  } 
-                } 
-              }} 
-            />
-          </div>
-        </div>
-        
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
-        )}
-
-        <div className="rounded-xl bg-gray-50 p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-[#3b4463]">Total Amount</span>
-            <span className="text-2xl font-bold text-[#101651]">€{total}</span>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={!stripe || processing}
-          className={`w-full rounded-full px-6 py-4 text-white font-semibold text-lg shadow transition-all ${
-            !stripe || processing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#33c38b] to-[#0ea676] hover:opacity-95'
-          }`}
-        >
-          {processing ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-              Processing Payment...
-            </div>
-          ) : (
-            `Pay €${total} with Stripe`
-          )}
-        </button>
-      </form>
-    </div>
-  );
+  {/* STEP 3: CONFIRM & PAYMENT */}
+  {step === 3 && (
+    <ConfirmPaymentSection
+      selectedTour={
+        selectedTour ? { title: selectedTour.title, price: selectedTour.price } : null
+      }
+      date={date}
+      time={time}
+      participants={participants}
+      selectedAddons={selectedAddons.map((a) => ({
+        id: a.id,
+        title: a.title,
+        price: a.price,
+      }))}
+      total={total}
+      showPayment={showPayment}
+      onBack={() => (showPayment ? setShowPayment(false) : setStep(2))}
+      onProceedToPayment={() => {
+        if (!customerInfo.name || !customerInfo.email) {
+          alert("Please fill in your contact information");
+          return;
+        }
+        setShowPayment(true);
+      }}
+      onPaymentSuccess={() => setBookingComplete(true)}
+      customerInfo={customerInfo}
+      onChangeCustomer={(patch) =>
+        setCustomerInfo((c) => ({ ...c, ...patch }))
+      }
+      stripePromise={stripePromise}
+    />
+  )}
+</main>
+</div> );
 }
