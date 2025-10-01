@@ -15,7 +15,8 @@ export async function listPackages(query: unknown) {
     orderBy: { name: "asc" },
     select: {
       id: true, slug: true, name: true, description: true,
-      basePrice: true, durationMin: true, active: true,
+      basePrice: true, durationMin: true, capacity: true,
+      difficulty: true, imageUrl: true, active: true,
     },
   });
   return { items };
@@ -30,8 +31,121 @@ export async function getPackageBySlug(params: unknown) {
     select: {
       id: true, slug: true, name: true, description: true,
       basePrice: true, durationMin: true, active: true,
+      departures: {
+        where: {
+          startTime: {
+            gte: new Date()
+          }
+        },
+        orderBy: { startTime: 'asc' },
+        select: {
+          id: true,
+          startTime: true,
+          capacity: true,
+          reserved: true
+        }
+      }
     },
   });
   if (!pkg) throw { status: 404, error: "PackageNotFound" };
   return pkg;
+}
+
+export async function getPackageById(id: number) {
+  const pkg = await prisma.safariPackage.findUnique({
+    where: { id },
+    select: {
+      id: true, slug: true, name: true, description: true,
+      basePrice: true, durationMin: true, capacity: true, 
+      difficulty: true, imageUrl: true, active: true,
+      departures: {
+        where: {
+          startTime: {
+            gte: new Date()
+          }
+        },
+        orderBy: { startTime: 'asc' },
+        select: {
+          id: true,
+          startTime: true,
+          capacity: true,
+          reserved: true
+        }
+      }
+    },
+  });
+  if (!pkg) throw { status: 404, error: "PackageNotFound" };
+  return pkg;
+}
+
+const createPackageSchema = z.object({
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  basePrice: z.number().positive(),
+  durationMin: z.number().int().positive(),
+  capacity: z.number().int().positive().default(8),
+  difficulty: z.enum(["Easy", "Moderate", "Advanced"]).default("Easy"),
+  imageUrl: z.string().url().optional(),
+  active: z.boolean().default(true),
+});
+
+export async function createPackage(body: unknown) {
+  const data = createPackageSchema.parse(body);
+  
+  const pkg = await prisma.safariPackage.create({
+    data: {
+      slug: data.slug,
+      name: data.name,
+      description: data.description,
+      basePrice: data.basePrice,
+      durationMin: data.durationMin,
+      capacity: data.capacity,
+      difficulty: data.difficulty,
+      imageUrl: data.imageUrl,
+      active: data.active,
+    },
+  });
+  
+  return pkg;
+}
+
+const updatePackageSchema = z.object({
+  slug: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  basePrice: z.number().positive().optional(),
+  durationMin: z.number().int().positive().optional(),
+  capacity: z.number().int().positive().optional(),
+  difficulty: z.enum(["Easy", "Moderate", "Advanced"]).optional(),
+  imageUrl: z.string().url().optional(),
+  active: z.boolean().optional(),
+});
+
+export async function updatePackage(id: number, body: unknown) {
+  const data = updatePackageSchema.parse(body);
+  
+  const pkg = await prisma.safariPackage.update({
+    where: { id },
+    data,
+  });
+  
+  return pkg;
+}
+
+export async function deletePackage(id: number) {
+  try {
+    await prisma.safariPackage.delete({ where: { id } });
+    return { success: true };
+  } catch (e: any) {
+    // Prisma known errors: P2025 (Record not found), P2003 (FK constraint failed)
+    if (e?.code === "P2025") {
+      throw { status: 404, error: "PackageNotFound" };
+    }
+    if (e?.code === "P2003") {
+      // Likely existing departures or other relations preventing delete
+      throw { status: 409, error: "PackageHasDependencies" };
+    }
+    throw e;
+  }
 }
