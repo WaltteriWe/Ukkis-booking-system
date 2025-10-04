@@ -7,6 +7,8 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { createBooking, sendConfirmationEmail, sendSMSConfirmation, getPackages } from "@/lib/api";
 import type { CreateBookingRequest } from "@/lib/api";
 
+
+
 // Korjaa Stripe-alustus
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_demo_key'

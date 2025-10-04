@@ -33,14 +33,14 @@ export async function getPackageBySlug(params: unknown) {
       basePrice: true, durationMin: true, active: true,
       departures: {
         where: {
-          startTime: {
+          departureTime: {
             gte: new Date()
           }
         },
-        orderBy: { startTime: 'asc' },
+        orderBy: { departureTime: 'asc' },
         select: {
           id: true,
-          startTime: true,
+          departureTime: true,
           capacity: true,
           reserved: true
         }
@@ -60,14 +60,14 @@ export async function getPackageById(id: number) {
       difficulty: true, imageUrl: true, active: true,
       departures: {
         where: {
-          startTime: {
+          departureTime: {
             gte: new Date()
           }
         },
-        orderBy: { startTime: 'asc' },
+        orderBy: { departureTime: 'asc' },
         select: {
           id: true,
-          startTime: true,
+          departureTime: true,
           capacity: true,
           reserved: true
         }
