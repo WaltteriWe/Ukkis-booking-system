@@ -22,10 +22,10 @@ export async function listDepartures(query: unknown) {
 
     const items = await prisma.departure.findMany({
         where,
-        orderBy: {startTime: "asc"},
+        orderBy: {departureTime: "asc"},
         select: {
             id: true,
-            startTime: true,
+            departureTime: true,
             capacity: true,
             reserved: true,
             packageId: true,

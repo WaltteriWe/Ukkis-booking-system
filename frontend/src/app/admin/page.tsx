@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage } from "@/lib/api";
+import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage, getBookings } from "@/lib/api";
 
 interface Tour {
   id: number;
@@ -16,13 +16,43 @@ interface Tour {
   active: boolean;
 }
 
+interface Booking {
+  id: number;
+  guestId: number;
+  departureId: number;
+  participants: number;
+  totalPrice: number | string; // Can be Decimal from Prisma
+  status: string;
+  notes?: string;
+  createdAt: string;
+  guest: {
+    id: number;
+    email: string;
+    name: string;
+    phone?: string;
+  };
+  departure: {
+    id: number;
+    departureTime: string;
+    capacity: number;
+    reserved: number;
+    package: {
+      id: number;
+      name: string;
+      slug: string;
+    };
+  };
+}
+
 // Note: image listing is not used on this page currently
 
 export default function AdminPage() {
   const [tours, setTours] = useState<Tour[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'packages' | 'bookings'>('packages');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,10 +75,16 @@ export default function AdminPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const toursResponse = await getPackages(false); // Get all packages including inactive
+      const [toursResponse, bookingsData] = await Promise.all([
+        getPackages(false), // Get all packages including inactive
+        getBookings()
+      ]);
       setTours(toursResponse.items);
+      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      console.log("Loaded bookings:", bookingsData);
     } catch (error) {
       console.error("Failed to load data:", error);
+      alert("Failed to load data. Check console for details.");
     } finally {
       setLoading(false);
     }
@@ -166,7 +202,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin - Package Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <div className="flex gap-2">
             <button
               onClick={loadData}
@@ -174,31 +210,63 @@ export default function AdminPage() {
             >
               Refresh
             </button>
-            <button
-              onClick={() => {
-                setShowCreateForm(true);
-                setEditingTour(null);
-                setFormData({
-                  slug: "",
-                  name: "",
-                  description: "",
-                  basePrice: "",
-                  durationMin: "",
-                  capacity: "",
-                  difficulty: "Easy",
-                  imageUrl: "",
-                  active: true
-                });
-              }}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-            >
-              Create New Package
-            </button>
+            {activeTab === 'packages' && (
+              <button
+                onClick={() => {
+                  setShowCreateForm(true);
+                  setEditingTour(null);
+                  setFormData({
+                    slug: "",
+                    name: "",
+                    description: "",
+                    basePrice: "",
+                    durationMin: "",
+                    capacity: "",
+                    difficulty: "Easy",
+                    imageUrl: "",
+                    active: true
+                  });
+                }}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              >
+                Create New Package
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 border-b">
+          <button
+            onClick={() => {
+              setActiveTab('packages');
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === 'packages'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Packages ({tours.length})
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('bookings');
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === 'bookings'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Bookings ({bookings.length})
+          </button>
+        </div>
+
         {/* Create/Edit Form */}
-        {showCreateForm && (
+        {activeTab === 'packages' && showCreateForm && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">
               {editingTour ? "Edit Package" : "Create New Package"}
@@ -330,55 +398,149 @@ export default function AdminPage() {
         )}
 
         {/* Packages List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b">
-            <h2 className="text-xl font-bold">Existing Packages</h2>
-          </div>
-          
-          <div className="divide-y">
-            {tours.map((tour) => (
-              <div key={tour.id} className="p-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {tour.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={tour.imageUrl}
-                      alt={tour.name}
-                      className="h-16 w-16 object-cover rounded"
-                    />
-                  )}
-                  <div>
-                    <h3 className="font-bold">{tour.name}</h3>
-                    <p className="text-gray-600">{tour.slug}</p>
-                    <p className="text-sm text-gray-500">
-                      €{tour.basePrice} • {Math.floor(tour.durationMin / 60)}h {tour.durationMin % 60}min • {tour.difficulty}
-                    </p>
-                    <span className={`inline-block px-2 py-1 text-xs rounded ${
-                      tour.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {tour.active ? 'Active' : 'Inactive'}
-                    </span>
+        {activeTab === 'packages' && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">Existing Packages</h2>
+            </div>
+            
+            <div className="divide-y">
+              {tours.map((tour) => (
+                <div key={tour.id} className="p-6 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {tour.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={tour.imageUrl}
+                        alt={tour.name}
+                        className="h-16 w-16 object-cover rounded"
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-bold">{tour.name}</h3>
+                      <p className="text-gray-600">{tour.slug}</p>
+                      <p className="text-sm text-gray-500">
+                        €{tour.basePrice} • {Math.floor(tour.durationMin / 60)}h {tour.durationMin % 60}min • {tour.difficulty}
+                      </p>
+                      <span className={`inline-block px-2 py-1 text-xs rounded ${
+                        tour.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {tour.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(tour)}
+                      className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(tour.id)}
+                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startEdit(tour)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(tour.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Bookings List */}
+        {activeTab === 'bookings' && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">All Bookings</h2>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Package</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departure</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Participants</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {bookings.map((booking) => (
+                    <tr key={booking.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        #{booking.id}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">{booking.guest.name}</div>
+                          <div className="text-gray-500">{booking.guest.email}</div>
+                          {booking.guest.phone && (
+                            <div className="text-gray-500">{booking.guest.phone}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {booking.departure.package.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(booking.departure.departureTime).toLocaleDateString('fi-FI', {
+                          year: 'numeric',
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {booking.participants}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        €{typeof booking.totalPrice === 'number' 
+                          ? booking.totalPrice.toFixed(2) 
+                          : Number(booking.totalPrice).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          booking.status === 'confirmed' 
+                            ? 'bg-green-100 text-green-800'
+                            : booking.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : booking.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(booking.createdAt).toLocaleDateString('fi-FI', {
+                          year: 'numeric',
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {bookings.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  No bookings found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
