@@ -2,20 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { createBooking, sendConfirmationEmail, sendSMSConfirmation, getPackages } from "@/lib/api";
 import type { CreateBookingRequest } from "@/lib/api";
-
-
-
-// Korjaa Stripe-alustus
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_demo_key'
-);
-
-// Jos haluat vain demon ilman Stripe-avainta:
-// const stripePromise = null;
 
 type Tour = {
   id: number;
@@ -93,18 +81,11 @@ export default function Bookings() {
   const [participants, setParticipants] = useState<number>(2);
   const [addons, setAddons] = useState<Record<string, boolean>>({});
   const [showPayment, setShowPayment] = useState(false);
-  const [processing, setProcessing] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     email: "",
     phone: "",
-  });
-  const [paymentInfo, setPaymentInfo] = useState({
-    cardNumber: "",
-    expiry: "",
-    cvv: "",
-    holderName: "",
   });
 
   const toggleAddon = (id: string) => setAddons((a) => ({ ...a, [id]: !a[id] }));
@@ -547,25 +528,18 @@ export default function Bookings() {
               {/* Right Column - Payment */}
               <div>
                 {showPayment ? (
-                  // Tarkista onko Stripe käytössä
-                  stripePromise ? (
-                    <Elements stripe={stripePromise}>
-                      <StripeCheckout total={total} onSuccess={() => setBookingComplete(true)} />
-                    </Elements>
-                  ) : (
-                    // Fallback demo-maksu ilman Stripe
-                    <DemoPayment 
-                      total={total} 
-                      onSuccess={() => setBookingComplete(true)}
-                      bookingData={{
-                        selectedTour,
-                        customerInfo,
-                        date,
-                        time,
-                        participants
-                      }}
-                    />
-                  )
+                  // Demo payment (Stripe disabled)
+                  <DemoPayment 
+                    total={total} 
+                    onSuccess={() => setBookingComplete(true)}
+                    bookingData={{
+                      selectedTour,
+                      customerInfo,
+                      date,
+                      time,
+                      participants
+                    }}
+                  />
                 ) : (
                   <div className="rounded-2xl bg-white p-6 shadow">
                     <h3 className="text-lg font-bold text-[#101651] mb-4">
@@ -604,7 +578,6 @@ export default function Bookings() {
               <button
                 onClick={() => (showPayment ? setShowPayment(false) : setStep(2))}
                 className="rounded-full border border-gray-300 bg-white px-6 py-3 font-semibold text-[#101651] hover:bg-gray-50"
-                disabled={processing}
               >
                 Back
               </button>
@@ -791,99 +764,6 @@ function DemoPayment({
         <div className="text-center text-sm text-gray-500">
           🔒 Demo mode - No real payment processed
         </div>
-      </form>
-    </div>
-  );
-}
-
-// StripeCheckout component (vain jos Stripe-avain on asetettu)
-function StripeCheckout({ total, onSuccess }: { total: number; onSuccess: () => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    setError(null);
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError('Card element not found');
-      setProcessing(false);
-      return;
-    }
-
-    // Demo: simuloi onnistunut maksu
-    setTimeout(() => {
-      setProcessing(false);
-      onSuccess();
-    }, 2000);
-  };
-
-  return (
-    <div className="rounded-2xl bg-white p-6 shadow">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-bold text-[#101651]">Secure Payment with Stripe</h3>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-semibold text-[#101651] mb-2">
-            Card Details
-          </label>
-          <div className="rounded-xl border border-gray-300 bg-white px-4 py-3 focus-within:ring-2 focus-within:ring-[#ffb64d]">
-            <CardElement 
-              options={{ 
-                style: { 
-                  base: { 
-                    fontSize: "16px",
-                    color: '#101651',
-                    '::placeholder': { color: '#9CA3AF' }
-                  } 
-                } 
-              }} 
-            />
-          </div>
-        </div>
-        
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
-        )}
-
-        <div className="rounded-xl bg-gray-50 p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-[#3b4463]">Total Amount</span>
-            <span className="text-2xl font-bold text-[#101651]">€{total}</span>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={!stripe || processing}
-          className={`w-full rounded-full px-6 py-4 text-white font-semibold text-lg shadow transition-all ${
-            !stripe || processing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#33c38b] to-[#0ea676] hover:opacity-95'
-          }`}
-        >
-          {processing ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-              Processing Payment...
-            </div>
-          ) : (
-            `Pay €${total} with Stripe`
-          )}
-        </button>
       </form>
     </div>
   );
