@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Facebook, Instagram, Youtube, MapPin, Phone, Mail } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Youtube,
+  MapPin,
+  Phone,
+  Mail,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Footer = ({ className }: { className?: string }) => {
@@ -29,10 +36,7 @@ const Footer = ({ className }: { className?: string }) => {
           <div>
             <h4 className="text-xl font-semibold mb-4">Quick Links</h4>
             <div className="space-y-2">
-              <Link
-                href="/"
-                className="block text-purple-100 hover:text-white"
-              >
+              <Link href="/" className="block text-purple-100 hover:text-white">
                 Home
               </Link>
               <Link
@@ -94,23 +98,24 @@ const Footer = ({ className }: { className?: string }) => {
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 <span className="text-purple-100">
-                  Rovaniemi, Lapland, Finland
+                  Ukkohallantie 5 89400 Hyrynsalmi, Finland
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-5 h-5" />
-                <span className="text-purple-100">+358 123 456 789</span>
+                <span className="text-purple-100">+358 40 1306777</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
-                <span className="text-purple-100">info@ukkissafaris.fi</span>
+                <span className="text-purple-100">info@ukkis.fi</span>
               </div>
             </div>
           </div>
         </div>
         <div className="border-t border-blue-700 mt-8 pt-6 text-center">
           <p className="text-blue-100">
-            &copy; {new Date().getFullYear()} Ukkis Safaris. All rights reserved.
+            &copy; {new Date().getFullYear()} Ukkis Safaris. All rights
+            reserved.
           </p>
         </div>
       </div>
