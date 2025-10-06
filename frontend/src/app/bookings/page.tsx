@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createBooking, sendConfirmationEmail, sendSMSConfirmation, getPackages } from "@/lib/api";
+import {
+  createBooking,
+  sendConfirmationEmail,
+  sendSMSConfirmation,
+  getPackages,
+} from "@/lib/api";
 import type { CreateBookingRequest } from "@/lib/api";
 
 type Tour = {
@@ -12,7 +17,7 @@ type Tour = {
   description?: string;
   basePrice: number;
   durationMin: number;
-  capacity?: number ;
+  capacity?: number;
   difficulty: "Easy" | "Moderate" | "Advanced";
   imageUrl?: string;
   active: boolean;
@@ -20,11 +25,34 @@ type Tour = {
 
 type Addon = { id: string; title: string; desc: string; price: number };
 
+// Gear size options
+const GEAR_SIZES = {
+  jacket: ["XS", "S", "M", "L", "XL", "XXL"],
+  pants: ["XS", "S", "M", "L", "XL", "XXL"],
+  boots: [
+    "36",
+    "37",
+    "38",
+    "39",
+    "40",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+  ],
+  gloves: ["XS", "S", "M", "L", "XL"],
+  helmet: ["XS", "S", "M", "L", "XL"],
+};
+
 const TOURS: Tour[] = [
   {
     id: 1,
-    slug: "wilderness",
-    name: "Arctic Wilderness Safari",
+    slug: "snowmobile",
+    name: "Snowmobile Safari",
     description: "Explore the Arctic wilderness with our expert guides.",
     basePrice: 120,
     durationMin: 240, // 4 hours
@@ -35,9 +63,10 @@ const TOURS: Tour[] = [
   },
   {
     id: 2,
-    slug: "family",
-    name: "Family Adventure",
-    description: "A safe and fun experience suitable for the whole family.",
+    slug: "enduro",
+    name: "Enduro bike tour",
+    description:
+      "Experience the thrill of off-road biking in the beautiful Finnish wilderness.",
     basePrice: 85,
     durationMin: 150, // 2.5 hours
     capacity: 12,
@@ -48,7 +77,7 @@ const TOURS: Tour[] = [
   {
     id: 3,
     slug: "extreme",
-    name: "Extreme Arctic",
+    name: "ATV Extreme safari",
     description: "For thrill-seekers looking for an advanced challenge.",
     basePrice: 180,
     durationMin: 360, // 6 hours
@@ -60,9 +89,24 @@ const TOURS: Tour[] = [
 ];
 
 const ADDONS: Addon[] = [
-  { id: "photo", title: "Professional Photography", desc: "High-quality photos of your adventure", price: 35 },
-  { id: "meal", title: "Hot Meal & Drinks", desc: "Traditional Lapland lunch by campfire", price: 25 },
-  { id: "pickup", title: "Hotel Pickup & Drop-off", desc: "Convenient transportation service", price: 15 },
+  {
+    id: "photo",
+    title: "Professional Photography",
+    desc: "High-quality photos of your adventure",
+    price: 35,
+  },
+  {
+    id: "meal",
+    title: "Hot Meal & Drinks",
+    desc: "Traditional Lapland lunch by campfire",
+    price: 25,
+  },
+  {
+    id: "pickup",
+    title: "Hotel Pickup & Drop-off",
+    desc: "Convenient transportation service",
+    price: 15,
+  },
 ];
 
 export default function Bookings() {
@@ -80,6 +124,19 @@ export default function Bookings() {
   const [time, setTime] = useState<string>("10:00");
   const [participants, setParticipants] = useState<number>(2);
   const [addons, setAddons] = useState<Record<string, boolean>>({});
+  const [participantGearSizes, setParticipantGearSizes] = useState<
+    Record<
+      number,
+      {
+        name: string;
+        jacket: string;
+        pants: string;
+        boots: string;
+        gloves: string;
+        helmet: string;
+      }
+    >
+  >({});
   const [showPayment, setShowPayment] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
@@ -88,7 +145,85 @@ export default function Bookings() {
     phone: "",
   });
 
-  const toggleAddon = (id: string) => setAddons((a) => ({ ...a, [id]: !a[id] }));
+  const toggleAddon = (id: string) =>
+    setAddons((a) => ({ ...a, [id]: !a[id] }));
+
+  // Initialize gear sizes for new participants
+  const initializeGearSizes = (numParticipants: number) => {
+    setParticipantGearSizes((prevSizes) => {
+      const newSizes = { ...prevSizes };
+      for (let i = 1; i <= numParticipants; i++) {
+        if (!newSizes[i]) {
+          newSizes[i] = {
+            name: "",
+            jacket: "",
+            pants: "",
+            boots: "",
+            gloves: "",
+            helmet: "",
+          };
+        }
+      }
+      // Remove gear sizes for participants that no longer exist
+      Object.keys(newSizes).forEach((key) => {
+        const participantNum = parseInt(key);
+        if (participantNum > numParticipants) {
+          delete newSizes[participantNum];
+        }
+      });
+      return newSizes;
+    });
+  };
+
+  // Update gear size for a specific participant
+  const updateGearSize = (
+    participantIndex: number,
+    gearType: string,
+    size: string
+  ) => {
+    setParticipantGearSizes((prev) => ({
+      ...prev,
+      [participantIndex]: {
+        ...prev[participantIndex],
+        [gearType]: size,
+      },
+    }));
+  };
+
+  // Update participant name
+  const updateParticipantName = (participantIndex: number, name: string) => {
+    setParticipantGearSizes((prev) => ({
+      ...prev,
+      [participantIndex]: {
+        ...prev[participantIndex],
+        name: name,
+      },
+    }));
+  };
+
+  // Initialize gear sizes when participants change
+  useEffect(() => {
+    initializeGearSizes(participants);
+  }, [participants]);
+
+  // Validate that all participants have selected all gear sizes and entered names
+  const validateGearSizes = () => {
+    for (let i = 1; i <= participants; i++) {
+      const gearSizes = participantGearSizes[i];
+      if (
+        !gearSizes ||
+        !gearSizes.name ||
+        !gearSizes.jacket ||
+        !gearSizes.pants ||
+        !gearSizes.boots ||
+        !gearSizes.gloves ||
+        !gearSizes.helmet
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
 
   // Load tours from database
   useEffect(() => {
@@ -97,15 +232,15 @@ export default function Bookings() {
         setLoading(true);
         const response = await getPackages(true); // Only active packages
         setTours(response.items);
-        
+
         // Set first tour as default selected
         if (response.items.length > 0 && !selectedTour) {
           setSelectedTour(response.items[0]);
         }
         setError(null);
       } catch (err) {
-        console.error('Failed to load tours:', err);
-        setError('Failed to load tours. Using demo data.');
+        console.error("Failed to load tours:", err);
+        setError("Failed to load tours. Using demo data.");
         // Fallback to demo data
         setTours(TOURS);
         setSelectedTour(TOURS[0]);
@@ -113,7 +248,7 @@ export default function Bookings() {
         setLoading(false);
       }
     }
-    
+
     loadTours();
   }, []);
 
@@ -224,7 +359,9 @@ export default function Bookings() {
                 <div
                   className={
                     "h-10 w-10 rounded-full grid place-items-center text-white font-bold " +
-                    (step >= (s.n as 1 | 2 | 3) ? "bg-[#ffb64d]" : "bg-gray-300")
+                    (step >= (s.n as 1 | 2 | 3)
+                      ? "bg-[#ffb64d]"
+                      : "bg-gray-300")
                   }
                 >
                   {s.n}
@@ -240,8 +377,8 @@ export default function Bookings() {
                         (step > (s.n as 1 | 2 | 3)
                           ? "w-full bg-[#ffb64d]"
                           : step === s.n
-                          ? "w-1/3 bg-[#ffb64d]"
-                          : "w-0")
+                            ? "w-1/3 bg-[#ffb64d]"
+                            : "w-0")
                       }
                     />
                   </div>
@@ -276,7 +413,7 @@ export default function Bookings() {
                   <p className="text-gray-500">Showing demo tours instead</p>
                 </div>
               ) : null}
-              
+
               {tours.map((t) => {
                 const active = selectedTour?.id === t.id;
                 return (
@@ -308,7 +445,10 @@ export default function Bookings() {
                         </p>
                       )}
                       <ul className="mt-3 space-y-1 text-[#3b4463]">
-                        <li>🕒 {Math.floor(t.durationMin / 60)}h {t.durationMin % 60}min</li>
+                        <li>
+                          🕒 {Math.floor(t.durationMin / 60)}h{" "}
+                          {t.durationMin % 60}min
+                        </li>
                         <li>👥 Max {t.capacity || 8} people</li>
                         <li>⭐ Difficulty: {t.difficulty}</li>
                       </ul>
@@ -385,6 +525,7 @@ export default function Bookings() {
                   <label className="block text-sm font-semibold text-[#101651]">
                     Number of Participants
                   </label>
+
                   <div className="mt-2 flex items-center gap-3">
                     <button
                       onClick={() => setParticipants((p) => Math.max(1, p - 1))}
@@ -401,6 +542,153 @@ export default function Bookings() {
                     >
                       +
                     </button>
+                  </div>
+                </div>
+
+                {/* Gear Size Selection for Each Participant */}
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold text-[#101651] mb-4">
+                    Gear Sizes for Each Participant
+                  </h4>
+                  <div className="space-y-6">
+                    {Array.from({ length: participants }, (_, i) => (
+                      <div
+                        key={i + 1}
+                        className="p-4 border border-gray-200 rounded-lg bg-gray-50"
+                      >
+                        {/* Participant Name Input */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-[#101651] mb-2">
+                            Participant {i + 1} Name:
+                          </label>
+                          <input
+                            type="text"
+                            value={participantGearSizes[i + 1]?.name || ""}
+                            onChange={(e) =>
+                              updateParticipantName(i + 1, e.target.value)
+                            }
+                            placeholder={`Enter name for participant ${i + 1}`}
+                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+                            required
+                          />
+                        </div>
+
+                        <h6 className="text-sm font-medium text-gray-600 mb-3">
+                          Gear Sizes:
+                        </h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                          {/* Jacket Size */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Jacket
+                            </label>
+                            <select
+                              value={participantGearSizes[i + 1]?.jacket || ""}
+                              onChange={(e) =>
+                                updateGearSize(i + 1, "jacket", e.target.value)
+                              }
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">Select size</option>
+                              {GEAR_SIZES.jacket.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Pants Size */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Pants
+                            </label>
+                            <select
+                              value={participantGearSizes[i + 1]?.pants || ""}
+                              onChange={(e) =>
+                                updateGearSize(i + 1, "pants", e.target.value)
+                              }
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">Select size</option>
+                              {GEAR_SIZES.pants.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Boots Size */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Boots
+                            </label>
+                            <select
+                              value={participantGearSizes[i + 1]?.boots || ""}
+                              onChange={(e) =>
+                                updateGearSize(i + 1, "boots", e.target.value)
+                              }
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">Select size</option>
+                              {GEAR_SIZES.boots.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Gloves Size */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Gloves
+                            </label>
+                            <select
+                              value={participantGearSizes[i + 1]?.gloves || ""}
+                              onChange={(e) =>
+                                updateGearSize(i + 1, "gloves", e.target.value)
+                              }
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">Select size</option>
+                              {GEAR_SIZES.gloves.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Helmet Size */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Helmet
+                            </label>
+                            <select
+                              value={participantGearSizes[i + 1]?.helmet || ""}
+                              onChange={(e) =>
+                                updateGearSize(i + 1, "helmet", e.target.value)
+                              }
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">Select size</option>
+                              {GEAR_SIZES.helmet.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -424,7 +712,9 @@ export default function Bookings() {
                         className="mt-1 h-5 w-5 rounded border-gray-300"
                       />
                       <div>
-                        <div className="font-semibold text-[#101651]">{a.title}</div>
+                        <div className="font-semibold text-[#101651]">
+                          {a.title}
+                        </div>
                         <div className="text-sm text-[#3b4463]">{a.desc}</div>
                       </div>
                     </div>
@@ -437,14 +727,26 @@ export default function Bookings() {
 
               <div className="mt-6 rounded-2xl bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#101651]">Estimated Total</span>
-                  <span className="text-2xl font-extrabold text-[#ff8c3a]">€{total}</span>
+                  <span className="font-semibold text-[#101651]">
+                    Estimated Total
+                  </span>
+                  <span className="text-2xl font-extrabold text-[#ff8c3a]">
+                    €{total}
+                  </span>
                 </div>
               </div>
 
               <div className="mt-6 flex justify-end">
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => {
+                    if (!validateGearSizes()) {
+                      alert(
+                        "Please enter names and select all gear sizes for all participants before continuing."
+                      );
+                      return;
+                    }
+                    setStep(3);
+                  }}
                   className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold shadow"
                 >
                   Continue to Booking →
@@ -473,6 +775,33 @@ export default function Bookings() {
                     <Row label="Date" value={date || "-"} />
                     <Row label="Start time" value={time} />
                     <Row label="Participants" value={participants} />
+
+                    {/* Gear Sizes Summary */}
+                    <div className="space-y-2">
+                      <span className="text-[#3b4463] font-medium">
+                        Gear Sizes:
+                      </span>
+                      {Object.entries(participantGearSizes).map(
+                        ([participantNum, sizes]) => (
+                          <div
+                            key={participantNum}
+                            className="text-sm text-[#3b4463] ml-4"
+                          >
+                            <strong>
+                              {sizes.name || `Participant ${participantNum}`}:
+                            </strong>
+                            <div className="ml-2">
+                              Jacket: {sizes.jacket || "Not selected"}, Pants:{" "}
+                              {sizes.pants || "Not selected"}, Boots:{" "}
+                              {sizes.boots || "Not selected"}, Gloves:{" "}
+                              {sizes.gloves || "Not selected"}, Helmet:{" "}
+                              {sizes.helmet || "Not selected"}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+
                     <Row
                       label="Add-ons"
                       value={
@@ -499,7 +828,10 @@ export default function Bookings() {
                         className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
                         value={customerInfo.name}
                         onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, name: e.target.value })
+                          setCustomerInfo({
+                            ...customerInfo,
+                            name: e.target.value,
+                          })
                         }
                       />
                       <input
@@ -508,7 +840,10 @@ export default function Bookings() {
                         className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
                         value={customerInfo.email}
                         onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, email: e.target.value })
+                          setCustomerInfo({
+                            ...customerInfo,
+                            email: e.target.value,
+                          })
                         }
                       />
                       <input
@@ -517,7 +852,10 @@ export default function Bookings() {
                         className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
                         value={customerInfo.phone}
                         onChange={(e) =>
-                          setCustomerInfo({ ...customerInfo, phone: e.target.value })
+                          setCustomerInfo({
+                            ...customerInfo,
+                            phone: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -529,15 +867,16 @@ export default function Bookings() {
               <div>
                 {showPayment ? (
                   // Demo payment (Stripe disabled)
-                  <DemoPayment 
-                    total={total} 
+                  <DemoPayment
+                    total={total}
                     onSuccess={() => setBookingComplete(true)}
                     bookingData={{
                       selectedTour,
                       customerInfo,
                       date,
                       time,
-                      participants
+                      participants,
+                      gearSizes: participantGearSizes,
                     }}
                   />
                 ) : (
@@ -548,12 +887,18 @@ export default function Bookings() {
                     <div className="space-y-2 mb-6">
                       <div className="flex justify-between">
                         <span className="text-[#3b4463]">
-                          Tour ({participants} person{participants > 1 ? "s" : ""})
+                          Tour ({participants} person
+                          {participants > 1 ? "s" : ""})
                         </span>
-                        <span>€{(selectedTour?.basePrice ?? 0) * participants}</span>
+                        <span>
+                          €{(selectedTour?.basePrice ?? 0) * participants}
+                        </span>
                       </div>
                       {selectedAddons.map((addon) => (
-                        <div key={addon.id} className="flex justify-between text-sm">
+                        <div
+                          key={addon.id}
+                          className="flex justify-between text-sm"
+                        >
                           <span className="text-[#3b4463]">{addon.title}</span>
                           <span>€{addon.price}</span>
                         </div>
@@ -576,7 +921,9 @@ export default function Bookings() {
 
             <div className="mt-8 flex items-center justify-between">
               <button
-                onClick={() => (showPayment ? setShowPayment(false) : setStep(2))}
+                onClick={() =>
+                  showPayment ? setShowPayment(false) : setStep(2)
+                }
                 className="rounded-full border border-gray-300 bg-white px-6 py-3 font-semibold text-[#101651] hover:bg-gray-50"
               >
                 Back
@@ -614,12 +961,12 @@ function Row({ label, value }: { label: string; value: string | number }) {
 }
 
 // Demo-maksu ilman Stripe
-function DemoPayment({ 
-  total, 
+function DemoPayment({
+  total,
   onSuccess,
-  bookingData 
-}: { 
-  total: number; 
+  bookingData,
+}: {
+  total: number;
   onSuccess: () => void;
   bookingData: {
     selectedTour: Tour | null;
@@ -631,6 +978,16 @@ function DemoPayment({
     date: string;
     time: string;
     participants: number;
+    gearSizes: Record<
+      number,
+      {
+        jacket: string;
+        pants: string;
+        boots: string;
+        gloves: string;
+        helmet: string;
+      }
+    >;
   };
 }) {
   const [processing, setProcessing] = useState(false);
@@ -638,8 +995,25 @@ function DemoPayment({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
-    
+
     try {
+      // Format gear sizes for notes
+      const gearSizesText = Object.entries(bookingData.gearSizes)
+        .map(([participantNum, sizes]) => {
+          const gearSizes = sizes as {
+            name: string;
+            jacket: string;
+            pants: string;
+            boots: string;
+            gloves: string;
+            helmet: string;
+          };
+          const participantName =
+            gearSizes.name || `Participant ${participantNum}`;
+          return `${participantName}: Jacket ${gearSizes.jacket}, Pants ${gearSizes.pants}, Boots ${gearSizes.boots}, Gloves ${gearSizes.gloves}, Helmet ${gearSizes.helmet}`;
+        })
+        .join("; ");
+
       // Luo booking backendiin
       const bookingRequest: CreateBookingRequest = {
         packageId: 1, // Demo: käytä ensimmäistä package ID:tä
@@ -648,55 +1022,55 @@ function DemoPayment({
         guestEmail: bookingData.customerInfo.email,
         guestName: bookingData.customerInfo.name,
         phone: bookingData.customerInfo.phone || undefined,
-        notes: `Tour: ${bookingData.selectedTour?.name}, Date: ${bookingData.date}, Time: ${bookingData.time}`
+        notes: `Tour: ${bookingData.selectedTour?.name}, Date: ${bookingData.date}, Time: ${bookingData.time}. Gear Sizes: ${gearSizesText}`,
       };
-      
+
       const result = await createBooking(bookingRequest);
-      console.log('✅ Booking created:', result);
-      
+      console.log("✅ Booking created:", result);
+
       // Lähetä vahvistus email
       if (bookingData.customerInfo.email) {
         try {
           await sendConfirmationEmail({
             email: bookingData.customerInfo.email,
             name: bookingData.customerInfo.name,
-            tour: bookingData.selectedTour?.name || 'Arctic Adventure',
+            tour: bookingData.selectedTour?.name || "Arctic Adventure",
             date: bookingData.date,
             time: bookingData.time,
             total: total,
-            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`
+            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`,
           });
-          console.log('✅ Confirmation email sent');
+          console.log("✅ Confirmation email sent");
         } catch (emailError) {
-          console.error('❌ Email sending failed:', emailError);
+          console.error("❌ Email sending failed:", emailError);
           // Jatka vaikka email epäonnistuu
         }
       }
-      
+
       // Lähetä SMS jos puhelinnumero on annettu
       if (bookingData.customerInfo.phone) {
         try {
           await sendSMSConfirmation({
             phone: bookingData.customerInfo.phone,
             name: bookingData.customerInfo.name,
-            tour: bookingData.selectedTour?.name || 'Arctic Adventure',
+            tour: bookingData.selectedTour?.name || "Arctic Adventure",
             date: bookingData.date,
             time: bookingData.time,
-            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`
+            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`,
           });
-          console.log('✅ SMS confirmation sent');
+          console.log("✅ SMS confirmation sent");
         } catch (smsError) {
-          console.error('❌ SMS sending failed:', smsError);
+          console.error("❌ SMS sending failed:", smsError);
           // Jatka vaikka SMS epäonnistuu
         }
       }
-      
+
       setProcessing(false);
       onSuccess();
     } catch (error) {
-      console.error('❌ Booking failed:', error);
+      console.error("❌ Booking failed:", error);
       setProcessing(false);
-      alert('Booking failed. Please try again.');
+      alert("Booking failed. Please try again.");
     }
   };
 
@@ -704,13 +1078,23 @@ function DemoPayment({
     <div className="rounded-2xl bg-white p-6 shadow">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <svg
+            className="w-5 h-5 text-green-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
           </svg>
         </div>
         <h3 className="text-xl font-bold text-[#101651]">Demo Payment</h3>
       </div>
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
@@ -747,8 +1131,8 @@ function DemoPayment({
           disabled={processing}
           className={`w-full rounded-full px-6 py-4 text-white font-semibold text-lg shadow transition-all ${
             processing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#33c38b] to-[#0ea676] hover:opacity-95'
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-[#33c38b] to-[#0ea676] hover:opacity-95"
           }`}
         >
           {processing ? (
