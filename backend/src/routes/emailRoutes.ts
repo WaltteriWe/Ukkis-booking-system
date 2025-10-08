@@ -1,26 +1,24 @@
 import { FastifyInstance } from "fastify";
-import { sendConfirmationEmail, sendSMSConfirmation } from "../controllers/emailController";
+import { sendConfirmationEmail } from "../controllers/emailController";
 
 export async function emailRoutes(app: FastifyInstance) {
   app.post("/send-confirmation", async (req, reply) => {
     try {
+      app.log.info('Received email confirmation request');
       const data = await sendConfirmationEmail(req.body);
       return reply.send(data);
     } catch (e: any) {
       const c = e?.status ?? 500;
-      if (!e?.status) app.log.error(e);
-      return reply.code(c).send(e);
+      app.log.error('Email sending error:', e);
+      
+      // Return a proper error response instead of the raw error object
+      const errorMessage = e?.message || 'Internal Server Error';
+      return reply.code(c).send({ 
+        error: errorMessage,
+        success: false 
+      });
     }
   });
 
-  app.post("/send-sms", async (req, reply) => {
-    try {
-      const data = await sendSMSConfirmation(req.body);
-      return reply.send(data);
-    } catch (e: any) {
-      const c = e?.status ?? 500;
-      if (!e?.status) app.log.error(e);
-      return reply.code(c).send(e);
-    }
-  });
+
 }

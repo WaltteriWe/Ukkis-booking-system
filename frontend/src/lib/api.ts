@@ -18,16 +18,20 @@ export interface EmailConfirmationRequest {
   time: string;
   total: number;
   bookingId: string;
+  participantGearSizes?: Record<
+    string,
+    {
+      name: string;
+      jacket: string;
+      pants: string;
+      boots: string;
+      gloves: string;
+      helmet: string;
+    }
+  >;
 }
 
-export interface SMSConfirmationRequest {
-  phone: string;
-  name: string;
-  tour: string;
-  date: string;
-  time: string;
-  bookingId: string;
-}
+
 
 // Booking API calls
 export async function createBooking(bookingData: CreateBookingRequest) {
@@ -151,22 +155,7 @@ export async function sendConfirmationEmail(emailData: EmailConfirmationRequest)
   return response.json();
 }
 
-export async function sendSMSConfirmation(smsData: SMSConfirmationRequest) {
-  const response = await fetch(`${API_BASE_URL}/send-sms`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(smsData),
-  });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to send SMS confirmation' }));
-    throw new Error(error.error || 'Failed to send SMS confirmation');
-  }
-
-  return response.json();
-}
 
 // Package management API calls
 export async function createPackage(packageData: {
