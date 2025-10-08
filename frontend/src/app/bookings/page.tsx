@@ -51,7 +51,7 @@ const TOURS: Tour[] = [
   {
     id: 1,
     slug: "snowmobile",
-    name: "Snowmobile Safari",
+    name: "snowmobile safari",
     description: "Explore the Arctic wilderness with our expert guides.",
     basePrice: 120,
     durationMin: 240, // 4 hours
