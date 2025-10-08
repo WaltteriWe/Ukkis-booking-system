@@ -1,5 +1,6 @@
 import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
+import { BOOKING_STATUS } from "../../shared/constants";
 
 const prisma = new PrismaClient();
 
@@ -23,14 +24,32 @@ export async function listDepartures(query: unknown) {
     const items = await prisma.departure.findMany({
         where,
         orderBy: {departureTime: "asc"},
-        select: {
-            id: true,
-            departureTime: true,
-            capacity: true,
-            reserved: true,
-            packageId: true,
-        },
+        include: {
+            bookings: {
+                where: {
+                    status: BOOKING_STATUS.CONFIRMED
+                },
+                select: {
+                    participants: true
+                }
+            }
+        }
     });
 
-    return q.onlyAvailable ? items.filter(d => d.capacity - d.reserved > 0) : items;
+    // Calculate actual availability for each departure
+    const itemsWithAvailability = items.map(item => {
+        const reservedSpots = item.bookings.reduce((sum, booking) => sum + booking.participants, 0);
+        const available = item.capacity - reservedSpots;
+        
+        return {
+            id: item.id,
+            departureTime: item.departureTime,
+            capacity: item.capacity,
+            reserved: reservedSpots,
+            available: available,
+            packageId: item.packageId,
+        };
+    });
+
+    return q.onlyAvailable ? itemsWithAvailability.filter(d => d.available > 0) : itemsWithAvailability;
 }
