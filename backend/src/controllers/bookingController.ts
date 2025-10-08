@@ -29,7 +29,20 @@ export async function createBooking(body: unknown) {
             throw { status: 400, error: "Invalid package or departure" };
         }
 
-        const available = dep.capacity - dep.reserved; 
+        // Calculate actual reserved spots from confirmed bookings
+        const confirmedBookings = await tx.booking.aggregate({
+            where: {
+                departureId: data.departureId,
+                status: BOOKING_STATUS.CONFIRMED
+            },
+            _sum: {
+                participants: true
+            }
+        });
+
+        const reservedSpots = confirmedBookings._sum.participants || 0;
+        const available = dep.capacity - reservedSpots; 
+        
         if (available < data.participants) {
             throw { status: 400, error: `Only ${available} spots left` };
         }
@@ -51,11 +64,6 @@ export async function createBooking(body: unknown) {
                 status: BOOKING_STATUS.CONFIRMED,
                 notes: data.notes ?? null,
             },
-        });
-
-        await tx.departure.update({
-            where: { id: dep.id },
-            data: { reserved: { increment: data.participants } },
         });
 
         return booking;

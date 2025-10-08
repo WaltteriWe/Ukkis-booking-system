@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   createBooking,
   sendConfirmationEmail,
-  sendSMSConfirmation,
   getPackages,
 } from "@/lib/api";
 import type { CreateBookingRequest } from "@/lib/api";
@@ -1039,6 +1038,7 @@ function DemoPayment({
             time: bookingData.time,
             total: total,
             bookingId: `UK${result.id || Date.now().toString().slice(-6)}`,
+            participantGearSizes: bookingData.gearSizes,
           });
           console.log("✅ Confirmation email sent");
         } catch (emailError) {
@@ -1047,23 +1047,7 @@ function DemoPayment({
         }
       }
 
-      // Lähetä SMS jos puhelinnumero on annettu
-      if (bookingData.customerInfo.phone) {
-        try {
-          await sendSMSConfirmation({
-            phone: bookingData.customerInfo.phone,
-            name: bookingData.customerInfo.name,
-            tour: bookingData.selectedTour?.name || "Arctic Adventure",
-            date: bookingData.date,
-            time: bookingData.time,
-            bookingId: `UK${result.id || Date.now().toString().slice(-6)}`,
-          });
-          console.log("✅ SMS confirmation sent");
-        } catch (smsError) {
-          console.error("❌ SMS sending failed:", smsError);
-          // Jatka vaikka SMS epäonnistuu
-        }
-      }
+      // SMS functionality removed - only using email confirmations
 
       setProcessing(false);
       onSuccess();
