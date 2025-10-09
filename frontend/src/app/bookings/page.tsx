@@ -6,6 +6,8 @@ import {
   createBooking,
   sendConfirmationEmail,
   getPackages,
+  getDepartures,
+  createDeparture,
 } from "@/lib/api";
 import type { CreateBookingRequest } from "@/lib/api";
 
@@ -22,7 +24,7 @@ type Tour = {
   active: boolean;
 };
 
-type Addon = { id: string; title: string; desc: string; price: number };
+type Addon = { id: string; title: string; desc: string; price: number }
 
 // Gear size options
 const GEAR_SIZES = {
@@ -980,6 +982,7 @@ function DemoPayment({
     gearSizes: Record<
       number,
       {
+        name: string;
         jacket: string;
         pants: string;
         boots: string;
@@ -999,33 +1002,101 @@ function DemoPayment({
       // Format gear sizes for notes
       const gearSizesText = Object.entries(bookingData.gearSizes)
         .map(([participantNum, sizes]) => {
-          const gearSizes = sizes as {
-            name: string;
-            jacket: string;
-            pants: string;
-            boots: string;
-            gloves: string;
-            helmet: string;
-          };
           const participantName =
-            gearSizes.name || `Participant ${participantNum}`;
-          return `${participantName}: Jacket ${gearSizes.jacket}, Pants ${gearSizes.pants}, Boots ${gearSizes.boots}, Gloves ${gearSizes.gloves}, Helmet ${gearSizes.helmet}`;
+            sizes.name || `Participant ${participantNum}`;
+          return `${participantName}: Jacket ${sizes.jacket}, Pants ${sizes.pants}, Boots ${sizes.boots}, Gloves ${sizes.gloves}, Helmet ${sizes.helmet}`;
         })
         .join("; ");
 
+      // Convert gear sizes for database (number keys to string keys)
+      const gearSizesForDatabase: Record<string, {
+        name: string;
+        jacket: string;
+        pants: string;
+        boots: string;
+        gloves: string;
+        helmet: string;
+      }> = {};
+
+      Object.entries(bookingData.gearSizes).forEach(([key, value]) => {
+        gearSizesForDatabase[key.toString()] = {
+          name: value.name,
+          jacket: value.jacket,
+          pants: value.pants,
+          boots: value.boots,
+          gloves: value.gloves,
+          helmet: value.helmet,
+        };
+      });
+
+      // Use the actual selected tour ID or fallback to first available
+      const packageId = bookingData.selectedTour?.id || 1;
+      
+      let departureId: number;
+      
+      try {
+        // Try to find existing departure for this package with available capacity
+        const existingDepartures = await getDepartures({
+          packageId: packageId,
+          onlyAvailable: true
+        });
+        
+        if (existingDepartures.length > 0) {
+          // Use first available departure for this package
+          departureId = existingDepartures[0].id;
+          console.log(`Using existing departure ${departureId} with ${existingDepartures[0].available} available spots`);
+        } else {
+          // Create new departure for the selected date/time
+          const departureDateTime = new Date(`${bookingData.date}T${bookingData.time}:00`);
+          const newDeparture = await createDeparture({
+            packageId: packageId,
+            departureTime: departureDateTime.toISOString(),
+            capacity: bookingData.selectedTour?.capacity || 8
+          });
+          departureId = newDeparture.id;
+          console.log(`Created new departure ${departureId}`);
+        }
+      } catch (departureError) {
+        console.error("Failed to create/find departure, using fallback:", departureError);
+        // Use a known working departure as fallback
+        departureId = packageId === 1 ? 1 : 3; // Use departure 1 for package 1, departure 3 for package 2
+      }
+
       // Luo booking backendiin
       const bookingRequest: CreateBookingRequest = {
-        packageId: 1, // Demo: käytä ensimmäistä package ID:tä
-        departureId: 1, // Demo: käytä ensimmäistä departure ID:tä
+        packageId: packageId,
+        departureId: departureId,
         participants: bookingData.participants,
         guestEmail: bookingData.customerInfo.email,
         guestName: bookingData.customerInfo.name,
         phone: bookingData.customerInfo.phone || undefined,
         notes: `Tour: ${bookingData.selectedTour?.name}, Date: ${bookingData.date}, Time: ${bookingData.time}. Gear Sizes: ${gearSizesText}`,
+        participantGearSizes: gearSizesForDatabase,
       };
 
       const result = await createBooking(bookingRequest);
       console.log("✅ Booking created:", result);
+
+      // Convert number keys to string keys and ensure all required fields are present
+      const gearSizesForEmail: Record<string, {
+        name: string;
+        jacket: string;
+        pants: string;
+        boots: string;
+        gloves: string;
+        helmet: string;
+      }> = {};
+
+      Object.entries(bookingData.gearSizes).forEach(([key, value]) => {
+        gearSizesForEmail[key.toString()] = {
+          name: value.name,
+          jacket: value.jacket,
+          pants: value.pants,
+          boots: value.boots,
+          gloves: value.gloves,
+          helmet: value.helmet,
+        };
+      });
 
       // Lähetä vahvistus email
       if (bookingData.customerInfo.email) {
@@ -1038,7 +1109,7 @@ function DemoPayment({
             time: bookingData.time,
             total: total,
             bookingId: `UK${result.id || Date.now().toString().slice(-6)}`,
-            participantGearSizes: bookingData.gearSizes,
+            participantGearSizes: gearSizesForEmail,
           });
           console.log("✅ Confirmation email sent");
         } catch (emailError) {

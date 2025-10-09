@@ -67,9 +67,28 @@ model Booking {
 
   guest         Guest       @relation(fields: [guestId], references: [id])
   departure     Departure   @relation(fields: [departureId], references: [id])
+  participantGear ParticipantGear[]
 
   @@index([guestId])
   @@index([departureId])
+}
+
+// New model for participant gear sizes
+model ParticipantGear {
+  id          Int     @id @default(autoincrement())
+  bookingId   Int
+  name        String
+  jacket      String
+  pants       String
+  boots       String
+  gloves      String
+  helmet      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
 
 
