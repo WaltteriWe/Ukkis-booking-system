@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage, getBookings } from "@/lib/api";
+import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage, getBookings, updateBookingStatus } from "@/lib/api";
 
 interface Tour {
   id: number;
@@ -109,6 +109,22 @@ export default function AdminPage() {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to delete package";
       alert(message);
+    }
+  }
+
+  // Handle status update
+  async function handleStatusUpdate(bookingId: number, newStatus: 'confirmed' | 'pending' | 'cancelled') {
+    try {
+      await updateBookingStatus(bookingId, newStatus);
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        booking.id === bookingId 
+          ? { ...booking, status: newStatus }
+          : booking
+      ));
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("Failed to update booking status");
     }
   }
 
@@ -542,17 +558,23 @@ export default function AdminPage() {
                           : Number(booking.totalPrice).toFixed(2)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          booking.status === 'confirmed' 
-                            ? 'bg-green-100 text-green-800'
-                            : booking.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : booking.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {booking.status}
-                        </span>
+                        <select
+                          value={booking.status}
+                          onChange={(e) => handleStatusUpdate(booking.id, e.target.value as 'confirmed' | 'pending' | 'cancelled')}
+                          className={`px-3 py-1 text-xs font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 ${
+                            booking.status === 'confirmed' 
+                              ? 'bg-green-100 text-green-800'
+                              : booking.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : booking.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          <option value="confirmed">confirmed</option>
+                          <option value="pending">pending</option>
+                          <option value="cancelled">cancelled</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(booking.createdAt).toLocaleDateString('fi-FI', {
