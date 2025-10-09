@@ -82,6 +82,22 @@ export async function getBookingById(id: number) {
   return response.json();
 }
 
+export async function updateBookingStatus(id: number, status: 'confirmed' | 'pending' | 'cancelled') {
+  const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update booking status');
+  }
+
+  return response.json();
+}
+
 // Package API calls
 export async function getPackages(activeOnly = true) {
   const queryParam = activeOnly ? '?activeOnly=true' : '';

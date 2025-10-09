@@ -123,3 +123,35 @@ export async function getBookingById(id: number) {
     
     return booking;
 }
+
+const updateBookingStatusSchema = z.object({
+    status: z.enum(["confirmed", "pending", "cancelled"]),
+});
+
+export async function updateBookingStatus(id: number, body: unknown) {
+    const data = updateBookingStatusSchema.parse(body);
+    
+    const booking = await prisma.booking.findUnique({
+        where: { id }
+    });
+    
+    if (!booking) {
+        throw { status: 404, error: "Booking not found" };
+    }
+    
+    const updatedBooking = await prisma.booking.update({
+        where: { id },
+        data: { status: data.status },
+        include: {
+            guest: true,
+            departure: {
+                include: { 
+                    package: true 
+                }
+            },
+            participantGear: true
+        }
+    });
+    
+    return updatedBooking;
+}
