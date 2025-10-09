@@ -1,8 +1,7 @@
 import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import { BOOKING_STATUS } from "../../shared/constants";
-import { parseISO } from "../../shared/utils";
-import { error } from "console";
+
 
 const prisma = new PrismaClient();
 
@@ -14,6 +13,14 @@ const createBookingSchema = z.object({
     guestName: z.string().min(1),
     phone: z.string().optional(),
     notes: z.string().max(500).optional(),
+    participantGearSizes: z.record(z.string(), z.object({
+        name: z.string(),
+        jacket: z.string(),
+        pants: z.string(),
+        boots: z.string(),
+        gloves: z.string(),
+        helmet: z.string(),
+    })).optional(),
 });
 
 export async function createBooking(body: unknown) {
@@ -29,20 +36,7 @@ export async function createBooking(body: unknown) {
             throw { status: 400, error: "Invalid package or departure" };
         }
 
-        // Calculate actual reserved spots from confirmed bookings
-        const confirmedBookings = await tx.booking.aggregate({
-            where: {
-                departureId: data.departureId,
-                status: BOOKING_STATUS.CONFIRMED
-            },
-            _sum: {
-                participants: true
-            }
-        });
-
-        const reservedSpots = confirmedBookings._sum.participants || 0;
-        const available = dep.capacity - reservedSpots; 
-        
+        const available = dep.capacity - dep.reserved; 
         if (available < data.participants) {
             throw { status: 400, error: `Only ${available} spots left` };
         }
@@ -66,6 +60,30 @@ export async function createBooking(body: unknown) {
             },
         });
 
+        // Save participant gear sizes if provided
+        if (data.participantGearSizes) {
+            const gearPromises = Object.entries(data.participantGearSizes).map(([participantNum, gear]) =>
+                tx.participantGear.create({
+                    data: {
+                        bookingId: booking.id,
+                        name: gear.name,
+                        jacket: gear.jacket,
+                        pants: gear.pants,
+                        boots: gear.boots,
+                        gloves: gear.gloves,
+                        helmet: gear.helmet,
+                    },
+                })
+            );
+
+            await Promise.all(gearPromises);
+        }
+
+        await tx.departure.update({
+            where: { id: dep.id },
+            data: { reserved: { increment: data.participants } },
+        });
+
         return booking;
     }, { isolationLevel: "Serializable" });
 }
@@ -78,7 +96,8 @@ export async function getBookings() {
                 include: { 
                     package: true 
                 }
-            }
+            },
+            participantGear: true
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -93,7 +112,8 @@ export async function getBookingById(id: number) {
                 include: { 
                     package: true 
                 }
-            }
+            },
+            participantGear: true
         }
     });
     

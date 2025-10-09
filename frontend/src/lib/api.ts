@@ -8,6 +8,17 @@ export interface CreateBookingRequest {
   guestName: string;
   phone?: string;
   notes?: string;
+  participantGearSizes?: Record<
+    string,
+    {
+      name: string;
+      jacket: string;
+      pants: string;
+      boots: string;
+      gloves: string;
+      helmet: string;
+    }
+  >;
 }
 
 export interface EmailConfirmationRequest {
@@ -134,6 +145,26 @@ export async function getDepartures(params?: {
     throw new Error('Failed to fetch departures');
   }
   
+  return response.json();
+}
+
+export async function createDeparture(departureData: {
+  packageId: number;
+  departureTime: string; // ISO string
+  capacity?: number;
+}) {
+  const response = await fetch(`${API_BASE_URL}/departures`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(departureData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create departure');
+  }
+
   return response.json();
 }
 

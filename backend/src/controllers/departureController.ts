@@ -13,12 +13,16 @@ const listDepaturesQuery = z.object({
 
 export async function listDepartures(query: unknown) {
     const q = listDepaturesQuery.parse(query ?? {});
-    const where: any = {packageId: q.packageId};
+    const where: any = {};
+    
+    if (q.packageId) {
+        where.packageId = q.packageId;
+    }
 
     if (q.from || q.to) {
-        where.startDate = {};
-        if (q.from) where.startDate.gte = new Date(q.from);
-        if (q.to) where.startDate.lte = new Date(q.to);
+        where.departureTime = {};
+        if (q.from) where.departureTime.gte = new Date(q.from);
+        if (q.to) where.departureTime.lte = new Date(q.to);
     }
 
     const items = await prisma.departure.findMany({
@@ -52,4 +56,34 @@ export async function listDepartures(query: unknown) {
     });
 
     return q.onlyAvailable ? itemsWithAvailability.filter(d => d.available > 0) : itemsWithAvailability;
+}
+
+const createDepartureSchema = z.object({
+    packageId: z.number().int().positive(),
+    departureTime: z.string().datetime(),
+    capacity: z.number().int().positive().optional().default(8),
+});
+
+export async function createDeparture(body: unknown) {
+    const data = createDepartureSchema.parse(body);
+
+    // Check if package exists
+    const packageExists = await prisma.safariPackage.findUnique({
+        where: { id: data.packageId }
+    });
+
+    if (!packageExists) {
+        throw { status: 400, error: "Package not found" };
+    }
+
+    // Create the departure
+    const departure = await prisma.departure.create({
+        data: {
+            packageId: data.packageId,
+            departureTime: new Date(data.departureTime),
+            capacity: data.capacity,
+        }
+    });
+
+    return departure;
 }

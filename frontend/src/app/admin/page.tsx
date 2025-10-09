@@ -42,6 +42,15 @@ interface Booking {
       slug: string;
     };
   };
+  participantGear?: {
+    id: number;
+    name: string;
+    jacket: string;
+    pants: string;
+    boots: string;
+    gloves: string;
+    helmet: string;
+  }[];
 }
 
 // Note: image listing is not used on this page currently
@@ -465,7 +474,7 @@ export default function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Package</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departure</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Participants</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Participants & Gear</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
@@ -498,8 +507,34 @@ export default function AdminPage() {
                           minute: '2-digit'
                         })}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {booking.participants}
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900 mb-2">
+                            {booking.participants} participant{booking.participants > 1 ? 's' : ''}
+                          </div>
+                          {booking.participantGear && booking.participantGear.length > 0 ? (
+                            <div className="space-y-2">
+                              {booking.participantGear.map((participant, index) => (
+                                <div key={participant.id} className="bg-gray-50 p-3 rounded-lg border">
+                                  <div className="font-semibold text-gray-900 mb-1">
+                                    {participant.name || `Participant ${index + 1}`}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                                    <div>Jacket: <span className="font-medium">{participant.jacket}</span></div>
+                                    <div>Pants: <span className="font-medium">{participant.pants}</span></div>
+                                    <div>Boots: <span className="font-medium">{participant.boots}</span></div>
+                                    <div>Gloves: <span className="font-medium">{participant.gloves}</span></div>
+                                    <div className="col-span-2">Helmet: <span className="font-medium">{participant.helmet}</span></div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic">
+                              No gear information available
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         €{typeof booking.totalPrice === 'number' 
