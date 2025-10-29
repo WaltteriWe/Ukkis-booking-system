@@ -22,7 +22,7 @@ function Home() {
             alt="Arctic landscape"
             fill
             priority
-            className="object-cover brightness-75"
+            className="object-fill brightness-75"
           />
         </div>
 
