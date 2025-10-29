@@ -31,7 +31,7 @@ const Card = ({
   return (
     <div
       className="relative group cursor-pointer rounded-lg shadow-lg overflow-hidden flex flex-col h-full"
-      style={{ backgroundColor: colors.background }}
+      style={{ backgroundColor: colors.navy }}
     >
       <div className="relative overflow-hidden">
         <Image

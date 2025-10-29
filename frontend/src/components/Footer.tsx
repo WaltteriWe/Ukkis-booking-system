@@ -8,14 +8,15 @@ import {
   Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { colors } from "@/lib/constants";
 
 const Footer = ({ className }: { className?: string }) => {
   return (
     <footer
-      className={cn(
-        "bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white py-12 my-2",
-        className
-      )}
+      className={cn("text-white py-12 my-2", className)}
+      style={{
+        background: `linear-gradient(to bottom right, ${colors.lavender}, ${colors.pink}, #FF6B35)`,
+      }}
     >
       <div className="container mx-auto px-20">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -112,7 +113,10 @@ const Footer = ({ className }: { className?: string }) => {
             </div>
           </div>
         </div>
-        <div className="border-t border-blue-700 mt-8 pt-6 text-center">
+        <div
+          className="border-t mt-8 pt-6 text-center"
+          style={{ borderColor: colors.lavender }}
+        >
           <p className="text-blue-100">
             &copy; {new Date().getFullYear()} Ukkis Safaris. All rights
             reserved.
