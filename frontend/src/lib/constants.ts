@@ -9,14 +9,20 @@ export const routes = {
 };
 
 export const colors = {
-  primary: "#1E3A8A", // Indigo-900
-  secondary: "#FBBF24", // Amber-400
-  accent: "#4F46E5", // Indigo-600
-  background: "#F4E8D0", // Gray-100
-  backgroundAlt: "#C8A8C8 ", // Lavender-200
-  text: "#2B9B9B ", // Teal-700
-  buttonColor: "#F59E0B", // Amber-500
-  title: "#E86B8A",
-  navLink: "#1F3A52",
-  card: "#1F3A52 ",
+  // Blues/Navy
+  darkBlue: "#1E3A8A", // Indigo-900 (formerly primary)
+  indigo: "#4F46E5", // Indigo-600 (formerly accent)
+  navy: "#1F3A52", // Dark navy blue
+
+  // Pinks/Purples
+  pink: "#E86B8A", // Bright pink
+  lavender: "#C8A8C8", // Light lavender
+
+  // Warm tones
+  beige: "#F4E8D0", // Warm beige (formerly background)
+  amber: "#FBBF24", // Amber-400 (formerly secondary)
+  orange: "#F59E0B", // Amber-500/Orange (formerly buttonColor)
+
+  // Accent
+  teal: "#2B9B9B", // Teal-700
 };

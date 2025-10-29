@@ -9,7 +9,7 @@ export function Navigation() {
   return (
     <nav
       className={cn(" py-4 px-3 shadow-sm")}
-      style={{ backgroundColor: colors.background }}
+      style={{ backgroundColor: colors.beige }}
     >
       <div className={cn("container mx-auto flex items-left justify-between")}>
         {/* Left side: Logo + Nav Links */}
@@ -17,7 +17,7 @@ export function Navigation() {
           {/* Logo */}
           <Link
             href={routes.home}
-            style={{ color: colors.title }}
+            style={{ color: colors.pink }}
             className={cn("text-3xl font-bold")}
           >
             Ukkis Safaris
@@ -27,25 +27,25 @@ export function Navigation() {
           <div className={cn("hidden md:flex items-center space-x-5 text-xl")}>
             <Link
               href={routes.home}
-              {...getHoverColorProps(colors.navLink, colors.title)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
             >
               Home
             </Link>
             <Link
               href={routes.categories}
-              {...getHoverColorProps(colors.navLink, colors.title)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
             >
               Tour Categories
             </Link>
             <Link
               href={routes.bookings}
-              {...getHoverColorProps(colors.navLink, colors.title)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
             >
               Booking
             </Link>
             <Link
               href={routes.contact}
-              {...getHoverColorProps(colors.navLink, colors.title)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
             >
               Contact Us
             </Link>
@@ -62,7 +62,7 @@ export function Navigation() {
             className={cn(
               " text-white font-medium rounded-full px-6 py-2 transition-colors text-xl"
             )}
-            style={{ backgroundColor: colors.title }}
+            style={{ backgroundColor: colors.pink }}
           >
             Book Now
           </Link>

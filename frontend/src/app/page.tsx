@@ -14,7 +14,7 @@ function Home() {
       <div
         id="hero-container"
         className="relative flex flex-col items-center justify-center h-120 w-full rounded-lg"
-        style={{ backgroundColor: colors.background }}
+        style={{ backgroundColor: colors.beige }}
       >
         <div className="absolute inset-0 z-0 rounded-lg overflow-hidden">
           <Image
@@ -30,13 +30,13 @@ function Home() {
         <div className="relative z-10 text-center px-4 rounded-lg">
           <h1
             className="text-4xl md:text-6xl font-bold mb-4"
-            style={{ color: colors.title }}
+            style={{ color: colors.pink }}
           >
             Arctic Adventure Awaits
           </h1>
           <p
             className="text-lg md:text-2xl mb-6 "
-            style={{ color: colors.text }}
+            style={{ color: colors.teal }}
           >
             Experience the magic of Lapland through premium snowmobile safaris,
             enduro adventures, and ATV expeditions
@@ -44,8 +44,9 @@ function Home() {
           <Link
             href={routes.categories}
             className={cn(
-              "bg-amber-400 hover:bg-amber-500 text-white font-medium rounded-full px-6 py-2 transition-colors text-xl"
+              "text-white font-medium rounded-full px-6 py-2 transition-colors text-xl"
             )}
+            style={{ backgroundColor: colors.pink }}
           >
             Explore Tours
           </Link>
@@ -54,10 +55,10 @@ function Home() {
 
       <div
         className=" mx-auto w-full p-6 text-center mt-8 space-y-2 rounded-t-lg shadow-md"
-        style={{ backgroundColor: colors.backgroundAlt }}
+        style={{ backgroundColor: colors.lavender }}
       >
         <h1
-          style={{ color: colors.text }}
+          style={{ color: colors.teal }}
           className="text-3xl font-bold object-center "
         >
           Your gateway to arctic adventures
@@ -79,24 +80,24 @@ function Home() {
 
       <div
         className="container mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
-        style={{ backgroundColor: colors.backgroundAlt }}
+        style={{ backgroundColor: colors.lavender }}
       >
         <div className="flex flex-col items-center">
           <RouteIcon
-            style={{ color: colors.secondary }}
+            style={{ color: colors.amber }}
             className="h-16 w-16 mt-6 items-center"
           />
           <h1 className="font-bold text-xl mt-2 text-gray-800">
             Variable routes
           </h1>
-          <p style={{ colorScheme: colors.text }} className="mt-4 text-lg ">
+          <p style={{ colorScheme: colors.teal }} className="mt-4 text-lg ">
             From 2-hour scenic rides to multi-day expeditions through untouched
             wilderness
           </p>
         </div>
         <div className="flex flex-col items-center">
           <Clock2Icon
-            style={{ color: colors.accent }}
+            style={{ color: colors.indigo }}
             className="h-16 w-16 mt-6 items-center"
           />
           <h1 className="font-bold text-xl mt-2 text-gray-800">
@@ -117,7 +118,7 @@ function Home() {
       </div>
       <div
         className="container mx-auto px-6 py-12 rounded-b-lg"
-        style={{ backgroundColor: colors.backgroundAlt }}
+        style={{ backgroundColor: colors.lavender }}
       >
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
