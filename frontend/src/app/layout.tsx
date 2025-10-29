@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { routes } from "../lib/constants";
+import { colors, routes } from "../lib/constants";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -21,8 +21,6 @@ export const metadata: Metadata = {
   description: "Explore the beauty of nature with Ukkis Safaris",
 };
 
-
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,11 +28,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{ backgroundColor: colors.background }}
+      >
         <Navigation />
         <main className="container mx-auto px-6 py-8">
           {children}
-        <Footer />    
+          <Footer />
         </main>
       </body>
     </html>
