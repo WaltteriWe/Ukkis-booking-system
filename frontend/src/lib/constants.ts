@@ -12,7 +12,11 @@ export const colors = {
   primary: "#1E3A8A", // Indigo-900
   secondary: "#FBBF24", // Amber-400
   accent: "#4F46E5", // Indigo-600
-  background: "#F9FAFB", // Gray-100
-  text: "#111827", // Gray-900
+  background: "#F4E8D0", // Gray-100
+  backgroundAlt: "#C8A8C8 ", // Lavender-200
+  text: "#2B9B9B ", // Teal-700
   buttonColor: "#F59E0B", // Amber-500
+  title: "#E86B8A",
+  navLink: "#1F3A52",
+  card: "#1F3A52 ",
 };

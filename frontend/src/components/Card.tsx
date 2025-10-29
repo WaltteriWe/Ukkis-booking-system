@@ -1,3 +1,4 @@
+import { colors } from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -28,7 +29,10 @@ const Card = ({
   const isHexColor = (color: string) => color.startsWith("#");
 
   return (
-    <div className="relative group cursor-pointer bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
+    <div
+      className="relative group cursor-pointer rounded-lg shadow-lg overflow-hidden flex flex-col h-full"
+      style={{ backgroundColor: colors.background }}
+    >
       <div className="relative overflow-hidden">
         <Image
           src={imageSrc}
