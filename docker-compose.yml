@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ukkis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ukkis
+      POSTGRES_PASSWORD: ukkis_password
+      POSTGRES_DB: ukkis_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ukkis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ukkis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ukkis-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://ukkis:ukkis_password@postgres:5432/ukkis_booking
+      PORT: 3001
+      NODE_ENV: production
+      # Add your Stripe and other env vars here
+      # STRIPE_SECRET_KEY: your_stripe_key
+      # EMAIL_HOST: your_email_host
+      # EMAIL_PORT: 587
+      # EMAIL_USER: your_email
+      # EMAIL_PASSWORD: your_password
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ukkis-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ukkis-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - ukkis-network
+
+volumes:
+  postgres_data:
+
+networks:
+  ukkis-network:
+    driver: bridge
