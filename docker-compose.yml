@@ -40,7 +40,7 @@ services:
       # EMAIL_USER: your_email
       # EMAIL_PASSWORD: your_password
     ports:
-      - "3001:3001"
+      - "3006:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:3001
       NODE_ENV: production
     ports:
-      - "3000:3000"
+      - "3007:3000"
     depends_on:
       - backend
     networks:
