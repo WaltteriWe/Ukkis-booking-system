@@ -507,17 +507,19 @@ export default function AdminPage() {
             <div className="divide-y">
               {participantsList.length > 0 ? (
                 participantsList.map((p) => (
-                  <div key={p.id} className="p-4 flex items-start gap-4">
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{p.name || 'Participant'}</div>
-                      <div className="text-sm text-gray-600">Booking #{p.bookingId} • {p.packageName}</div>
-                      <div className="text-sm text-gray-500">Departure: {new Date(p.departureTime).toLocaleDateString('fi-FI', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                      <div className="text-xs text-gray-600 mt-2">Jacket: <span className="font-medium">{p.jacket}</span> • Pants: <span className="font-medium">{p.pants}</span> • Boots: <span className="font-medium">{p.boots}</span></div>
-                      <div className="text-xs text-gray-600">Gloves: <span className="font-medium">{p.gloves}</span> • Helmet: <span className="font-medium">{p.helmet}</span></div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{p.guestName}</div>
-                      <div className="text-xs text-gray-500">{p.guestEmail}</div>
+                  <div key={p.id} className="p-4 md:p-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                      <div className="md:w-2/3">
+                        <div className="font-semibold text-gray-900 text-lg">{p.name || 'Participant'}</div>
+                        <div className="text-sm text-gray-600">Booking #{p.bookingId} • {p.packageName}</div>
+                        <div className="text-sm text-gray-500">Departure: {new Date(p.departureTime).toLocaleDateString('fi-FI', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="mt-3 text-sm text-gray-700">Jacket: <span className="font-medium">{p.jacket}</span> • Pants: <span className="font-medium">{p.pants}</span> • Boots: <span className="font-medium">{p.boots}</span></div>
+                        <div className="text-sm text-gray-700">Gloves: <span className="font-medium">{p.gloves}</span> • Helmet: <span className="font-medium">{p.helmet}</span></div>
+                      </div>
+                      <div className="mt-4 md:mt-0 md:text-right md:flex md:flex-col md:items-end">
+                        <div className="text-sm font-medium text-gray-900">{p.guestName}</div>
+                        <div className="text-xs text-gray-500">{p.guestEmail}</div>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -576,33 +578,15 @@ export default function AdminPage() {
                           minute: '2-digit'
                         })}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900 mb-2">
-                            {booking.participants} participant{booking.participants > 1 ? 's' : ''}
-                          </div>
-                          {booking.participantGear && booking.participantGear.length > 0 ? (
-                            <div className="space-y-2">
-                              {booking.participantGear.map((participant, index) => (
-                                <div key={participant.id} className="bg-gray-50 p-3 rounded-lg border">
-                                  <div className="font-semibold text-gray-900 mb-1">
-                                    {participant.name || `Participant ${index + 1}`}
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                                    <div>Jacket: <span className="font-medium">{participant.jacket}</span></div>
-                                    <div>Pants: <span className="font-medium">{participant.pants}</span></div>
-                                    <div>Boots: <span className="font-medium">{participant.boots}</span></div>
-                                    <div>Gloves: <span className="font-medium">{participant.gloves}</span></div>
-                                    <div className="col-span-2">Helmet: <span className="font-medium">{participant.helmet}</span></div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-500 italic">
-                              No gear information available
-                            </div>
-                          )}
+                      <td className="px-6 py-4 text-sm">
+                        <div className="font-medium text-gray-900">{booking.participants} participant{booking.participants > 1 ? 's' : ''}</div>
+                        <div className="mt-2">
+                          <button
+                            onClick={() => setActiveTab('participants')}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View participants
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
