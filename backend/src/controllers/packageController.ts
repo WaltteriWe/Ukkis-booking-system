@@ -86,28 +86,37 @@ const createPackageSchema = z.object({
   durationMin: z.number().int().positive(),
   capacity: z.number().int().positive().default(8),
   difficulty: z.enum(["Easy", "Moderate", "Advanced"]).default("Easy"),
-  imageUrl: z.string().url().optional(),
+  // allow relative paths or full URLs
+  imageUrl: z.string().optional(),
   active: z.boolean().default(true),
 });
 
 export async function createPackage(body: unknown) {
-  const data = createPackageSchema.parse(body);
-  
-  const pkg = await prisma.safariPackage.create({
-    data: {
-      slug: data.slug,
-      name: data.name,
-      description: data.description,
-      basePrice: data.basePrice,
-      durationMin: data.durationMin,
-      capacity: data.capacity,
-      difficulty: data.difficulty,
-      imageUrl: data.imageUrl,
-      active: data.active,
-    },
-  });
-  
-  return pkg;
+  try {
+    const data = createPackageSchema.parse(body);
+
+    const pkg = await prisma.safariPackage.create({
+      data: {
+        slug: data.slug,
+        name: data.name,
+        description: data.description,
+        basePrice: data.basePrice,
+        durationMin: data.durationMin,
+        capacity: data.capacity,
+        difficulty: data.difficulty,
+        imageUrl: data.imageUrl,
+        active: data.active,
+      },
+    });
+
+    return pkg;
+  } catch (e: any) {
+    // Convert validation errors to 400 so client gets meaningful response
+    if (e?.issues) {
+      throw { status: 400, error: e.issues };
+    }
+    throw e;
+  }
 }
 
 const updatePackageSchema = z.object({
@@ -118,19 +127,27 @@ const updatePackageSchema = z.object({
   durationMin: z.number().int().positive().optional(),
   capacity: z.number().int().positive().optional(),
   difficulty: z.enum(["Easy", "Moderate", "Advanced"]).optional(),
-  imageUrl: z.string().url().optional(),
+  // allow relative paths or full URLs
+  imageUrl: z.string().optional(),
   active: z.boolean().optional(),
 });
 
 export async function updatePackage(id: number, body: unknown) {
-  const data = updatePackageSchema.parse(body);
-  
-  const pkg = await prisma.safariPackage.update({
-    where: { id },
-    data,
-  });
-  
-  return pkg;
+  try {
+    const data = updatePackageSchema.parse(body);
+
+    const pkg = await prisma.safariPackage.update({
+      where: { id },
+      data,
+    });
+
+    return pkg;
+  } catch (e: any) {
+    if (e?.issues) {
+      throw { status: 400, error: e.issues };
+    }
+    throw e;
+  }
 }
 
 export async function deletePackage(id: number) {
