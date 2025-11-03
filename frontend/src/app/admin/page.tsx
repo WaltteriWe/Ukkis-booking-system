@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage, getBookings, updateBookingStatus } from "@/lib/api";
+import { getPackages, createPackage, updatePackage, uploadImage, deletePackage as apiDeletePackage, getBookings, updateBookingStatus, adminLogin, adminRegister } from "@/lib/api";
 
 interface Tour {
   id: number;
@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'packages' | 'bookings' | 'participants'>('packages');
@@ -76,10 +77,27 @@ export default function AdminPage() {
     active: true
   });
 
-  // Load data
+  // Load data only when authenticated. Read token from localStorage on mount.
   useEffect(() => {
-    loadData();
+    try {
+      const t = localStorage.getItem('adminToken');
+      if (t) {
+        setAdminToken(t);
+        // loadData will run in effect below when adminToken is set
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
   }, []);
+
+  // When adminToken changes, load data if present
+  useEffect(() => {
+    if (adminToken) {
+      loadData();
+    }
+  }, [adminToken]);
 
   async function loadData() {
     try {
@@ -148,6 +166,45 @@ export default function AdminPage() {
       console.error("Upload failed:", error);
       alert("Failed to upload image");
     }
+  }
+
+  // Admin auth handlers
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await adminLogin(authEmail, authPassword);
+      if (res.token) {
+        try { localStorage.setItem('adminToken', res.token); } catch {}
+        setAdminToken(res.token);
+      } else {
+        alert(res.message || 'Login successful');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      alert(msg);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await adminRegister(authName, authEmail, authPassword);
+      if (res.token) {
+        try { localStorage.setItem('adminToken', res.token); } catch {}
+        setAdminToken(res.token);
+      } else {
+        alert(res.message || 'Registration successful');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration failed';
+      alert(msg);
+    }
+  }
+
+  function handleLogout() {
+    try { localStorage.removeItem('adminToken'); } catch {}
+    setAdminToken(null);
+    setLoading(false);
   }
 
   // Handle form submission
@@ -225,6 +282,46 @@ export default function AdminPage() {
     departureTime: b.departure.departureTime
   })));
 
+  // Participants view state: allow filtering by booking and searching by name
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [participantSearch, setParticipantSearch] = useState("");
+  // Auth form state (client-side)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authName, setAuthName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+
+  // If not authenticated, show login/register form
+  if (!adminToken) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4">Admin {authMode === 'login' ? 'Login' : 'Register'}</h2>
+          <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+            {authMode === 'register' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input value={authName} onChange={(e) => setAuthName(e.target.value)} className="w-full border rounded px-3 py-2" required />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Password</label>
+              <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">{authMode === 'login' ? 'Login' : 'Register'}</button>
+              <button type="button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="px-4 py-2 border rounded">{authMode === 'login' ? 'Switch to Register' : 'Switch to Login'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -244,6 +341,12 @@ export default function AdminPage() {
               className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 border"
             >
               Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 border"
+            >
+              Logout
             </button>
             {activeTab === 'packages' && (
               <button
@@ -501,31 +604,95 @@ export default function AdminPage() {
         {/* Participants List */}
         {activeTab === 'participants' && (
           <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6 border-b">
+            <div className="p-6 border-b flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold">All Participants</h2>
+              <div className="flex items-center gap-3">
+                {selectedBookingId && (
+                  <button
+                    onClick={() => setSelectedBookingId(null)}
+                    className="text-sm px-3 py-1 border rounded bg-gray-50 hover:bg-gray-100"
+                  >
+                    Clear booking filter
+                  </button>
+                )}
+                <input
+                  type="text"
+                  placeholder="Search participants or guest..."
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  className="border px-3 py-2 rounded w-64 text-sm"
+                />
+              </div>
             </div>
             <div className="divide-y">
-              {participantsList.length > 0 ? (
-                participantsList.map((p) => (
-                  <div key={p.id} className="p-4 md:p-6">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div className="md:w-2/3">
-                        <div className="font-semibold text-gray-900 text-lg">{p.name || 'Participant'}</div>
-                        <div className="text-sm text-gray-600">Booking #{p.bookingId} • {p.packageName}</div>
-                        <div className="text-sm text-gray-500">Departure: {new Date(p.departureTime).toLocaleDateString('fi-FI', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="mt-3 text-sm text-gray-700">Jacket: <span className="font-medium">{p.jacket}</span> • Pants: <span className="font-medium">{p.pants}</span> • Boots: <span className="font-medium">{p.boots}</span></div>
-                        <div className="text-sm text-gray-700">Gloves: <span className="font-medium">{p.gloves}</span> • Helmet: <span className="font-medium">{p.helmet}</span></div>
+              {(() => {
+                // Apply filters: booking filter and search
+                const q = participantSearch.trim().toLowerCase();
+                let filtered = participantsList;
+                if (selectedBookingId) filtered = filtered.filter(p => p.bookingId === selectedBookingId);
+                if (q.length > 0) {
+                  filtered = filtered.filter(p => 
+                    (p.name || '').toLowerCase().includes(q) ||
+                    (p.guestName || '').toLowerCase().includes(q) ||
+                    (p.packageName || '').toLowerCase().includes(q)
+                  );
+                }
+
+                if (filtered.length === 0) {
+                  return <div className="text-center py-12 text-gray-500">No participants found</div>;
+                }
+
+                // Group by booking
+                const groups = filtered.reduce((acc: Record<number, typeof filtered>, p) => {
+                  acc[p.bookingId] = acc[p.bookingId] || [];
+                  acc[p.bookingId].push(p);
+                  return acc;
+                }, {} as Record<number, typeof filtered>);
+
+                // Render groups sorted by booking id descending
+                return Object.keys(groups)
+                  .map(Number)
+                  .sort((a, b) => b - a)
+                  .map((bookingId) => {
+                    const items = groups[bookingId].sort((x, y) => (x.name || '').localeCompare(y.name || ''));
+                    const sample = items[0];
+                    return (
+                      <div key={bookingId} className="p-4 md:p-6">
+                        <div className="mb-3">
+                          <div className="font-semibold">Booking #{bookingId} • {sample.packageName}</div>
+                          <div className="text-xs text-gray-500">Departure: {new Date(sample.departureTime).toLocaleDateString('fi-FI', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {items.map((p) => (
+                            <div key={p.id} className="py-3">
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                {/* Left: gear items */}
+                                <div className="flex-1">
+                                  <div className="mt-1 text-sm text-gray-600 flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-4 md:text-base overflow-x-auto">
+                                    <span className="whitespace-nowrap">Jacket: <span className="font-medium text-gray-900">{p.jacket}</span></span>
+                                    <span className="hidden md:inline-block text-gray-300">•</span>
+                                    <span className="whitespace-nowrap">Pants: <span className="font-medium text-gray-900">{p.pants}</span></span>
+                                    <span className="hidden md:inline-block text-gray-300">•</span>
+                                    <span className="whitespace-nowrap">Boots: <span className="font-medium text-gray-900">{p.boots}</span></span>
+                                    <span className="hidden md:inline-block text-gray-300">•</span>
+                                    <span className="whitespace-nowrap">Gloves: <span className="font-medium text-gray-900">{p.gloves}</span></span>
+                                    <span className="hidden md:inline-block text-gray-300">•</span>
+                                    <span className="whitespace-nowrap">Helmet: <span className="font-medium text-gray-900">{p.helmet}</span></span>
+                                  </div>
+                                </div>
+                                {/* Right: participant name + email (no card) */}
+                                <div className="text-right md:w-56">
+                                  <div className="text-sm font-semibold text-gray-900">{p.name || 'Participant'}</div>
+                                  <div className="text-xs text-gray-500 mt-1">{p.guestEmail}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="mt-4 md:mt-0 md:text-right md:flex md:flex-col md:items-end">
-                        <div className="text-sm font-medium text-gray-900">{p.guestName}</div>
-                        <div className="text-xs text-gray-500">{p.guestEmail}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-gray-500">No participants found</div>
-              )}
+                    );
+                  });
+              })()}
             </div>
           </div>
         )}
@@ -582,7 +749,7 @@ export default function AdminPage() {
                         <div className="font-medium text-gray-900">{booking.participants} participant{booking.participants > 1 ? 's' : ''}</div>
                         <div className="mt-2">
                           <button
-                            onClick={() => setActiveTab('participants')}
+                            onClick={() => { setActiveTab('participants'); setSelectedBookingId(booking.id); }}
                             className="text-xs text-blue-600 hover:underline"
                           >
                             View participants

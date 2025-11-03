@@ -91,4 +91,16 @@ model ParticipantGear {
   @@index([bookingId])
 }
 
+// Admin users for the admin dashboard
+model Admin {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  passwordSalt String
+  isSuper      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 
