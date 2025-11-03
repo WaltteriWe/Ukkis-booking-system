@@ -61,7 +61,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'packages' | 'bookings'>('packages');
+  const [activeTab, setActiveTab] = useState<'packages' | 'bookings' | 'participants'>('packages');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -215,6 +215,16 @@ export default function AdminPage() {
     setShowCreateForm(true);
   }
 
+  // Flatten participants from bookings for the Participants tab
+  const participantsList = bookings.flatMap((b) => (b.participantGear ?? []).map((pg) => ({
+    ...pg,
+    bookingId: b.id,
+    guestName: b.guest.name,
+    guestEmail: b.guest.email,
+    packageName: b.departure.package.name,
+    departureTime: b.departure.departureTime
+  })));
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -287,6 +297,19 @@ export default function AdminPage() {
             }`}
           >
             Bookings ({bookings.length})
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('participants');
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === 'participants'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Participants ({bookings.reduce((acc, b) => acc + (b.participantGear?.length ?? 0), 0)})
           </button>
         </div>
 
@@ -471,6 +494,36 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Participants List */}
+        {activeTab === 'participants' && (
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">All Participants</h2>
+            </div>
+            <div className="divide-y">
+              {participantsList.length > 0 ? (
+                participantsList.map((p) => (
+                  <div key={p.id} className="p-4 flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">{p.name || 'Participant'}</div>
+                      <div className="text-sm text-gray-600">Booking #{p.bookingId} • {p.packageName}</div>
+                      <div className="text-sm text-gray-500">Departure: {new Date(p.departureTime).toLocaleDateString('fi-FI', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="text-xs text-gray-600 mt-2">Jacket: <span className="font-medium">{p.jacket}</span> • Pants: <span className="font-medium">{p.pants}</span> • Boots: <span className="font-medium">{p.boots}</span></div>
+                      <div className="text-xs text-gray-600">Gloves: <span className="font-medium">{p.gloves}</span> • Helmet: <span className="font-medium">{p.helmet}</span></div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{p.guestName}</div>
+                      <div className="text-xs text-gray-500">{p.guestEmail}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-gray-500">No participants found</div>
+              )}
             </div>
           </div>
         )}
