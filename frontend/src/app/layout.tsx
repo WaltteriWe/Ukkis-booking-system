@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ backgroundColor: colors.beige }}
+        style={{ backgroundColor: colors.lightGray }}
       >
         <Navigation />
         <main className="container mx-auto px-6 py-8">

@@ -8,8 +8,8 @@ import { Search } from "lucide-react";
 export function Navigation() {
   return (
     <nav
-      className={cn(" py-4 px-3 shadow-sm")}
-      style={{ backgroundColor: colors.beige }}
+      className={cn(" py-4 px-3 shadow-md")}
+      style={{ backgroundColor: colors.white }}
     >
       <div className={cn("container mx-auto flex items-left justify-between")}>
         {/* Left side: Logo + Nav Links */}
@@ -32,12 +32,6 @@ export function Navigation() {
               Home
             </Link>
             <Link
-              href={routes.categories}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
-              Tour Categories
-            </Link>
-            <Link
               href={routes.bookings}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
@@ -54,13 +48,13 @@ export function Navigation() {
 
         {/* Right side: Search and Book Now */}
         <div className={cn("flex items-center space-x-4")}>
-          <button aria-label="Search" className={cn("text-gray-700")}>
+          <button aria-label="Search" style={{ color: colors.navy }}>
             <Search className="h-7 w-7" />
           </button>
           <Link
             href={routes.bookings}
             className={cn(
-              " text-white font-medium rounded-full px-6 py-2 transition-colors text-xl"
+              " text-white font-medium rounded-full px-6 py-2 transition-colors text-xl hover:opacity-90"
             )}
             style={{ backgroundColor: colors.pink }}
           >
