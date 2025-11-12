@@ -10,6 +10,7 @@ import { emailRoutes } from "./routes/emailRoutes";
 import { uploadRoutes } from "./routes/uploadRoutes";
 import { paymentRoutes } from "./routes/paymentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
+import { rentalRoutes } from "./routes/rentalRoutes";
 
 
 async function main(){
@@ -30,6 +31,7 @@ await app.register(emailRoutes, { prefix: API_PREFIX });
 await app.register(uploadRoutes, { prefix: API_PREFIX });
 await app.register(paymentRoutes, { prefix: API_PREFIX });
 await app.register(adminRoutes, { prefix: API_PREFIX });
+await app.register(rentalRoutes, { prefix: API_PREFIX });
 
 // Serve static files from uploads directory
 await app.register(import('@fastify/static'), {

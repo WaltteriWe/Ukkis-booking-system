@@ -49,15 +49,7 @@ function Home() {
             Experience the magic of Lapland through premium snowmobile safaris,
             enduro adventures, and ATV expeditions
           </p>
-          <Link
-            href={routes.categories}
-            className={cn(
-              "text-white font-medium rounded-full px-6 py-2 transition-colors text-xl hover:opacity-90"
-            )}
-            style={{ backgroundColor: colors.pink }}
-          >
-            Explore Tours
-          </Link>
+          
         </div>
       </div>
 

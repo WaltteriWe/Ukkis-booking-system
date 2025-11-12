@@ -13,12 +13,12 @@ import { colors } from "@/lib/constants";
 const Footer = ({ className }: { className?: string }) => {
   return (
     <footer
-      className={cn("text-white py-12 my-2", className)}
+      className={cn("text-white py-12 my-2 rounded-lg", className)}
       style={{
         background: `linear-gradient(to bottom right, ${colors.lavender}, ${colors.pink}, #FF6B35)`,
       }}
     >
-      <div className="container mx-auto px-20">
+      <div className="container mx-auto px-20 ">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div>

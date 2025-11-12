@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -15,83 +9,78 @@ datasource db {
 }
 
 model Guest {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  bookings  Booking[]
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  name              String
+  phone             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  bookings          Booking[]
+  snowmobileRentals SnowmobileRental[]
 }
 
 model SafariPackage {
-  id          Int      @id @default(autoincrement())
-  slug        String   @unique
-  name        String   
+  id          Int         @id @default(autoincrement())
+  slug        String      @unique
+  name        String
   description String?
-  basePrice   Decimal  @db.Decimal(10,2)
+  basePrice   Decimal     @db.Decimal(10, 2)
   durationMin Int
-  capacity    Int      @default(8)
-  difficulty  String   @default("Easy") // Easy, Moderate, Advanced
-  imageUrl    String?  // Kuva URL
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  capacity    Int         @default(8)
+  difficulty  String      @default("Easy")
+  imageUrl    String?
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   departures  Departure[]
 }
 
 model Departure {
-  id            Int      @id @default(autoincrement())
-  packageId     Int
-  departureTime DateTime
-  capacity      Int
-  reserved      Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  package   SafariPackage @relation(fields: [packageId], references: [id])
-  bookings  Booking[]
-  @@index([packageId, departureTime])
+  id                    Int                          @id @default(autoincrement())
+  packageId             Int
+  departureTime         DateTime
+  capacity              Int
+  reserved              Int                          @default(0)
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  package               SafariPackage                @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  bookings              Booking[]
+  snowmobileAssignments SafariSnowmobileAssignment[]
 }
 
 model Booking {
-  id            Int        @id @default(autoincrement())
-  guestId       Int
-  departureId   Int
-  participants  Int
-  totalPrice    Decimal    @db.Decimal(10,2)
-  status        String     @default("confirmed")
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  guest         Guest       @relation(fields: [guestId], references: [id])
-  departure     Departure   @relation(fields: [departureId], references: [id])
+  id              Int               @id @default(autoincrement())
+  guestId         Int
+  departureId     Int
+  participants    Int
+  totalPrice      Decimal           @db.Decimal(10, 2)
+  status          String            @default("confirmed")
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  departure       Departure         @relation(fields: [departureId], references: [id])
+  guest           Guest             @relation(fields: [guestId], references: [id])
   participantGear ParticipantGear[]
 
   @@index([guestId])
   @@index([departureId])
 }
 
-// New model for participant gear sizes
 model ParticipantGear {
-  id          Int     @id @default(autoincrement())
-  bookingId   Int
-  name        String
-  jacket      String
-  pants       String
-  boots       String
-  gloves      String
-  helmet      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  name      String
+  overalls  String
+  boots     String
+  gloves    String
+  helmet    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
 }
 
-// Admin users for the admin dashboard
 model Admin {
   id           Int      @id @default(autoincrement())
   name         String
@@ -103,4 +92,41 @@ model Admin {
   updatedAt    DateTime @updatedAt
 }
 
+model Snowmobile {
+  id                Int                          @id @default(autoincrement())
+  licensePlate      String?                      @unique
+  name              String
+  model             String?
+  year              Int?
+  status            String                       @default("available")
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  rentals           SnowmobileRental[]
+  safariAssignments SafariSnowmobileAssignment[]
+}
 
+model SafariSnowmobileAssignment {
+  id           Int        @id @default(autoincrement())
+  departureId  Int
+  snowmobileId Int
+  departure    Departure  @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([departureId, snowmobileId])
+}
+
+model SnowmobileRental {
+  id           Int        @id @default(autoincrement())
+  snowmobileId Int
+  guestId      Int
+  startTime    DateTime
+  endTime      DateTime
+  totalPrice   Decimal    @db.Decimal(10, 2)
+  status       String     @default("pending")
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+  guest        Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+}

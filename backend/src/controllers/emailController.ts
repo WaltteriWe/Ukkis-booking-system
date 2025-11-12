@@ -11,8 +11,7 @@ const sendConfirmationSchema = z.object({
     bookingId: z.string().min(1),
     participantGearSizes: z.record(z.string(), z.object({
         name: z.string(),
-        jacket: z.string(),
-        pants: z.string(),
+        overalls: z.string(), // Changed from jacket and pants
         boots: z.string(),
         gloves: z.string(),
         helmet: z.string(),
@@ -22,7 +21,7 @@ const sendConfirmationSchema = z.object({
 export async function sendConfirmationEmail(body: unknown) {
     const data = sendConfirmationSchema.parse(body);
 
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
 
     if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
         console.log('📧 Creating SMTP transporter with config:', { host: SMTP_HOST, port: SMTP_PORT, user: SMTP_USER });
@@ -48,8 +47,7 @@ export async function sendConfirmationEmail(body: unknown) {
                     <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-left: 3px solid #ffb64d; border-radius: 4px;">
                         <strong>${gearInfo.name || `Participant ${participantNum}`}</strong>
                         <ul style="margin: 5px 0; padding-left: 20px;">
-                            <li>Jacket: ${gearInfo.jacket}</li>
-                            <li>Pants: ${gearInfo.pants}</li>
+                            <li>Overalls: ${gearInfo.overalls}</li>
                             <li>Boots: ${gearInfo.boots}</li>
                             <li>Gloves: ${gearInfo.gloves}</li>
                             <li>Helmet: ${gearInfo.helmet}</li>
@@ -110,7 +108,7 @@ export async function sendConfirmationEmail(body: unknown) {
 
             console.log('📧 Attempting to send email to:', data.email);
             await transporter.sendMail({
-                from: SMTP_USER,
+                from: SMTP_FROM || SMTP_USER,
                 to: data.email,
                 subject,
                 html,
@@ -119,9 +117,7 @@ export async function sendConfirmationEmail(body: unknown) {
             console.log('✅ Email sent successfully to:', data.email);
             return { success: true, message: "Confirmation email sent", recipient: data.email, bookingId: data.bookingId };
         } catch (err: any) {
-            // Log full error server-side (do not expose secrets to clients)
             console.error('❌ Email sending failed:', err);
-            // Normalize message sent back to client while including underlying error message for debugging
             const msg = err?.message || 'Unknown email error';
             throw new Error(`Mail command failed: ${msg}`);
         }
