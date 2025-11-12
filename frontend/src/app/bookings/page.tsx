@@ -340,12 +340,9 @@ export default function Bookings() {
             Ukkis <span className="text-[#101651]">Safaris</span>
           </div>
 
-          <a
-            href="/booking"
-            className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-5 py-2 text-white font-semibold shadow"
-          >
-            Book Now
-          </a>
+<h1 className="inline-block rounded-full px-5 py-2 text-base md:text-lg text-black font-semibold tracking-wide">
+  Book Now
+</h1>
         </div>
 
         {/* Stepper */}

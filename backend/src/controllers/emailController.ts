@@ -103,16 +103,28 @@ export async function sendConfirmationEmail(body: unknown) {
             </div>
         `;
 
-        console.log('📧 Attempting to send email to:', data.email);
-        await transporter.sendMail({
-            from: SMTP_USER,
-            to: data.email,
-            subject,
-            html,
-        });
+        try {
+            console.log('📧 Verifying SMTP connection...');
+            await transporter.verify();
+            console.log('📧 SMTP connection ok');
 
-        console.log('✅ Email sent successfully to:', data.email);
-        return { success: true, message: "Confirmation email sent", recipient: data.email, bookingId: data.bookingId };
+            console.log('📧 Attempting to send email to:', data.email);
+            await transporter.sendMail({
+                from: SMTP_USER,
+                to: data.email,
+                subject,
+                html,
+            });
+
+            console.log('✅ Email sent successfully to:', data.email);
+            return { success: true, message: "Confirmation email sent", recipient: data.email, bookingId: data.bookingId };
+        } catch (err: any) {
+            // Log full error server-side (do not expose secrets to clients)
+            console.error('❌ Email sending failed:', err);
+            // Normalize message sent back to client while including underlying error message for debugging
+            const msg = err?.message || 'Unknown email error';
+            throw new Error(`Mail command failed: ${msg}`);
+        }
     }
 
     // Fallback: demo mode
