@@ -21,7 +21,7 @@ export function Navigation() {
             className={cn("flex items-center")}
           >
             <Image
-              src="/images/logo.jpg"
+              src="/images/ukkohalla-safaris-logo-no-bg.png"
               alt="Ukkis Safaris Logo"
               width={80}
               height={50}

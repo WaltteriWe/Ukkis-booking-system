@@ -33,6 +33,7 @@ model SafariPackage {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   departures  Departure[]
+  bookings    Booking[]   // Add this line - the opposite relation
 }
 
 model Departure {
@@ -49,21 +50,25 @@ model Departure {
 }
 
 model Booking {
-  id              Int               @id @default(autoincrement())
-  guestId         Int
-  departureId     Int
-  participants    Int
-  totalPrice      Decimal           @db.Decimal(10, 2)
-  status          String            @default("confirmed")
-  notes           String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  departure       Departure         @relation(fields: [departureId], references: [id])
-  guest           Guest             @relation(fields: [guestId], references: [id])
-  participantGear ParticipantGear[]
+  id                   Int               @id @default(autoincrement())
+  guestId              Int
+  packageId            Int
+  departureId          Int?              // Optional - for safari bookings
+  participants         Int
+  guestEmail           String
+  guestName            String
+  phone                String?
+  notes                String?
+  participantGearSizes Json?
+  totalPrice           Float
+  status               String            @default("confirmed")
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
-  @@index([guestId])
-  @@index([departureId])
+  guest               Guest             @relation(fields: [guestId], references: [id])
+  package             SafariPackage     @relation(fields: [packageId], references: [id])
+  departure           Departure?        @relation(fields: [departureId], references: [id])
+  participantGear     ParticipantGear[]
 }
 
 model ParticipantGear {

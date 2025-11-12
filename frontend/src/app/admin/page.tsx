@@ -508,15 +508,14 @@ async function handleCreateDeparture(e: React.FormEvent) {
   // Flatten participants from
   //  for the Participants tab
   const participantsList = bookings.flatMap((b) =>
-    (b.participantGear ?? []).map((pg) => ({
-      ...pg,
-      bookingId: b.id,
-      guestName: b.guest.name,
-      guestEmail: b.guest.email,
-      packageName: b.departure.package.name,
-      departureTime: b.departure.departureTime,
-    }))
-  );
+  Array.from({ length: b.participants }).map((_, i) => ({
+    bookingId: b.id,
+    guestName: b.guestName || b.guest?.name || 'Unknown',
+    tourName: b.departure?.package?.name || b.package?.name || 'Safari Tour', // Handle null departure
+    date: b.departure?.datetime ? new Date(b.departure.datetime).toLocaleDateString() : 'TBD',
+    participantIndex: i + 1,
+  }))
+);
 
   // Participants view state: allow filtering by booking and searching by name
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
@@ -1397,18 +1396,12 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {booking.departure.package.name}
+                        {booking.departure?.package?.name || booking.package?.name || 'Safari Tour'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(
-                          booking.departure.departureTime
-                        ).toLocaleDateString("fi-FI", {
-                          year: "numeric",
-                          month: "numeric",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {booking.departure?.datetime 
+    ? new Date(booking.departure.datetime).toLocaleDateString()
+    : 'TBD'}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="font-medium text-gray-900">

@@ -21,23 +21,17 @@ export interface CreateBookingRequest {
 }
 
 export interface EmailConfirmationRequest {
-  email: string;
-  name: string;
-  tour: string;
+  email: string;           // Changed from recipientEmail
+  name: string;            // Changed from recipientName
+  tour: string;            // Changed from tourName in bookingDetails
   date: string;
   time: string;
+  participants: number;
   total: number;
   bookingId: string;
-  participantGearSizes?: Record<
-    string,
-    {
-      name: string;
-      overalls: string;
-      boots: string;
-      gloves: string;
-      helmet: string;
-    }
-  >;
+  phone?: string;
+  addons?: string;
+  gearSizes?: Record<string, any>;
 }
 
 
@@ -204,30 +198,39 @@ export async function sendConfirmationEmail(emailData: EmailConfirmationRequest)
 
 
 // Package management API calls
-export async function createPackage(packageData: {
-  slug: string;
-  name: string;
-  description?: string;
-  basePrice: number;
-  durationMin: number;
-  capacity?: number;
-  difficulty?: "Easy" | "Moderate" | "Advanced";
-  imageUrl?: string;
-}) {
+export const createPackage = async (packageData: any) => {
+  // Generate unique slug by adding timestamp
+  const baseSlug = packageData.slug || packageData.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+  
+  const slug = `${baseSlug}-${Date.now()}`; // Add timestamp for uniqueness
+
   const response = await fetch(`${API_BASE_URL}/packages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(packageData),
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: packageData.name,
+      slug: slug,
+      description: packageData.description,
+      basePrice: Number(packageData.basePrice),
+      durationMin: Number(packageData.durationMin),
+      capacity: Number(packageData.capacity),
+      difficulty: packageData.difficulty,
+      imageUrl: packageData.imageUrl,
+      isActive: true,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create package');
+    const errorText = await response.text();
+    console.error("Package creation failed:", errorText);
+    throw new Error(`Failed to create package: ${errorText}`);
   }
 
   return response.json();
-}
+};
 
 export async function updatePackage(id: number, packageData: Partial<{
   slug: string;
