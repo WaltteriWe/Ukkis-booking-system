@@ -5,22 +5,25 @@ import { BOOKING_STATUS } from "../../shared/constants";
 
 const prisma = new PrismaClient();
 
+// Update the gear sizes schema
+const gearSizesSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  overalls: z.string().min(1, 'Overalls size is required'),
+  boots: z.string().min(1, 'Boots size is required'),
+  gloves: z.string().min(1, 'Gloves size is required'),
+  helmet: z.string().min(1, 'Helmet size is required'),
+});
+
+// Update the create booking schema
 const createBookingSchema = z.object({
-    packageId: z.number().int().positive(),
-    departureId: z.number().int().positive(),
-    participants: z.number().int().min(1),
-    guestEmail: z.string().email(),
-    guestName: z.string().min(1),
-    phone: z.string().optional(),
-    notes: z.string().max(500).optional(),
-    participantGearSizes: z.record(z.string(), z.object({
-        name: z.string(),
-        jacket: z.string(),
-        pants: z.string(),
-        boots: z.string(),
-        gloves: z.string(),
-        helmet: z.string(),
-    })).optional(),
+  packageId: z.number().int().positive(),
+  departureId: z.number().int().positive(),
+  participants: z.number().int().positive(),
+  guestEmail: z.string().email(),
+  guestName: z.string().min(1),
+  phone: z.string().optional(),
+  notes: z.string().optional(),
+  participantGearSizes: z.record(z.string(), gearSizesSchema).optional(),
 });
 
 export async function createBooking(body: unknown) {
@@ -67,13 +70,12 @@ export async function createBooking(body: unknown) {
                     data: {
                         bookingId: booking.id,
                         name: gear.name,
-                        jacket: gear.jacket,
-                        pants: gear.pants,
+                        overalls: gear.overalls,
                         boots: gear.boots,
                         gloves: gear.gloves,
                         helmet: gear.helmet,
                     },
-                })
+                } as any)
             );
 
             await Promise.all(gearPromises);

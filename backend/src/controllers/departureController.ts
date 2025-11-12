@@ -12,50 +12,48 @@ const listDepaturesQuery = z.object({
 });
 
 export async function listDepartures(query: unknown) {
-    const q = listDepaturesQuery.parse(query ?? {});
+    const schema = z.object({
+        packageId: z.number().int().positive().optional(),
+        from: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+        to: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+        onlyAvailable: z.boolean().optional(),
+    });
+
+    const params = schema.parse(query);
+
     const where: any = {};
-    
-    if (q.packageId) {
-        where.packageId = q.packageId;
+
+    if (params.packageId) {
+        where.packageId = params.packageId;
     }
 
-    if (q.from || q.to) {
+    if (params.from || params.to) {
         where.departureTime = {};
-        if (q.from) where.departureTime.gte = new Date(q.from);
-        if (q.to) where.departureTime.lte = new Date(q.to);
+        if (params.from) where.departureTime.gte = params.from;
+        if (params.to) where.departureTime.lte = params.to;
     }
 
-    const items = await prisma.departure.findMany({
+    const departures = await prisma.departure.findMany({
         where,
-        orderBy: {departureTime: "asc"},
         include: {
-            bookings: {
-                where: {
-                    status: BOOKING_STATUS.CONFIRMED
-                },
-                select: {
-                    participants: true
-                }
-            }
-        }
+            package: true, // ADD THIS - Include the package relation
+            bookings: params.onlyAvailable ? true : false,
+        },
+        orderBy: {
+            departureTime: "asc",
+        },
     });
 
-    // Calculate actual availability for each departure
-    const itemsWithAvailability = items.map(item => {
-        const reservedSpots = item.bookings.reduce((sum, booking) => sum + booking.participants, 0);
-        const available = item.capacity - reservedSpots;
-        
-        return {
-            id: item.id,
-            departureTime: item.departureTime,
-            capacity: item.capacity,
-            reserved: reservedSpots,
-            available: available,
-            packageId: item.packageId,
-        };
-    });
+    if (params.onlyAvailable) {
+        const filtered = departures.filter((dep: any) => {
+            const bookedSeats = dep.bookings.reduce((sum: number, b: any) => sum + b.participants, 0);
+            const capacity = dep.capacity || dep.package?.capacity || 10;
+            return bookedSeats < capacity;
+        });
+        return { items: filtered };
+    }
 
-    return q.onlyAvailable ? itemsWithAvailability.filter(d => d.available > 0) : itemsWithAvailability;
+    return { items: departures };
 }
 
 const createDepartureSchema = z.object({

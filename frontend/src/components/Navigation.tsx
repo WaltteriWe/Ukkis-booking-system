@@ -4,6 +4,7 @@ import Link from "next/link";
 import { colors, routes } from "@/lib/constants";
 import { cn, getHoverColorProps } from "@/lib/utils";
 import { Search } from "lucide-react";
+import Image from "next/image";
 
 export function Navigation() {
   return (
@@ -17,10 +18,16 @@ export function Navigation() {
           {/* Logo */}
           <Link
             href={routes.home}
-            style={{ color: colors.pink }}
-            className={cn("text-3xl font-bold")}
+            className={cn("flex items-center")}
           >
-            Ukkis Safaris
+            <Image
+              src="/images/logo.jpg"
+              alt="Ukkis Safaris Logo"
+              width={80}
+              height={50}
+              priority
+              className="object-contain"
+            />
           </Link>
 
           {/* Nav Links */}

@@ -12,8 +12,7 @@ export interface CreateBookingRequest {
     string,
     {
       name: string;
-      jacket: string;
-      pants: string;
+      overalls: string;
       boots: string;
       gloves: string;
       helmet: string;
@@ -33,8 +32,7 @@ export interface EmailConfirmationRequest {
     string,
     {
       name: string;
-      jacket: string;
-      pants: string;
+      overalls: string;
       boots: string;
       gloves: string;
       helmet: string;
@@ -48,7 +46,8 @@ export interface EmailConfirmationRequest {
 export async function createBooking(bookingData: CreateBookingRequest) {
   const response = await fetch(`${API_BASE_URL}/bookings`, {
     method: 'POST',
-    headers: {
+    headers:
+     {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(bookingData),
@@ -376,4 +375,85 @@ export async function adminRegister(name: string, email: string, password: strin
   }
 
   return response.json() as Promise<AdminAuthResponse>;
+}
+
+// Snowmobile Rental API calls
+export async function getSnowmobiles() {
+  const response = await fetch(`${API_BASE_URL}/snowmobiles`);
+  if (!response.ok) throw new Error('Failed to fetch snowmobiles');
+  return response.json();
+}
+
+export async function getAvailableSnowmobiles(startTime: string, endTime: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/snowmobiles/available?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`
+  );
+  if (!response.ok) throw new Error('Failed to fetch available snowmobiles');
+  return response.json();
+}
+
+export async function createSnowmobileRental(data: {
+  snowmobileId: number;
+  guestEmail: string;
+  guestName: string;
+  phone?: string;
+  startTime: string;
+  endTime: string;
+  totalPrice: number;
+  notes?: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/snowmobile-rentals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create rental');
+  return response.json();
+}
+
+export async function createSnowmobile(data: {
+  name: string;
+  licensePlate?: string;
+  model?: string;
+  year?: number;
+}) {
+  const response = await fetch(`${API_BASE_URL}/snowmobiles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create snowmobile');
+  return response.json();
+}
+
+export async function getSingleReservations() {
+  const response = await fetch(`${API_BASE_URL}/reservations`);
+  if (!response.ok) throw new Error('Failed to fetch single reservations');
+  return response.json();
+}
+
+export async function updateRentalStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled') {
+  const response = await fetch(`${API_BASE_URL}/snowmobile-rentals/${id}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) throw new Error('Failed to update rental status');
+  return response.json();
+}
+
+export async function assignSnowmobilesToDeparture(departureId: number, snowmobileIds: number[]) {
+  const response = await fetch(`${API_BASE_URL}/departures/${departureId}/snowmobiles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ snowmobileIds }),
+  });
+  if (!response.ok) throw new Error('Failed to assign snowmobiles');
+  return response.json();
+}
+
+export async function getSnowmobileAssignments(departureId: number) {
+  const response = await fetch(`${API_BASE_URL}/departures/${departureId}/snowmobiles`);
+  if (!response.ok) throw new Error('Failed to get assignments');
+  return response.json();
 }
