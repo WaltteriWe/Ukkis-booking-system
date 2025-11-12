@@ -1,27 +1,24 @@
 # Frontend Dockerfile
-FROM node:20-alpine AS base
+FROM node:18-alpine AS base
 
-# Install dependencies only when needed
+# Install dependencies
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Build the application
+# Build application
 FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable telemetry during build
-ENV NEXT_TELEMETRY_DISABLED=1
+# Set environment variables for build
+ENV NEXT_PUBLIC_API_URL=http://localhost:3001/api
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51QGlItRvF2XeuAxviPQAtYF18cKUpN9WCn4AhgDO9Y1zCOq4INPgiFw55WDc3xZfj19D2cNFo4mxRh2voYtBvqRz00C0yR9HS7
 
-# Build Next.js application
 RUN npm run build
 
 # Production image
@@ -29,26 +26,12 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
 
 # Copy necessary files
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
-
-USER nextjs
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Start the Next.js server
 CMD ["node", "server.js"]
