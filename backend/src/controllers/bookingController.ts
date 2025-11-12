@@ -17,7 +17,7 @@ const gearSizesSchema = z.object({
 // Update the create booking schema
 const createBookingSchema = z.object({
   packageId: z.number().int().positive(),
-  departureId: z.number().int().positive(),
+  departureId: z.number().int().positive().optional(), // Make it optional
   participants: z.number().int().positive(),
   guestEmail: z.string().email(),
   guestName: z.string().min(1),
@@ -26,42 +26,69 @@ const createBookingSchema = z.object({
   participantGearSizes: z.record(z.string(), gearSizesSchema).optional(),
 });
 
+// Replace the original createBooking function (delete the old one)
 export async function createBooking(body: unknown) {
+    console.log("Received booking request:", body);
+    
     const data = createBookingSchema.parse(body);
+    console.log("Validated data:", data);
 
     return prisma.$transaction(async (tx) => {
-        const [pkg, dep] = await Promise.all([
-            tx.safariPackage.findUnique({ where: { id: data.packageId } }),
-            tx.departure.findUnique({ where: { id: data.departureId } }),
-        ]);
+        // Verify package exists
+        const pkg = await tx.safariPackage.findUnique({
+            where: { id: data.packageId }
+        });
 
-        if (!pkg || !dep || dep.packageId !== pkg.id) {
-            throw { status: 400, error: "Invalid package or departure" };
+        if (!pkg) {
+            console.error("Package not found:", data.packageId);
+            throw { status: 400, error: "Invalid package" };
         }
 
-        const available = dep.capacity - dep.reserved; 
-        if (available < data.participants) {
-            throw { status: 400, error: `Only ${available} spots left` };
-        }
+        console.log("Package found:", pkg.name);
 
+        // Calculate total price
         const totalPrice = Number(pkg.basePrice) * data.participants;
 
+        // Create or update guest
         const guest = await tx.guest.upsert({
             where: { email: data.guestEmail },
-            update: { name: data.guestName, phone: data.phone ?? undefined },
-            create: { email: data.guestEmail, name: data.guestName, phone: data.phone ?? undefined },
-        });
-
-        const booking = await tx.booking.create({
-            data: {
-                guestId: guest.id,
-                departureId: dep.id,
-                participants: data.participants,
-                totalPrice,
-                status: BOOKING_STATUS.CONFIRMED,
-                notes: data.notes ?? null,
+            update: { 
+                name: data.guestName, 
+                phone: data.phone ?? undefined 
+            },
+            create: { 
+                email: data.guestEmail, 
+                name: data.guestName, 
+                phone: data.phone ?? undefined 
             },
         });
+
+        console.log("Guest created/updated:", guest.email);
+
+        // Create booking data object
+        const bookingData: any = {
+            guestId: guest.id,
+            packageId: data.packageId,
+            participants: data.participants,
+            totalPrice,
+            status: "confirmed",
+            notes: data.notes ?? null,
+            guestEmail: data.guestEmail,  // ADD THIS LINE - it's required by your schema
+            guestName: data.guestName,    // ADD THIS LINE
+            phone: data.phone ?? null,    // ADD THIS LINE
+        };
+
+        // Only include departureId if it was provided
+        if (data.departureId) {
+            bookingData.departureId = data.departureId;
+        }
+
+        // Create booking
+        const booking = await tx.booking.create({
+            data: bookingData,
+        });
+
+        console.log("Booking created:", booking.id);
 
         // Save participant gear sizes if provided
         if (data.participantGearSizes) {
@@ -75,16 +102,12 @@ export async function createBooking(body: unknown) {
                         gloves: gear.gloves,
                         helmet: gear.helmet,
                     },
-                } as any)
+                })
             );
 
             await Promise.all(gearPromises);
+            console.log("Gear sizes saved for", Object.keys(data.participantGearSizes).length, "participants");
         }
-
-        await tx.departure.update({
-            where: { id: dep.id },
-            data: { reserved: { increment: data.participants } },
-        });
 
         return booking;
     }, { isolationLevel: "Serializable" });
@@ -94,6 +117,7 @@ export async function getBookings() {
     return await prisma.booking.findMany({
         include: {
             guest: true,
+            package: true,  // ADD THIS - include package directly
             departure: {
                 include: { 
                     package: true 
@@ -110,6 +134,7 @@ export async function getBookingById(id: number) {
         where: { id },
         include: {
             guest: true,
+            package: true,  // ADD THIS - include package directly
             departure: {
                 include: { 
                     package: true 

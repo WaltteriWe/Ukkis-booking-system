@@ -20,7 +20,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/generated ./generated
 COPY . .
 
+# Ensure TypeScript is compiled
 RUN npm run build
+
+# Verify the build output exists
+RUN ls -la dist/
 
 # Production image
 FROM base AS runner

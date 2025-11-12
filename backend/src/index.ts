@@ -12,16 +12,14 @@ import { paymentRoutes } from "./routes/paymentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
 
-
 async function main(){
   
+const app = Fastify({ logger: true });
 
-const app = Fastify({
-    logger: true,
-});
-
+// Enable CORS
 await app.register(cors, {
-    origin: true,
+  origin: '*', // Allow all origins in development
+  credentials: true,
 });
 
 await app.register(packageRoutes, { prefix: API_PREFIX });
@@ -39,11 +37,9 @@ await app.register(import('@fastify/static'), {
   prefix: '/uploads/',
 });
 
-
-
-  const port = Number(process.env.PORT) || 3001;
-  await app.listen({ port, host: "0.0.0.0" });
-  app.log.info(`Serveri käynnissä osoitteessa http://localhost:${port}`);
+const port = Number(process.env.PORT) || 3001;
+await app.listen({ port, host: "0.0.0.0" });
+app.log.info(`Serveri käynnissä osoitteessa http://localhost:${port}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
