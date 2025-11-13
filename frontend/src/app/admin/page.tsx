@@ -20,6 +20,9 @@ import {
   createSnowmobile,
   createDeparture,
 } from "@/lib/api";
+import { DayPicker } from "react-day-picker";
+import { format } from "date-fns";
+import "react-day-picker/dist/style.css";
 
 interface Tour {
   id: number;
@@ -164,6 +167,10 @@ export default function AdminPage() {
     departureTime: "",
     capacity: 10,
   });
+
+  // Date filter state
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dateString, setDateString] = useState("");
 
   // Load data only when authenticated. Read token from localStorage on mount.
   useEffect(() => {
@@ -919,52 +926,99 @@ async function handleCreateDeparture(e: React.FormEvent) {
 
                 {showDepartureForm && (
                   <form onSubmit={handleCreateDeparture} className="space-y-4 border-t pt-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Select Safari Package *</label>
-                      <select
-                        required
-                        value={selectedPackageForDeparture || ""}
-                        onChange={(e) => setSelectedPackageForDeparture(parseInt(e.target.value))}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="">-- Select a package --</option>
-                        {tours.map((tour) => (
-                          <option key={tour.id} value={tour.id}>
-                            {tour.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Select Safari Package *</label>
+      <select
+        required
+        value={selectedPackageForDeparture || ""}
+        onChange={(e) => setSelectedPackageForDeparture(parseInt(e.target.value))}
+        className="w-full border rounded px-3 py-2"
+      >
+        <option value="">-- Select a package --</option>
+        {tours.map((tour) => (
+          <option key={tour.id} value={tour.id}>
+            {tour.name}
+          </option>
+        ))}
+      </select>
+    </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Departure Date & Time *</label>
-                      <input
-                        type="datetime-local"
-                        required
-                        value={newDeparture.departureTime}
-                        onChange={(e) => setNewDeparture({ ...newDeparture, departureTime: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      />
-                    </div>
+    <div>
+      <label className="block text-sm font-medium mb-2">Select Departure Date & Time *</label>
+      <div className="border rounded-lg p-4 bg-white">
+        <DayPicker
+          mode="single"
+          selected={selectedDate || undefined}
+          onSelect={(date) => {
+            if (date) {
+              setSelectedDate(date);
+              setDateString(format(date, "yyyy-MM-dd"));
+              // Update departure time with selected date
+              const timeStr = newDeparture.departureTime.split('T')[1] || '10:00';
+              setNewDeparture({
+                ...newDeparture,
+                departureTime: `${format(date, "yyyy-MM-dd")}T${timeStr}`
+              });
+            }
+          }}
+          disabled={(date) => date < new Date()}
+          className="mx-auto"
+        />
+      </div>
+      
+      {selectedDate && (
+        <div className="mt-3">
+          <label className="block text-sm font-medium mb-1">Select Time</label>
+          <select
+            value={newDeparture.departureTime.split('T')[1] || '10:00'}
+            onChange={(e) => {
+              const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
+              setNewDeparture({
+                ...newDeparture,
+                departureTime: `${dateStr}T${e.target.value}`
+              });
+            }}
+            className="w-full border rounded px-3 py-2"
+          >
+            <option value="09:00">09:00</option>
+            <option value="10:00">10:00</option>
+            <option value="11:00">11:00</option>
+            <option value="12:00">12:00</option>
+            <option value="13:00">13:00</option>
+            <option value="14:00">14:00</option>
+            <option value="15:00">15:00</option>
+            <option value="16:00">16:00</option>
+            <option value="17:00">17:00</option>
+          </select>
+        </div>
+      )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Capacity (max participants)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={newDeparture.capacity}
-                        onChange={(e) => setNewDeparture({ ...newDeparture, capacity: parseInt(e.target.value) })}
-                        className="w-full border rounded px-3 py-2"
-                      />
-                    </div>
+      {selectedDate && (
+        <p className="text-sm text-gray-600 mt-2">
+          Selected: {format(selectedDate, "MMMM d, yyyy")} at {newDeparture.departureTime.split('T')[1] || '10:00'}
+        </p>
+      )}
+    </div>
 
-                    <button
-                      type="submit"
-                      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-                    >
-                      Create Departure
-                    </button>
-                  </form>
+    <div>
+      <label className="block text-sm font-medium mb-2">Capacity (max participants)</label>
+      <input
+        type="number"
+        min="1"
+        value={newDeparture.capacity}
+        onChange={(e) => setNewDeparture({ ...newDeparture, capacity: parseInt(e.target.value) })}
+        className="w-full border rounded px-3 py-2"
+      />
+    </div>
+
+    <button
+      type="submit"
+      disabled={!selectedDate}
+      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Create Departure
+    </button>
+  </form>
                 )}
               </div>
             )}
@@ -1399,9 +1453,11 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         {booking.departure?.package?.name || booking.package?.name || 'Safari Tour'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {booking.departure?.datetime 
-    ? new Date(booking.departure.datetime).toLocaleDateString()
-    : 'TBD'}
+                        {booking.bookingDate 
+    ? new Date(booking.bookingDate).toLocaleDateString()
+    : booking.departure?.datetime 
+      ? new Date(booking.departure.datetime).toLocaleDateString()
+      : 'TBD'}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="font-medium text-gray-900">

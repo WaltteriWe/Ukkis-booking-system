@@ -2,7 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/a
 
 export interface CreateBookingRequest {
   packageId: number;
-  departureId: number;
+  departureId?: number; // Make optional
   participants: number;
   guestEmail: string;
   guestName: string;
@@ -21,9 +21,9 @@ export interface CreateBookingRequest {
 }
 
 export interface EmailConfirmationRequest {
-  email: string;           // Changed from recipientEmail
-  name: string;            // Changed from recipientName
-  tour: string;            // Changed from tourName in bookingDetails
+  email: string;
+  name: string;
+  tour: string;
   date: string;
   time: string;
   participants: number;
@@ -34,17 +34,14 @@ export interface EmailConfirmationRequest {
   gearSizes?: Record<string, any>;
 }
 
-
-
 // Booking API calls
-export async function createBooking(bookingData: CreateBookingRequest) {
+export async function createBooking(data: CreateBookingRequest) {
   const response = await fetch(`${API_BASE_URL}/bookings`, {
     method: 'POST',
-    headers:
-     {
+    headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(bookingData),
+    body: JSON.stringify(data),
   });
 
   if (!response.ok) {
@@ -60,16 +57,6 @@ export async function getBookings() {
   
   if (!response.ok) {
     throw new Error('Failed to fetch bookings');
-  }
-  
-  return response.json();
-}
-
-export async function getBookingById(id: number) {
-  const response = await fetch(`${API_BASE_URL}/bookings/${id}`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch booking');
   }
   
   return response.json();
@@ -159,7 +146,7 @@ export async function getDepartures(params?: {
 
 export async function createDeparture(departureData: {
   packageId: number;
-  departureTime: string; // ISO string
+  departureTime: string;
   capacity?: number;
 }) {
   const response = await fetch(`${API_BASE_URL}/departures`, {
@@ -195,17 +182,14 @@ export async function sendConfirmationEmail(emailData: EmailConfirmationRequest)
   return response.json();
 }
 
-
-
 // Package management API calls
 export const createPackage = async (packageData: any) => {
-  // Generate unique slug by adding timestamp
   const baseSlug = packageData.slug || packageData.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '');
   
-  const slug = `${baseSlug}-${Date.now()}`; // Add timestamp for uniqueness
+  const slug = `${baseSlug}-${Date.now()}`;
 
   const response = await fetch(`${API_BASE_URL}/packages`, {
     method: "POST",
@@ -269,7 +253,6 @@ export async function deletePackage(id: number) {
     throw new Error('Failed to delete package');
   }
 
-  // No content expected (204)
   return true;
 }
 
@@ -313,9 +296,9 @@ export async function getImages() {
   return response.json();
 }
 
-// Stripe Payment Intent (jos halutaan käyttää oikeaa Stripe integraatiota)
+// Stripe Payment Intent
 export async function createPaymentIntent(paymentData: {
-  amount: number; // centtiä
+  amount: number;
   currency: string;
   customer: {
     name: string;

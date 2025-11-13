@@ -62,11 +62,13 @@ model Booking {
   participantGearSizes Json?
   totalPrice           Float
   status               String            @default("confirmed")
+  bookingDate          String?           // Add this - stores "YYYY-MM-DD"
+  bookingTime          String?           // Add this - stores "HH:MM"
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
   guest               Guest             @relation(fields: [guestId], references: [id])
-  package             SafariPackage     @relation(fields: [packageId], references: [id])
+  package             SafariPackage     @relation(fields: [packageId], references: [id], onDelete: Cascade)
   departure           Departure?        @relation(fields: [departureId], references: [id])
   participantGear     ParticipantGear[]
 }

@@ -18,11 +18,11 @@ function Home() {
       >
         <div className="absolute inset-0 z-0 rounded-lg overflow-hidden">
           <Image
-            src="/images/hero-final.jpg"
+            src="/images/hero-image.jpg"
             alt="Arctic landscape"
             fill
             priority
-            className="object-fill brightness-75"
+            className="object-cover brightness-75"
           />
           {/* Dark gradient overlay for better text contrast */}
           <div
