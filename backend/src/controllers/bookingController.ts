@@ -1,6 +1,7 @@
 import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import { BOOKING_STATUS } from "../../shared/constants";
+import { format } from "date-fns";
 
 
 const prisma = new PrismaClient();
@@ -17,7 +18,7 @@ const gearSizesSchema = z.object({
 // Update the create booking schema
 const createBookingSchema = z.object({
   packageId: z.number().int().positive(),
-  departureId: z.number().int().positive().optional(), // Make it optional
+  departureId: z.number().int().positive().optional(),
   participants: z.number().int().positive(),
   guestEmail: z.string().email(),
   guestName: z.string().min(1),
@@ -26,7 +27,6 @@ const createBookingSchema = z.object({
   participantGearSizes: z.record(z.string(), gearSizesSchema).optional(),
 });
 
-// Replace the original createBooking function (delete the old one)
 export async function createBooking(body: unknown) {
     console.log("Received booking request:", body);
     
@@ -34,7 +34,6 @@ export async function createBooking(body: unknown) {
     console.log("Validated data:", data);
 
     return prisma.$transaction(async (tx) => {
-        // Verify package exists
         const pkg = await tx.safariPackage.findUnique({
             where: { id: data.packageId }
         });
@@ -46,10 +45,8 @@ export async function createBooking(body: unknown) {
 
         console.log("Package found:", pkg.name);
 
-        // Calculate total price
         const totalPrice = Number(pkg.basePrice) * data.participants;
 
-        // Create or update guest
         const guest = await tx.guest.upsert({
             where: { email: data.guestEmail },
             update: { 
@@ -65,7 +62,19 @@ export async function createBooking(body: unknown) {
 
         console.log("Guest created/updated:", guest.email);
 
-        // Create booking data object
+        // Extract date and time from notes
+        let bookingDate = null;
+        let bookingTime = null;
+        if (data.notes) {
+            const dateMatch = data.notes.match(/Date: (\d{4}-\d{2}-\d{2})/);
+            const timeMatch = data.notes.match(/Time: (\d{2}:\d{2})/);
+            
+            if (dateMatch) bookingDate = dateMatch[1];
+            if (timeMatch) bookingTime = timeMatch[1];
+            
+            console.log("Extracted from notes - Date:", bookingDate, "Time:", bookingTime);
+        }
+
         const bookingData: any = {
             guestId: guest.id,
             packageId: data.packageId,
@@ -73,24 +82,23 @@ export async function createBooking(body: unknown) {
             totalPrice,
             status: "confirmed",
             notes: data.notes ?? null,
-            guestEmail: data.guestEmail,  // ADD THIS LINE - it's required by your schema
-            guestName: data.guestName,    // ADD THIS LINE
-            phone: data.phone ?? null,    // ADD THIS LINE
+            guestEmail: data.guestEmail,
+            guestName: data.guestName,
+            phone: data.phone ?? null,
+            bookingDate: bookingDate,
+            bookingTime: bookingTime,
         };
 
-        // Only include departureId if it was provided
         if (data.departureId) {
             bookingData.departureId = data.departureId;
         }
 
-        // Create booking
         const booking = await tx.booking.create({
             data: bookingData,
         });
 
-        console.log("Booking created:", booking.id);
+        console.log("Booking created:", booking.id, "for date:", bookingDate);
 
-        // Save participant gear sizes if provided
         if (data.participantGearSizes) {
             const gearPromises = Object.entries(data.participantGearSizes).map(([participantNum, gear]) =>
                 tx.participantGear.create({
@@ -117,7 +125,7 @@ export async function getBookings() {
     return await prisma.booking.findMany({
         include: {
             guest: true,
-            package: true,  // ADD THIS - include package directly
+            package: true,
             departure: {
                 include: { 
                     package: true 
@@ -134,7 +142,7 @@ export async function getBookingById(id: number) {
         where: { id },
         include: {
             guest: true,
-            package: true,  // ADD THIS - include package directly
+            package: true,
             departure: {
                 include: { 
                     package: true 
@@ -182,3 +190,66 @@ export async function updateBookingStatus(id: number, body: unknown) {
     
     return updatedBooking;
 }
+
+export async function getAvailability(packageId: number, month: string) {
+    const startOfMonth = new Date(month);
+    const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0);
+
+    console.log(`Checking availability for package ${packageId} from ${startOfMonth.toISOString()} to ${endOfMonth.toISOString()}`);
+
+    const bookings = await prisma.booking.findMany({
+        where: {
+            packageId: packageId,
+            bookingDate: {
+                gte: format(startOfMonth, 'yyyy-MM-dd'),
+                lte: format(endOfMonth, 'yyyy-MM-dd'),
+            }
+        },
+        select: {
+            bookingDate: true,
+            participants: true,
+        }
+    });
+
+    console.log(`Found ${bookings.length} bookings for package ${packageId} in this month`);
+
+    const pkg = await prisma.safariPackage.findUnique({
+        where: { id: packageId },
+        select: { capacity: true },
+    });
+    const capacity = pkg?.capacity || 8;
+
+    const availability: Record<string, { booked: number; capacity: number; status: "available" | "limited" | "full" }> = {};
+
+    bookings.forEach(booking => {
+        if (booking.bookingDate) {
+            const dateStr = booking.bookingDate;
+            
+            if (!availability[dateStr]) {
+                availability[dateStr] = { booked: 0, capacity: capacity, status: "available" };
+            }
+            availability[dateStr].booked += booking.participants;
+            console.log(`Date ${dateStr}: +${booking.participants} participants (total: ${availability[dateStr].booked}/${capacity})`);
+        }
+    });
+
+    Object.keys(availability).forEach(date => {
+        const day = availability[date];
+        const percentBooked = (day.booked / day.capacity) * 100;
+        
+        if (percentBooked >= 100) {
+            day.status = "full";
+        } else if (percentBooked >= 60) {
+            day.status = "limited";
+        } else {
+            day.status = "available";
+        }
+        
+        console.log(`${date}: ${day.booked}/${day.capacity} = ${percentBooked.toFixed(1)}% (${day.status})`);
+    });
+
+    console.log("Final availability:", availability);
+
+    return availability;
+}
+

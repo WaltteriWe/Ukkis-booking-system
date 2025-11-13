@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
-import { createBooking, getBookings, getBookingById, updateBookingStatus } from "../controllers/bookingController";
+import fastify, { FastifyInstance } from "fastify";
+import { createBooking, getBookings, getBookingById, updateBookingStatus, getAvailability } from "../controllers/bookingController";
 
 export async function bookingRoutes(app: FastifyInstance) {
   app.post("/bookings", async (req, reply) => {
@@ -47,4 +47,16 @@ export async function bookingRoutes(app: FastifyInstance) {
       return reply.code(c).send(e);
     }
   });
+
+  app.get('/availability/:packageId/:month', async (request, reply) => {
+    try {
+        const { packageId, month } = request.params as { packageId: string; month: string };
+        const availability = await getAvailability(parseInt(packageId), month);
+        reply.send(availability);
+    } catch (error) {
+        console.error("Error fetching availability:", error);
+        reply.status(500).send({ error: "Failed to fetch availability" });
+    }
+});
 }
+  

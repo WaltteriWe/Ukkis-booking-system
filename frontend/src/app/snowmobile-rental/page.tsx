@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from 'react';
+import { DayPicker } from "react-day-picker";
+import { format } from "date-fns";
+import "react-day-picker/dist/style.css";
 import { getAvailableSnowmobiles, createSnowmobileRental, sendConfirmationEmail } from '@/lib/api';
 import { colors } from '@/lib/constants';
 
 export default function SnowmobileRentalPage() {
   const [step, setStep] = useState(1);
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('12:00');
   const [availableSnowmobiles, setAvailableSnowmobiles] = useState<any[]>([]);
   const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(null);
   const [guestName, setGuestName] = useState('');
@@ -18,13 +22,17 @@ export default function SnowmobileRentalPage() {
   const HOURLY_RATE = 50; // €50 per hour
 
   async function checkAvailability() {
-    if (!startTime || !endTime) {
-      alert('Please select both start and end times');
+    if (!selectedDate || !startTime || !endTime) {
+      alert('Please select date, start time and end time');
       return;
     }
 
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const startDateTime = `${dateStr}T${startTime}:00`;
+    const endDateTime = `${dateStr}T${endTime}:00`;
+
+    const start = new Date(startDateTime);
+    const end = new Date(endDateTime);
 
     if (end <= start) {
       alert('End time must be after start time');
@@ -33,7 +41,7 @@ export default function SnowmobileRentalPage() {
 
     setLoading(true);
     try {
-      const available = await getAvailableSnowmobiles(startTime, endTime);
+      const available = await getAvailableSnowmobiles(start.toISOString(), end.toISOString());
       setAvailableSnowmobiles(available);
       setStep(2);
     } catch (error) {
@@ -46,27 +54,29 @@ export default function SnowmobileRentalPage() {
 
   function calculateTotal() {
     if (!startTime || !endTime) return 0;
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const hours = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60));
-    return hours * HOURLY_RATE;
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    const hours = (endHour + endMin/60) - (startHour + startMin/60);
+    return Math.ceil(hours) * HOURLY_RATE;
   }
 
   async function handleBooking(e: React.FormEvent) {
     e.preventDefault();
     
-    if (!selectedSnowmobile) {
-      alert('Please select a snowmobile');
+    if (!selectedSnowmobile || !selectedDate) {
+      alert('Please select a snowmobile and date');
       return;
     }
 
     setLoading(true);
     try {
-      // Convert to ISO strings
-      const startTimeISO = new Date(startTime).toISOString();
-      const endTimeISO = new Date(endTime).toISOString();
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const startDateTime = `${dateStr}T${startTime}:00`;
+      const endDateTime = `${dateStr}T${endTime}:00`;
+      
+      const startTimeISO = new Date(startDateTime).toISOString();
+      const endTimeISO = new Date(endDateTime).toISOString();
 
-      // Create the rental
       const rental = await createSnowmobileRental({
         snowmobileId: selectedSnowmobile,
         guestEmail,
@@ -78,38 +88,26 @@ export default function SnowmobileRentalPage() {
         notes: `Private snowmobile rental`,
       });
 
-      // Send confirmation email
       try {
         await sendConfirmationEmail({
           email: guestEmail,
           name: guestName,
           tour: `Snowmobile Rental - ${availableSnowmobiles.find(sm => sm.id === selectedSnowmobile)?.name || 'Snowmobile'}`,
-          date: new Date(startTime).toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          }),
-          time: `${new Date(startTime).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })} - ${new Date(endTime).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}`,
+          date: format(selectedDate, "MMMM d, yyyy"),
+          time: `${startTime} - ${endTime}`,
+          participants: 1,
           total: calculateTotal(),
           bookingId: rental.id.toString(),
         });
       } catch (emailError) {
         console.error('Failed to send confirmation email:', emailError);
-        // Don't fail the booking if email fails
       }
 
       alert('Booking confirmed! Check your email for details.');
-      // Reset form
       setStep(1);
-      setStartTime('');
-      setEndTime('');
+      setSelectedDate(undefined);
+      setStartTime('10:00');
+      setEndTime('12:00');
       setSelectedSnowmobile(null);
       setGuestName('');
       setGuestEmail('');
@@ -138,37 +136,69 @@ export default function SnowmobileRentalPage() {
               Check Availability
             </h2>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                  Start Time
+                  Select Date
                 </label>
-                <input
-                  type="datetime-local"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  style={{ color: colors.darkGray }}
-                />
+                <div className="border rounded-lg p-4 bg-white">
+                  <DayPicker
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    disabled={(date) => date < new Date()}
+                    className="mx-auto"
+                  />
+                </div>
+                {selectedDate && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Selected: {format(selectedDate, "MMMM d, yyyy")}
+                  </p>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                  End Time
-                </label>
-                <input
-                  type="datetime-local"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  style={{ color: colors.darkGray }}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
+                    Start Time
+                  </label>
+                  <select
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md"
+                    style={{ color: colors.darkGray }}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
+                      <option key={hour} value={`${hour.toString().padStart(2, '0')}:00`}>
+                        {`${hour.toString().padStart(2, '0')}:00`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
+                    End Time
+                  </label>
+                  <select
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md"
+                    style={{ color: colors.darkGray }}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
+                      <option key={hour} value={`${hour.toString().padStart(2, '0')}:00`}>
+                        {`${hour.toString().padStart(2, '0')}:00`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {startTime && endTime && (
+              {selectedDate && startTime && endTime && (
                 <div className="p-4 rounded-md" style={{ backgroundColor: `${colors.teal}20` }}>
                   <p className="text-sm" style={{ color: colors.darkGray }}>
-                    Duration: {Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000 * 60 * 60))} hours
+                    Duration: {Math.ceil(calculateTotal() / HOURLY_RATE)} hours
                   </p>
                   <p className="text-lg font-bold mt-2" style={{ color: colors.navy }}>
                     Estimated Total: €{calculateTotal()}
@@ -178,7 +208,7 @@ export default function SnowmobileRentalPage() {
 
               <button
                 onClick={checkAvailability}
-                disabled={loading}
+                disabled={loading || !selectedDate}
                 className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: colors.navy }}
               >
