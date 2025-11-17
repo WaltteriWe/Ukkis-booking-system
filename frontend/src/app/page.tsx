@@ -49,7 +49,6 @@ function Home() {
             Experience the magic of Lapland through premium snowmobile safaris,
             enduro adventures, and ATV expeditions
           </p>
-          
         </div>
       </div>
 
