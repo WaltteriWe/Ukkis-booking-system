@@ -15,11 +15,11 @@ const Footer = ({ className }: { className?: string }) => {
     <footer
       className={cn("text-white py-12 my-2 rounded-lg", className)}
       style={{
-        background: `linear-gradient(to bottom right, ${colors.lavender}, ${colors.pink}, #FF6B35)`,
+        background: `linear-gradient(to bottom right, ${colors.teal}, ${colors.navy})`,
       }}
     >
       <div className="container mx-auto px-20 ">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Company Info */}
           <div>
             <h3 className="text-2xl font-bold mb-4">Ukkis Safaris</h3>
@@ -40,12 +40,7 @@ const Footer = ({ className }: { className?: string }) => {
               <Link href="/" className="block text-purple-100 hover:text-white">
                 Home
               </Link>
-              <Link
-                href="/categories"
-                className="block text-purple-100 hover:text-white"
-              >
-                Tour Categories
-              </Link>
+
               <Link
                 href="/bookings"
                 className="block text-purple-100 hover:text-white"
@@ -53,41 +48,10 @@ const Footer = ({ className }: { className?: string }) => {
                 Booking
               </Link>
               <Link
-                href="/about"
+                href="/contact"
                 className="block text-purple-100 hover:text-white"
               >
-                About Us
-              </Link>
-            </div>
-          </div>
-
-          {/* Tours */}
-          <div>
-            <h4 className="text-xl font-semibold mb-4">Tours</h4>
-            <div className="space-y-2">
-              <Link
-                href="/tours/snowmobile"
-                className="block text-purple-100 hover:text-white"
-              >
-                Snowmobile Safaris
-              </Link>
-              <Link
-                href="/tours/enduro"
-                className="block text-purple-100 hover:text-white"
-              >
-                Enduro Adventures
-              </Link>
-              <Link
-                href="/tours/atv"
-                className="block text-purple-100 hover:text-white"
-              >
-                ATV Expeditions
-              </Link>
-              <Link
-                href="/tours/multi-day"
-                className="block text-purple-100 hover:text-white"
-              >
-                Multi-Day Tours
+                Contact us
               </Link>
             </div>
           </div>
