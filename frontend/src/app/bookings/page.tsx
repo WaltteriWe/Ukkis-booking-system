@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   createBooking,
   sendConfirmationEmail,
@@ -15,46 +16,7 @@ import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { format } from "date-fns";
 
-// Remove the old Navigation component and replace with TabNavigation
-function TabNavigation({
-  activeTab,
-  setActiveTab,
-}: {
-  activeTab: "safari" | "rental";
-  setActiveTab: (tab: "safari" | "rental") => void;
-}) {
-  return (
-    <div
-      className="flex gap-4 mb-8 border-b-2"
-      style={{ borderColor: colors.teal }}
-    >
-      <button
-        onClick={() => setActiveTab("safari")}
-        className={`px-6 py-3 font-semibold transition-colors ${
-          activeTab === "safari" ? "border-b-4" : "hover:opacity-80"
-        }`}
-        style={{
-          color: activeTab === "safari" ? colors.navy : colors.darkGray,
-          borderColor: activeTab === "safari" ? colors.teal : "transparent",
-        }}
-      >
-        Safari Tours
-      </button>
-      <button
-        onClick={() => setActiveTab("rental")}
-        className={`px-6 py-3 font-semibold transition-colors ${
-          activeTab === "rental" ? "border-b-4" : "hover:opacity-80"
-        }`}
-        style={{
-          color: activeTab === "rental" ? colors.navy : colors.darkGray,
-          borderColor: activeTab === "rental" ? colors.teal : "transparent",
-        }}
-      >
-        Snowmobile Rental
-      </button>
-    </div>
-  );
-}
+// (TabNavigation UI removed - using top navigation links instead)
 
 // YOUR EXACT ORIGINAL CODE BELOW
 type Tour = {
@@ -157,6 +119,19 @@ const ADDONS: Addon[] = [
 export default function Bookings() {
   // Add activeTab state at the top
   const [activeTab, setActiveTab] = useState<"safari" | "rental">("safari");
+
+  // Respect `?tab=` query param when present (client-side)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    try {
+      const tab = searchParams?.get?.("tab");
+      if (tab === "rental") setActiveTab("rental");
+      else if (tab === "safari") setActiveTab("safari");
+      // if missing or unknown, keep default
+    } catch (err) {
+      // ignore - fallback to default
+    }
+  }, [searchParams]);
 
   // stepper (1: select, 2: customize, 3: confirm)
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -474,8 +449,7 @@ export default function Bookings() {
   return (
     <div className="min-h-screen bg-[#f7fbf9]">
       <main className="mx-auto max-w-6xl px-4 py-10">
-        {/* Tab Navigation - NEW */}
-        <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        {/* (TabNavigation removed — top nav controls tabs) */}
 
         {/* Safari Tours Tab */}
         {activeTab === "safari" && (

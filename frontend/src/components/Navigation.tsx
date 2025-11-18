@@ -39,10 +39,16 @@ export function Navigation() {
               Home
             </Link>
             <Link
-              href={routes.bookings}
+              href={routes.bookings + "?tab=safari"}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
-              Booking
+              Safari Tours
+            </Link>
+            <Link
+              href={routes.bookings + "?tab=rental"}
+              {...getHoverColorProps(colors.navy, colors.pink)}
+            >
+              Snowmobile Rental
             </Link>
             <Link
               href={routes.contact}
@@ -53,20 +59,11 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* Right side: Search and Book Now */}
+        {/* Right side: Search (Book Now removed) */}
         <div className={cn("flex items-center space-x-4")}>
           <button aria-label="Search" style={{ color: colors.navy }}>
             <Search className="h-7 w-7" />
           </button>
-          <Link
-            href={routes.bookings}
-            className={cn(
-              " text-white font-medium rounded-full px-6 py-2 transition-colors text-xl hover:opacity-90"
-            )}
-            style={{ backgroundColor: colors.pink }}
-          >
-            Book Now
-          </Link>
         </div>
       </div>
     </nav>
