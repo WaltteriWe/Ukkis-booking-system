@@ -1,20 +1,19 @@
-import Card from "@/components/Card";
+"use client";
+
 import SafetySection from "@/components/SafetySection";
 import CTASection from "@/components/CTASection";
-import { routes } from "@/lib/constants";
-import { colors } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { animations, colors } from "@/lib/constants";
 import { Clock2Icon, RouteIcon, Shield } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 
 function Home() {
   return (
     <>
+      {/* hero section content */}
       <div
         id="hero-container"
         className="relative flex flex-col items-center justify-center h-120 w-full rounded-lg"
-        style={{ backgroundColor: colors.beige }}
+        style={{ backgroundColor: colors.beige, ...animations.fadeInFloat(0) }}
       >
         <div className="absolute inset-0 z-0 rounded-lg overflow-hidden">
           <Image
@@ -24,7 +23,6 @@ function Home() {
             priority
             className="object-cover brightness-75"
           />
-          {/* Dark gradient overlay for better text contrast */}
           <div
             className="absolute inset-0 rounded-lg"
             style={{
@@ -34,10 +32,9 @@ function Home() {
           />
         </div>
 
-        {/* Hero text content */}
         <div className="relative z-10 text-center px-4 rounded-lg">
           <h1
-            className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-lg"
+            className="text-4xl md:text-6xl font-bold mb-4 "
             style={{ color: colors.pink }}
           >
             Arctic Adventure Awaits
@@ -46,19 +43,18 @@ function Home() {
             className="text-lg md:text-2xl mb-6 font-medium drop-shadow-md"
             style={{ color: colors.white }}
           >
-            Experience the magic of Lapland through premium snowmobile safaris,
-            enduro adventures, and ATV expeditions
+            Experience the magic of Lapland through premium snowmobile safaris or personal adventures with our wide range of vehicles and expert guides.
           </p>
         </div>
       </div>
 
       <div
-        className=" mx-auto w-full p-6 text-center mt-8 space-y-2 rounded-t-lg shadow-md"
-        style={{ backgroundColor: colors.white }}
+        className="mx-auto w-full p-6 text-center mt-8 space-y-2 rounded-t-lg"
+        style={{ backgroundColor: colors.white, ...animations.fadeInFloat(200) }}
       >
         <h1
           style={{ color: colors.teal }}
-          className="text-3xl font-bold object-center "
+          className="text-3xl font-bold object-center"
         >
           Your gateway to arctic adventures
         </h1>
@@ -81,7 +77,7 @@ function Home() {
         className="container mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
         style={{ backgroundColor: colors.white }}
       >
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center" style={{ ...animations.fadeInFloat(400) }}>
           <RouteIcon
             style={{ color: colors.teal }}
             className="h-16 w-16 mt-6 items-center"
@@ -94,7 +90,7 @@ function Home() {
             wilderness
           </p>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center" style={{ ...animations.fadeInFloat(600) }}>
           <Clock2Icon
             style={{ color: colors.teal }}
             className="h-16 w-16 mt-6 items-center"
@@ -106,7 +102,7 @@ function Home() {
             Flexible booking options to suit your schedule and preferences
           </p>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center" style={{ ...animations.fadeInFloat(800) }}>
           <Shield
             className="h-16 w-16 mt-6 items-center"
             style={{ color: colors.teal }}
@@ -120,14 +116,19 @@ function Home() {
           </p>
         </div>
       </div>
+      
       <div
         className="container mx-auto px-6 py-12 rounded-b-lg"
         style={{ backgroundColor: colors.white }}
       ></div>
 
-      <SafetySection />
+      <div style={{ ...animations.fadeInFloat(1000) }}>
+        <SafetySection />
+      </div>
 
-      <CTASection />
+      <div style={{ ...animations.fadeInFloat(1200) }}>
+        <CTASection />
+      </div>
     </>
   );
 }

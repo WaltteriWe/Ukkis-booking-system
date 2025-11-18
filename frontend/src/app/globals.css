@@ -120,3 +120,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes fadeInFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fadeInFloat {
+  animation: fadeInFloat 0.8s ease-out forwards;
+}
+
+.spacer {
+  height: 150px;
+  width: 100%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  min-height: 150px; /* Add minimum height */
+  display: block; /* Ensure it's a block element */
+  background-color: blue;
+}
+
+.layer1 {
+  background-image: url('/layer1.svg');
+
+}
+

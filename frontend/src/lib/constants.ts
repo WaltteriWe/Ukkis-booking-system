@@ -33,3 +33,12 @@ export const colors = {
   darkGray: "#333333", // Dark gray for body text
   charcoal: "#1A1A1A", // Optional dark theme
 };
+
+export const animations = {
+  fadeInFloat: (delay: number = 0) => ({
+    animation: 'fadeInFloat 0.8s ease-out forwards',
+    animationDelay: `${delay}ms`,
+  }),
+}
+
+

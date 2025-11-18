@@ -53,7 +53,7 @@ model Booking {
   id                   Int               @id @default(autoincrement())
   guestId              Int
   packageId            Int
-  departureId          Int?              // Optional - for safari bookings
+  departureId          Int?
   participants         Int
   guestEmail           String
   guestName            String
@@ -62,8 +62,8 @@ model Booking {
   participantGearSizes Json?
   totalPrice           Float
   status               String            @default("confirmed")
-  bookingDate          String?           // Add this - stores "YYYY-MM-DD"
-  bookingTime          String?           // Add this - stores "HH:MM"
+  bookingDate          String?           // Add this
+  bookingTime          String?           // Add this
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
