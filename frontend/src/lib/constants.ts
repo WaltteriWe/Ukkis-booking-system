@@ -32,6 +32,12 @@ export const colors = {
   lightGray: "#F8F9FA", // Very light gray for sections
   darkGray: "#333333", // Dark gray for body text
   charcoal: "#1A1A1A", // Optional dark theme
+
+   // Dark theme
+  nightSky: "#0B1024", // deep midnight blue
+  starGlow: "#FFFFFF", // stars
+  translucentWhite: "rgba(255,255,255,0.85)", // see-through text
+  translucentDark: "rgba(26,26,26,0.85)", // see-through panels
 };
 
 export const animations = {
