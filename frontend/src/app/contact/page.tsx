@@ -3,7 +3,7 @@
 import { colors } from "@/lib/constants";
 import { Mail, MapPin, Phone } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 // Dynamically import the Map component to avoid SSR issues
 const Map = dynamic(() => import("@/components/Map"), {
@@ -17,6 +17,44 @@ const Map = dynamic(() => import("@/components/Map"), {
 
 export default function Contact() {
   const position = useMemo(() => ({ lat: 64.7498157270232, lng: 28.257191314126082 }), []);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setMessage(null);
+    setLoading(true);
+    const formEl = e.currentTarget as HTMLFormElement;
+    const form = new FormData(formEl);
+    const payload = {
+      name: form.get("name"),
+      email: form.get("email"),
+      phone: form.get("phone"),
+      subject: form.get("subject"),
+      message: form.get("message"),
+    };
+
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+      const res = await fetch(`${base}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setMessage("Viestisi on lähetetty. Otamme sinuun yhteyttä pian.");
+        formEl.reset();
+      } else {
+        setMessage(json?.error || "Tapahtui virhe. Yritä uudelleen.");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Yhteys palvelimeen epäonnistui.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: colors.beige }}>
@@ -27,7 +65,7 @@ export default function Contact() {
             Contact Us
           </h1>
           <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-            Get in touch with us for bookings, questions, or any other inquiries. We're here to help make your Arctic adventure unforgettable.
+            Get in touch with us for bookings, questions, or any other inquiries. We are here to help make your Arctic adventure unforgettable.
           </p>
         </div>
 
@@ -121,7 +159,7 @@ export default function Contact() {
               Send Us a Message
             </h2>
 
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                   Name *
@@ -193,11 +231,13 @@ export default function Contact() {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full text-white font-medium rounded-full px-6 py-3 transition-all hover:opacity-90"
                 style={{ backgroundColor: colors.pink }}
               >
-                Send Message
+                {loading ? "Sending..." : "Send Message"}
               </button>
+              {message && <p className="text-center mt-2 text-gray-700">{message}</p>}
             </form>
           </div>
         </div>
