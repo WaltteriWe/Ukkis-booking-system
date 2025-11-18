@@ -5,6 +5,7 @@ import { colors, routes } from "@/lib/constants";
 import { cn, getHoverColorProps } from "@/lib/utils";
 import { Search } from "lucide-react";
 import Image from "next/image";
+import ThemeToggle from "./ThemeToggle";
 
 export function Navigation() {
   return (
@@ -54,6 +55,8 @@ export function Navigation() {
         </div>
 
         {/* Right side: Search and Book Now */}
+
+
         <div className={cn("flex items-center space-x-4")}>
           <button aria-label="Search" style={{ color: colors.navy }}>
             <Search className="h-7 w-7" />
@@ -67,6 +70,7 @@ export function Navigation() {
           >
             Book Now
           </Link>
+            <ThemeToggle />
         </div>
       </div>
     </nav>
