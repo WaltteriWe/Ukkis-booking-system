@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { colors, routes } from "@/lib/constants";
 import { cn, getHoverColorProps } from "@/lib/utils";
-import { Search } from "lucide-react";
 import Image from "next/image";
 
 export function Navigation() {
@@ -16,10 +15,7 @@ export function Navigation() {
         {/* Left side: Logo + Nav Links */}
         <div className={cn("flex items-center space-x-8")}>
           {/* Logo */}
-          <Link
-            href={routes.home}
-            className={cn("flex items-center")}
-          >
+          <Link href={routes.home} className={cn("flex items-center")}>
             <Image
               src="/images/ukkohalla-safaris-logo-no-bg.png"
               alt="Ukkis Safaris Logo"
@@ -32,10 +28,7 @@ export function Navigation() {
 
           {/* Nav Links */}
           <div className={cn("hidden md:flex items-center space-x-5 text-xl")}>
-            <Link
-              href={routes.home}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
+            <Link href={routes.home} {...getHoverColorProps(colors.navy, colors.pink)}>
               Home
             </Link>
             <Link
@@ -50,20 +43,10 @@ export function Navigation() {
             >
               Snowmobile Rental
             </Link>
-            <Link
-              href={routes.contact}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
+            <Link href={routes.contact} {...getHoverColorProps(colors.navy, colors.pink)}>
               Contact Us
             </Link>
           </div>
-        </div>
-
-        {/* Right side: Search (Book Now removed) */}
-        <div className={cn("flex items-center space-x-4")}>
-          <button aria-label="Search" style={{ color: colors.navy }}>
-            <Search className="h-7 w-7" />
-          </button>
         </div>
       </div>
     </nav>
