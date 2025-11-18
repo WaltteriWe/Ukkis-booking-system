@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001/api
-      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51QGlItRvF2XeuAxviPQAtYF18cKUpN9WCn4AhgDO9Y1zCOq4INPgiFw55WDc3xZfj19D2cNFo4mxRh2voYtBvqRz00C0yR9HS7
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     depends_on:
       - backend
     networks:
@@ -22,7 +22,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/ukkis_reservation
       - JWT_SECRET=your-secret-key-change-in-production
-      - STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - EMAIL_HOST=smtp.gmail.com
       - EMAIL_PORT=587
       - EMAIL_USER=your-email@gmail.com

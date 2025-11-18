@@ -8,12 +8,14 @@ import {
   getPackages,
   getDepartures,
   createDeparture,
+  createPaymentIntent,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { format } from "date-fns";
+import StripeCheckout from "@/components/StripeCheckout";
 
 // Remove the old Navigation component and replace with TabNavigation
 function TabNavigation({
@@ -186,6 +188,8 @@ export default function Bookings() {
   >({});
   const [showPayment, setShowPayment] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [createdBookingId, setCreatedBookingId] = useState<number | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     email: "",
@@ -272,7 +276,7 @@ export default function Bookings() {
 
   // Place this INSIDE the Bookings component, after validateGearSizes (around line 240):
 
-  const handlePaymentSuccess = async () => {
+  const handleInitiatePayment = async () => {
     try {
       // Convert gear sizes to API format
       const gearSizesForApi: Record<string, any> = {};
@@ -281,16 +285,13 @@ export default function Bookings() {
       });
 
       console.log("Starting booking process...");
-      console.log("Customer info:", customerInfo);
-      console.log("Selected tour:", selectedTour);
 
       // Generate booking ID
       const bookingId = `UK${Date.now().toString().slice(-6)}`;
 
-      // Create booking WITHOUT departureId (it's optional now)
+      // Create booking first with pending payment status
       const bookingRequest = {
         packageId: selectedTour!.id,
-        // No departureId - it's optional
         participants: participants,
         guestEmail: customerInfo.email,
         guestName: customerInfo.name,
@@ -304,32 +305,67 @@ export default function Bookings() {
         bookingRequest as CreateBookingRequest
       );
       console.log("✅ Booking created successfully:", createdBooking);
+      setCreatedBookingId(createdBooking.id);
 
-      // Send confirmation email
-      await sendConfirmationEmail({
-        email: customerInfo.email,
-        name: customerInfo.name,
-        tour: selectedTour!.name,
-        date: date,
-        time: time,
-        participants: participants,
-        total: total,
-        bookingId: bookingId,
-        phone: customerInfo.phone || "",
-        addons: selectedAddons.map((a) => a.title).join(", ") || "None",
-        gearSizes: gearSizesForApi,
-      });
-      console.log("✅ Confirmation email sent");
+      // Create Stripe payment intent
+      const paymentData = {
+        amount: Math.round(total * 100), // Convert to cents
+        currency: "eur",
+        bookingId: createdBooking.id,
+        customer: {
+          name: customerInfo.name,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+        },
+        booking: {
+          tour: selectedTour!.name,
+          date: date,
+          time: time,
+          participants: participants,
+        },
+      };
 
-      setShowPayment(false);
-      setBookingComplete(true);
+      console.log("Creating payment intent...");
+      const paymentIntent = await createPaymentIntent(paymentData);
+      console.log("✅ Payment intent created:", paymentIntent);
+
+      setClientSecret(paymentIntent.client_secret);
+      setShowPayment(true);
     } catch (error) {
       console.error("❌ Booking process failed:", error);
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       alert(
         `Booking failed: ${errorMsg}\n\nPlease check the console for details.`
       );
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      console.log("✅ Payment successful!");
+      // No need to create booking again - just close payment modal
       setShowPayment(false);
+      setBookingComplete(true);
+
+      // Optionally send confirmation email here
+      if (createdBookingId) {
+        await sendConfirmationEmail({
+          email: customerInfo.email,
+          name: customerInfo.name,
+          tour: selectedTour!.name,
+          date: date,
+          time: time,
+          participants: participants,
+          total: total,
+          bookingId: `UK${createdBookingId}`,
+          phone: customerInfo.phone || "",
+          addons: selectedAddons.map((a) => a.title).join(", ") || "None",
+          gearSizes: participantGearSizes,
+        });
+        console.log("✅ Confirmation email sent");
+      }
+    } catch (error) {
+      console.error("❌ Post-payment process failed:", error);
     }
   };
 
@@ -625,7 +661,6 @@ export default function Bookings() {
 
                   <div className="mt-6 space-y-6">
                     <div>
-                      
                       <div className="mb-6">
                         <label
                           className="mb-2 block text-sm font-semibold"
@@ -654,7 +689,14 @@ export default function Bookings() {
                         onChange={(e) => setTime(e.target.value)}
                         className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
                       >
-                        {["09:00", "10:00", "12:00", "14:00", "15:00", "16:00"].map((t) => (
+                        {[
+                          "09:00",
+                          "10:00",
+                          "12:00",
+                          "14:00",
+                          "15:00",
+                          "16:00",
+                        ].map((t) => (
                           <option key={t} value={t}>
                             {t}
                           </option>
@@ -1103,16 +1145,25 @@ export default function Bookings() {
                         return;
                       }
                       if (!date || !time) {
-                        alert("Please select a date and time from the calendar");
+                        alert(
+                          "Please select a date and time from the calendar"
+                        );
                         return;
                       }
                       if (!validateGearSizes()) {
-                        alert("Please complete all participant details and gear sizes");
+                        alert(
+                          "Please complete all participant details and gear sizes"
+                        );
                         return;
                       }
 
-                      console.log("Opening payment with date:", date, "time:", time);
-                      setShowPayment(true);
+                      console.log(
+                        "Opening payment with date:",
+                        date,
+                        "time:",
+                        time
+                      );
+                      handleInitiatePayment();
                     }}
                     className="w-full rounded-lg bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-8 py-4 text-lg font-bold text-white transition-all hover:opacity-90"
                   >
@@ -1120,9 +1171,40 @@ export default function Bookings() {
                   </button>
                 </div>
 
-                {/* Payment Modal */}
-                {showPayment && (
-                  <DemoPayment total={total} onSuccess={handlePaymentSuccess} />
+                {/* Stripe Payment Modal */}
+                {showPayment && clientSecret && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+                      <h3 className="text-2xl font-bold text-[#101651] mb-2">
+                        Complete Payment
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Secure payment powered by Stripe
+                      </p>
+
+                      <div className="bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] rounded-xl p-6 mb-6 text-white">
+                        <div className="text-sm mb-1">Total Amount</div>
+                        <div className="text-4xl font-bold">€{total}</div>
+                      </div>
+
+                      <StripeCheckout
+                        clientSecret={clientSecret}
+                        onSuccess={handlePaymentSuccess}
+                        onError={(error) => {
+                          console.error("Payment failed:", error);
+                          alert("Payment failed: " + error);
+                          setShowPayment(false);
+                        }}
+                      />
+
+                      <button
+                        onClick={() => setShowPayment(false)}
+                        className="mt-4 w-full text-center text-gray-600 hover:text-gray-900"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </section>
             )}
