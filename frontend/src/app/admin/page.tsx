@@ -15,6 +15,8 @@ import {
   updateRentalStatus, // Changed from updateSingleReservationStatus
   getSnowmobiles,
   getDepartures,
+  getContactMessages,
+  deleteContactMessage,
   getSnowmobileAssignments,
   assignSnowmobilesToDeparture,
   createSnowmobile,
@@ -126,6 +128,7 @@ export default function AdminPage() {
     | "participants"
     | "singleReservations"
     | "snowmobiles"
+    | "messages"
   >("packages");
 
   // Form state
@@ -152,6 +155,7 @@ export default function AdminPage() {
   const [selectedDeparture, setSelectedDeparture] = useState<number | null>(null);
   const [snowmobiles, setSnowmobiles] = useState<any[]>([]);
   const [departures, setDepartures] = useState<any[]>([]);
+  const [contactMessages, setContactMessages] = useState<any[]>([]);
   const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>([]);
   const [newSnowmobile, setNewSnowmobile] = useState({
     name: "",
@@ -199,7 +203,32 @@ export default function AdminPage() {
     if (adminToken && activeTab === "snowmobiles") {
       loadSnowmobilesAndDepartures();
     }
+    if (adminToken && activeTab === "messages") {
+      loadContactMessages();
+    }
   }, [adminToken, activeTab]);
+
+  async function loadContactMessages() {
+    try {
+      const msgs = await getContactMessages();
+      setContactMessages(Array.isArray(msgs) ? msgs : []);
+    } catch (error) {
+      console.error("Failed to load contact messages:", error);
+      setContactMessages([]);
+    }
+  }
+
+  async function handleDeleteMessage(id: number) {
+    const confirmed = window.confirm("Delete this message? This cannot be undone.");
+    if (!confirmed) return;
+    try {
+      await deleteContactMessage(id);
+      setContactMessages((prev) => prev.filter((m) => m.id !== id));
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      alert("Failed to delete message");
+    }
+  }
 
   async function loadData() {
     try {
@@ -717,6 +746,19 @@ async function handleCreateDeparture(e: React.FormEvent) {
               0
             )}
             )
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("messages");
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === "messages"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Messages ({contactMessages.length})
           </button>
         </div>
 
@@ -1387,6 +1429,62 @@ async function handleCreateDeparture(e: React.FormEvent) {
                     );
                   });
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* Contact Messages (Admin) */}
+        {activeTab === "messages" && (
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-xl font-bold">Contact Messages</h2>
+              <div>
+                <button
+                  onClick={loadContactMessages}
+                  className="px-3 py-1 border rounded bg-gray-50 hover:bg-gray-100"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-auto">
+              {contactMessages.length === 0 ? (
+                <p className="text-sm text-gray-600">No messages found.</p>
+              ) : (
+                <table className="w-full text-left table-auto">
+                  <thead>
+                    <tr className="text-sm text-gray-600">
+                      <th className="px-3 py-2">#</th>
+                      <th className="px-3 py-2">Name</th>
+                      <th className="px-3 py-2">Email</th>
+                      <th className="px-3 py-2">Subject</th>
+                      <th className="px-3 py-2">Message</th>
+                      <th className="px-3 py-2">Received</th>
+                      <th className="px-3 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contactMessages.map((m) => (
+                      <tr key={m.id} className="border-t">
+                        <td className="px-3 py-2 text-sm">{m.id}</td>
+                        <td className="px-3 py-2 text-sm">{m.name}</td>
+                        <td className="px-3 py-2 text-sm">{m.email}</td>
+                        <td className="px-3 py-2 text-sm">{m.subject}</td>
+                        <td className="px-3 py-2 text-sm max-w-xl">{m.message}</td>
+                        <td className="px-3 py-2 text-sm">{new Date(m.createdAt).toLocaleString()}</td>
+                        <td className="px-3 py-2 text-sm">
+                          <button
+                            onClick={() => handleDeleteMessage(m.id)}
+                            className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}

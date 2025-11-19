@@ -8,6 +8,9 @@ const config = {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        jost: ['Jost', 'sans-serif'],
+      },
       keyframes: {
         fadeInFloat: {
           '0%': {
