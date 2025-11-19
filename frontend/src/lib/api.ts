@@ -443,3 +443,22 @@ export async function getSnowmobileAssignments(departureId: number) {
   if (!response.ok) throw new Error('Failed to get assignments');
   return response.json();
 }
+
+// Contact messages (admin)
+export async function getContactMessages() {
+  const response = await fetch(`${API_BASE_URL}/contact`);
+  if (!response.ok) throw new Error('Failed to fetch contact messages');
+  return response.json();
+}
+
+export async function deleteContactMessage(id: number) {
+  const response = await fetch(`${API_BASE_URL}/contact/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete contact message');
+  }
+
+  return response.json();
+}
