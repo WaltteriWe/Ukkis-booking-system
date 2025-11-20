@@ -98,5 +98,16 @@ export async function sendContactReply(id: number, payload: { to?: string; subje
     console.warn('SMTP not configured - reply not sent. Reply payload:', { toAddress, subject, body });
   }
 
-  return { success: true };
+  // Mark message as replied
+  try {
+    const updated = await prisma.contactMessage.update({
+      where: { id },
+      data: { repliedAt: new Date() },
+    });
+    return { success: true, repliedAt: updated.repliedAt };
+  } catch (err) {
+    // if DB update fails, still return success for send, but report no timestamp
+    console.error('Failed to update repliedAt:', err);
+    return { success: true };
+  }
 }
