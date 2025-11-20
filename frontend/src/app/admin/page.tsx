@@ -1503,7 +1503,16 @@ async function handleCreateDeparture(e: React.FormEvent) {
                     {contactMessages.map((m) => (
                       <tr key={m.id} className="border-t">
                         <td className="px-3 py-2 text-sm">{m.id}</td>
-                        <td className="px-3 py-2 text-sm">{m.name}</td>
+                        <td className="px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <div>{m.name}</div>
+                            {m.repliedAt && (
+                              <span className="inline-block text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
+                                Replied
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-3 py-2 text-sm">{m.email}</td>
                         <td className="px-3 py-2 text-sm">{m.subject}</td>
                         <td className="px-3 py-2 text-sm max-w-xl">{m.message}</td>

@@ -145,5 +145,6 @@ model ContactMessage {
   phone     String?
   subject   String
   message   String
+  repliedAt DateTime?
   createdAt DateTime @default(now())
 }
