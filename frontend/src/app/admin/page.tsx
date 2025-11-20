@@ -20,6 +20,7 @@ import {
   getSnowmobileAssignments,
   assignSnowmobilesToDeparture,
   createSnowmobile,
+  sendContactReply,
   createDeparture,
 } from "@/lib/api";
 import { DayPicker } from "react-day-picker";
@@ -156,6 +157,11 @@ export default function AdminPage() {
   const [snowmobiles, setSnowmobiles] = useState<any[]>([]);
   const [departures, setDepartures] = useState<any[]>([]);
   const [contactMessages, setContactMessages] = useState<any[]>([]);
+  // Reply state for contact messages
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyToEmail, setReplyToEmail] = useState<string>("");
+  const [replyBody, setReplyBody] = useState<string>("");
+  const [sendingReply, setSendingReply] = useState(false);
   const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>([]);
   const [newSnowmobile, setNewSnowmobile] = useState({
     name: "",
@@ -227,6 +233,36 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Failed to delete message:", error);
       alert("Failed to delete message");
+    }
+  }
+
+  // Open reply modal and prefill
+  function handleOpenReply(message: any) {
+    setReplyingToId(message.id);
+    setReplyToEmail(message.email || "");
+    setReplyBody(`Hi ${message.name || ""},\n\n`);
+  }
+
+  // Send reply to backend
+  async function handleSendReply(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!replyingToId) return;
+    try {
+      setSendingReply(true);
+      await sendContactReply(replyingToId, {
+        to: replyToEmail,
+        body: replyBody,
+      });
+      alert('Reply sent');
+      setReplyingToId(null);
+      setReplyBody('');
+      // refresh messages
+      loadContactMessages();
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to send reply: ${msg}`);
+    } finally {
+      setSendingReply(false);
     }
   }
 
@@ -1473,12 +1509,20 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         <td className="px-3 py-2 text-sm max-w-xl">{m.message}</td>
                         <td className="px-3 py-2 text-sm">{new Date(m.createdAt).toLocaleString()}</td>
                         <td className="px-3 py-2 text-sm">
-                          <button
-                            onClick={() => handleDeleteMessage(m.id)}
-                            className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 text-sm"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleOpenReply(m)}
+                              className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                            >
+                              Reply
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMessage(m.id)}
+                              className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1486,6 +1530,31 @@ async function handleCreateDeparture(e: React.FormEvent) {
                 </table>
               )}
             </div>
+
+            {/* Reply Modal */}
+            {replyingToId !== null && (
+              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-2xl p-6">
+                  <h3 className="text-lg font-semibold mb-3">Reply to message #{replyingToId}</h3>
+                  <form onSubmit={handleSendReply} className="space-y-3">
+                    <div>
+                      <label className="block text-sm">To</label>
+                      <input value={replyToEmail} onChange={(e) => setReplyToEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm">Message</label>
+                      <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={8} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setReplyingToId(null)} className="px-4 py-2 border rounded">Cancel</button>
+                      <button type="submit" disabled={sendingReply} className="px-4 py-2 bg-blue-600 text-white rounded">
+                        {sendingReply ? "Sending..." : "Send Reply"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

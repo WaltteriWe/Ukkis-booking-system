@@ -462,3 +462,18 @@ export async function deleteContactMessage(id: number) {
 
   return response.json();
 }
+
+export async function sendContactReply(id: number, payload: { to?: string; subject?: string; body: string }) {
+  const response = await fetch(`${API_BASE_URL}/contact/${id}/reply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => 'Failed to send reply');
+    throw new Error(err || 'Failed to send reply');
+  }
+
+  return response.json();
+}
