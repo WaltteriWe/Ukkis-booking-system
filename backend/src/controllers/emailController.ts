@@ -7,11 +7,21 @@ const sendConfirmationSchema = z.object({
     tour: z.string().min(1),
     date: z.string().min(1),
     time: z.string().min(1),
+    participants: z.number().positive().optional(),
     total: z.number().positive(),
     bookingId: z.string().min(1),
+    phone: z.string().optional(),
+    addons: z.string().optional(),
+    gearSizes: z.record(z.string(), z.object({
+        name: z.string(),
+        overalls: z.string(),
+        boots: z.string(),
+        gloves: z.string(),
+        helmet: z.string(),
+    })).optional(),
     participantGearSizes: z.record(z.string(), z.object({
         name: z.string(),
-        overalls: z.string(), // Changed from jacket and pants
+        overalls: z.string(),
         boots: z.string(),
         gloves: z.string(),
         helmet: z.string(),
@@ -34,15 +44,16 @@ export async function sendConfirmationEmail(body: unknown) {
 
         const subject = `Booking confirmation - ${data.tour} (${data.date} ${data.time})`;
         
-        // Generate gear sizes section if provided
+        // Generate gear sizes section if provided (support both gearSizes and participantGearSizes)
+        const gearData = data.participantGearSizes || data.gearSizes;
         let gearSizesHtml = '';
-        if (data.participantGearSizes && Object.keys(data.participantGearSizes).length > 0) {
+        if (gearData && Object.keys(gearData).length > 0) {
             gearSizesHtml = `
                 <h3>Participant Gear Sizes</h3>
                 <div style="margin-bottom: 20px;">
             `;
             
-            Object.entries(data.participantGearSizes).forEach(([participantNum, gearInfo]) => {
+            Object.entries(gearData).forEach(([participantNum, gearInfo]) => {
                 gearSizesHtml += `
                     <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-left: 3px solid #ffb64d; border-radius: 4px;">
                         <strong>${gearInfo.name || `Participant ${participantNum}`}</strong>

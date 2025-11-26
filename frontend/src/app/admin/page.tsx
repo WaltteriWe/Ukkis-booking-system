@@ -544,14 +544,20 @@ async function handleCreateDeparture(e: React.FormEvent) {
   // Flatten participants from
   //  for the Participants tab
   const participantsList = bookings.flatMap((b) =>
-  Array.from({ length: b.participants }).map((_, i) => ({
-    bookingId: b.id,
-    guestName: b.guestName || b.guest?.name || 'Unknown',
-    tourName: b.departure?.package?.name || b.package?.name || 'Safari Tour', // Handle null departure
-    date: b.departure?.datetime ? new Date(b.departure.datetime).toLocaleDateString() : 'TBD',
-    participantIndex: i + 1,
-  }))
-);
+    (b.participantGear || []).map((gear) => ({
+      id: `${b.id}-${gear.id}`, // Create unique id from booking id and gear id
+      bookingId: b.id,
+      name: gear.name,
+      overalls: gear.overalls,
+      boots: gear.boots,
+      gloves: gear.gloves,
+      helmet: gear.helmet,
+      guestName: b.guest?.name || 'Unknown',
+      guestEmail: b.guest?.email || '',
+      packageName: b.departure?.package?.name || b.package?.name || 'Safari Tour',
+      departureTime: b.departure?.departureTime || new Date().toISOString(),
+    }))
+  );
 
   // Participants view state: allow filtering by booking and searching by name
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
@@ -1351,16 +1357,18 @@ async function handleCreateDeparture(e: React.FormEvent) {
                 );
 
                 // Render groups sorted by booking id descending
-                return Object.keys(groups)
-                  .map(Number)
-                  .sort((a, b) => b - a)
-                  .map((bookingId) => {
-                    const items = groups[bookingId].sort((x, y) =>
-                      (x.name || "").localeCompare(y.name || "")
-                    );
-                    const sample = items[0];
-                    return (
-                      <div key={bookingId} className="p-4 md:p-6">
+                return (
+                  <>
+                    {Object.keys(groups)
+                      .map(Number)
+                      .sort((a, b) => b - a)
+                      .map((bookingId) => {
+                        const items = groups[bookingId].sort((x, y) =>
+                          (x.name || "").localeCompare(y.name || "")
+                        );
+                        const sample = items[0];
+                        return (
+                          <div key={bookingId} className="p-4 md:p-6">
                         <div className="mb-3">
                           <div className="font-semibold">
                             Booking #{bookingId} • {sample.packageName}
@@ -1381,45 +1389,27 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {items.map((p) => (
-                            <div key={p.id} className="py-3">
-                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                {/* Left: gear items */}
-                                <div className="flex-1">
-                                  <div className="mt-1 text-sm text-gray-600 flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-4 md:text-base overflow-x-auto">
-                                    <span className="whitespace-nowrap">
-                                      Boots:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.boots}
-                                      </span>
-                                    </span>
-                                    <span className="hidden md:inline-block text-gray-300">
-                                      •
-                                    </span>
-                                    <span className="whitespace-nowrap">
-                                      Gloves:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.gloves}
-                                      </span>
-                                    </span>
-                                    <span className="hidden md:inline-block text-gray-300">
-                                      •
-                                    </span>
-                                    <span className="whitespace-nowrap">
-                                      Helmet:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.helmet}
-                                      </span>
-                                    </span>
-                                  </div>
+                            <div key={p.id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition">
+                              <div className="mb-3">
+                                <div className="text-sm font-bold text-blue-600">{p.name || "Participant"}</div>
+                                <div className="text-xs text-gray-500">{p.guestEmail}</div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-600 w-16">Overalls:</span>
+                                  <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-2 py-1 rounded">{p.overalls}</span>
                                 </div>
-                                {/* Right: participant name + email (no card) */}
-                                <div className="text-right md:w-56">
-                                  <div className="text-sm font-semibold text-gray-900">
-                                    {p.name || "Participant"}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {p.guestEmail}
-                                  </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-600 w-16">Boots:</span>
+                                  <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-2 py-1 rounded">{p.boots}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-600 w-16">Gloves:</span>
+                                  <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-2 py-1 rounded">{p.gloves}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-600 w-16">Helmet:</span>
+                                  <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-2 py-1 rounded">{p.helmet}</span>
                                 </div>
                               </div>
                             </div>
@@ -1427,7 +1417,9 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         </div>
                       </div>
                     );
-                  });
+                      })}
+                  </>
+                );
               })()}
             </div>
           </div>

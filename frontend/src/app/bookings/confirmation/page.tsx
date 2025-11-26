@@ -3,24 +3,52 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { sendConfirmationEmail } from "@/lib/api";
 
 export default function BookingConfirmationPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading"
   );
+  const [emailSent, setEmailSent] = useState(false);
   const paymentIntent = searchParams.get("payment_intent");
   const paymentIntentClientSecret = searchParams.get(
     "payment_intent_client_secret"
   );
 
   useEffect(() => {
-    if (paymentIntent && paymentIntentClientSecret) {
+    const sendEmail = async () => {
+      if (!paymentIntent || !paymentIntentClientSecret) {
+        setStatus("error");
+        return;
+      }
+
       // Payment was successful
       setStatus("success");
-    } else {
-      setStatus("error");
-    }
+
+      // Try to send confirmation email
+      try {
+        const bookingDetailsJson = sessionStorage.getItem("pendingBookingEmail");
+        if (bookingDetailsJson) {
+          const bookingDetails = JSON.parse(bookingDetailsJson);
+          console.log("Sending confirmation email with details:", bookingDetails);
+          
+          await sendConfirmationEmail(bookingDetails);
+          console.log("✅ Confirmation email sent");
+          setEmailSent(true);
+          
+          // Clear the stored data
+          sessionStorage.removeItem("pendingBookingEmail");
+        } else {
+          console.warn("No booking details found in sessionStorage");
+        }
+      } catch (error) {
+        console.error("❌ Failed to send confirmation email:", error);
+        // Don't change status - booking is still successful even if email fails
+      }
+    };
+
+    sendEmail();
   }, [paymentIntent, paymentIntentClientSecret]);
 
   if (status === "loading") {
@@ -67,7 +95,9 @@ export default function BookingConfirmationPage() {
           Your payment was successful and your booking has been confirmed.
         </p>
         <p className="text-sm text-gray-500 mb-6">
-          You will receive a confirmation email shortly with all the details.
+          {emailSent 
+            ? "A confirmation email has been sent to your email address with all the details."
+            : "You will receive a confirmation email shortly with all the details."}
         </p>
         <div className="space-y-3">
           <Link

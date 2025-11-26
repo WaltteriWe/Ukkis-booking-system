@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { PrismaClient } from "../../generated/prisma";
+import { sendConfirmationEmail } from "./emailController";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -81,6 +82,21 @@ async function handlePaymentIntentSucceeded(
     }
   );
 
+  // Find booking and update status
+  const booking = await prisma.booking.findFirst({
+    where: { paymentIntentId: paymentIntent.id },
+    include: {
+      guest: true,
+      package: true,
+      participantGear: true,
+    },
+  });
+
+  if (!booking) {
+    console.warn(`No booking found for payment intent: ${paymentIntent.id}`);
+    return;
+  }
+
   // Update booking status
   await prisma.booking.updateMany({
     where: { paymentIntentId: paymentIntent.id },
@@ -93,7 +109,49 @@ async function handlePaymentIntentSucceeded(
     },
   });
 
-  // You can also send confirmation email here
+  // Send confirmation email
+  try {
+    console.log(`Sending confirmation email for booking ${booking.id} to ${booking.guest.email}`);
+    
+    // Extract date and time from notes or use booking created date
+    const noteMatch = booking.notes?.match(/Date: (\d{4}-\d{2}-\d{2}), Time: (\d{2}:\d{2})/);
+    const bookingDate = noteMatch?.[1] || new Date(booking.createdAt).toISOString().split('T')[0];
+    const bookingTime = noteMatch?.[2] || "09:00";
+
+    // Convert participant gear to the format expected by email
+    const gearSizes: Record<string, any> = {};
+    if (booking.participantGear && booking.participantGear.length > 0) {
+      booking.participantGear.forEach((gear, index) => {
+        gearSizes[String(index + 1)] = {
+          name: gear.name,
+          overalls: gear.overalls,
+          boots: gear.boots,
+          gloves: gear.gloves,
+          helmet: gear.helmet,
+        };
+      });
+    }
+
+    const emailData = {
+      email: booking.guest.email,
+      name: booking.guest.name,
+      tour: booking.package.name,
+      date: bookingDate,
+      time: bookingTime,
+      participants: booking.participants,
+      total: Number(booking.totalPrice),
+      bookingId: `UK${booking.id}`,
+      phone: booking.guest.phone || "",
+      addons: booking.notes || "",
+      gearSizes: Object.keys(gearSizes).length > 0 ? gearSizes : undefined,
+    };
+
+    await sendConfirmationEmail(emailData);
+    console.log(`✅ Confirmation email sent for booking ${booking.id}`);
+  } catch (error) {
+    console.error(`❌ Failed to send confirmation email for booking ${booking.id}:`, error);
+    // Don't throw - we still want the payment to be marked as succeeded
+  }
 }
 
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {

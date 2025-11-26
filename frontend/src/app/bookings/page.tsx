@@ -304,6 +304,25 @@ export default function Bookings() {
       const paymentIntent = await createPaymentIntent(paymentData);
       console.log("✅ Payment intent created:", paymentIntent);
 
+      // Store booking details in sessionStorage for the confirmation page
+      const bookingDetails = {
+        email: customerInfo.email,
+        name: customerInfo.name,
+        tour: selectedTour!.name,
+        date: date,
+        time: time,
+        participants: participants,
+        total: total,
+        bookingId: `UK${createdBooking.id}`,
+        phone: customerInfo.phone || "",
+        addons: selectedAddons.map((a) => a.title).join(", ") || "None",
+        gearSizes: participantGearSizes,
+      };
+      
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("pendingBookingEmail", JSON.stringify(bookingDetails));
+      }
+
       setClientSecret(paymentIntent.client_secret);
       setShowPayment(true);
     } catch (error) {
