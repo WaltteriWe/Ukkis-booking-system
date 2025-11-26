@@ -12,36 +12,42 @@ import { uploadRoutes } from "./routes/uploadRoutes";
 import { paymentRoutes } from "./routes/paymentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
+import { webhookRoutes } from "./routes/webhookRoutes";
 
-async function main(){
-  
-const app = Fastify({ logger: true });
+async function main() {
+  const app = Fastify({ logger: true });
 
-// Enable CORS
-await app.register(cors, {
-  origin: '*', // Allow all origins in development
-  credentials: true,
-});
+  // Enable CORS
+  await app.register(cors, {
+    origin: "*", // Allow all origins in development
+    credentials: true,
+  });
 
-await app.register(packageRoutes, { prefix: API_PREFIX });
-await app.register(departureRoutes, { prefix: API_PREFIX });
-await app.register(bookingRoutes, { prefix: API_PREFIX });
-await app.register(emailRoutes, { prefix: API_PREFIX });
-await app.register(contactRoutes, { prefix: API_PREFIX });
-await app.register(uploadRoutes, { prefix: API_PREFIX });
-await app.register(paymentRoutes, { prefix: API_PREFIX });
-await app.register(adminRoutes, { prefix: API_PREFIX });
-await app.register(rentalRoutes, { prefix: API_PREFIX });
+  // Register webhook routes BEFORE body parsing
+  await app.register(webhookRoutes, { prefix: `${API_PREFIX}/webhook` });
 
-// Serve static files from uploads directory
-await app.register(import('@fastify/static'), {
-  root: path.join(__dirname, '../uploads'),
-  prefix: '/uploads/',
-});
+  await app.register(packageRoutes, { prefix: API_PREFIX });
+  await app.register(departureRoutes, { prefix: API_PREFIX });
+  await app.register(bookingRoutes, { prefix: API_PREFIX });
+  await app.register(emailRoutes, { prefix: API_PREFIX });
+  await app.register(contactRoutes, { prefix: API_PREFIX });
+  await app.register(uploadRoutes, { prefix: API_PREFIX });
+  await app.register(paymentRoutes, { prefix: API_PREFIX });
+  await app.register(adminRoutes, { prefix: API_PREFIX });
+  await app.register(rentalRoutes, { prefix: API_PREFIX });
 
-const port = Number(process.env.PORT) || 3001;
-await app.listen({ port, host: "0.0.0.0" });
-app.log.info(`Serveri käynnissä osoitteessa http://localhost:${port}`);
+  // Serve static files from uploads directory
+  await app.register(import("@fastify/static"), {
+    root: path.join(__dirname, "../uploads"),
+    prefix: "/uploads/",
+  });
+
+  const port = Number(process.env.PORT) || 3001;
+  await app.listen({ port, host: "0.0.0.0" });
+  app.log.info(`Serveri käynnissä osoitteessa http://localhost:${port}`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

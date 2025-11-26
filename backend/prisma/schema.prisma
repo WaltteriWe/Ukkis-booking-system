@@ -61,9 +61,12 @@ model Booking {
   notes                String?
   participantGearSizes Json?
   totalPrice           Float
-  status               String            @default("confirmed")
-  bookingDate          String?           // Add this
-  bookingTime          String?           // Add this
+  status               String            @default("pending")
+  bookingDate          String?           // Stores "YYYY-MM-DD"
+  bookingTime          String?           // Stores "HH:MM"
+  paymentIntentId      String?           @unique // Stripe Payment Intent ID
+  paymentStatus        String            @default("pending") // pending, processing, succeeded, failed, canceled
+  paymentMethod        String?           // card, wallet, etc.
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
