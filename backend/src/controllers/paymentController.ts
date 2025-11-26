@@ -4,7 +4,11 @@ import { PrismaClient } from "../../generated/prisma";
 
 const prisma = new PrismaClient();
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const stripe = stripeSecret ? new Stripe(stripeSecret) : undefined;
+const isDevelopment = process.env.NODE_ENV === "development";
+const stripe =
+  stripeSecret && !stripeSecret.includes("your_stripe")
+    ? new Stripe(stripeSecret)
+    : undefined;
 
 const createPaymentIntentSchema = z.object({
   amount: z.number().int().positive(), // cents
@@ -23,6 +27,36 @@ const createPaymentIntentSchema = z.object({
   }),
 });
 export async function createPaymentIntent(body: unknown) {
+  const data = createPaymentIntentSchema.parse(body);
+
+  // Development mode: Return mock payment intent if Stripe is not configured
+  if (!stripe && isDevelopment) {
+    console.log(
+      "⚠️  Development mode: Using mock payment intent (Stripe not configured)"
+    );
+    const mockClientSecret = `pi_mock_${Date.now()}_secret_${Math.random()
+      .toString(36)
+      .substring(7)}`;
+    const mockPaymentIntentId = `pi_mock_${Date.now()}`;
+
+    // If bookingId is provided, link the mock payment intent to the booking
+    if (data.bookingId) {
+      await prisma.booking.update({
+        where: { id: data.bookingId },
+        data: {
+          paymentIntentId: mockPaymentIntentId,
+          paymentStatus: "pending",
+        },
+      });
+    }
+
+    return {
+      client_secret: mockClientSecret,
+      payment_intent_id: mockPaymentIntentId,
+      mock: true,
+    };
+  }
+
   if (!stripe) {
     throw {
       status: 500,
@@ -30,8 +64,6 @@ export async function createPaymentIntent(body: unknown) {
       message: "Missing STRIPE_SECRET_KEY in environment",
     };
   }
-
-  const data = createPaymentIntentSchema.parse(body);
 
   const intent = await stripe.paymentIntents.create({
     amount: data.amount,
