@@ -32,8 +32,8 @@ model SafariPackage {
   active      Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  bookings    Booking[]
   departures  Departure[]
-  bookings    Booking[]   // Add this line - the opposite relation
 }
 
 model Departure {
@@ -44,45 +44,44 @@ model Departure {
   reserved              Int                          @default(0)
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
-  package               SafariPackage                @relation(fields: [packageId], references: [id], onDelete: Cascade)
   bookings              Booking[]
+  package               SafariPackage                @relation(fields: [packageId], references: [id], onDelete: Cascade)
   snowmobileAssignments SafariSnowmobileAssignment[]
 }
 
 model Booking {
   id                   Int               @id @default(autoincrement())
   guestId              Int
-  packageId            Int
   departureId          Int?
   participants         Int
-  guestEmail           String
-  guestName            String
-  phone                String?
-  notes                String?
-  participantGearSizes Json?
   totalPrice           Float
   status               String            @default("confirmed")
-  bookingDate          String?           // Add this
-  bookingTime          String?           // Add this
+  notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-
-  guest               Guest             @relation(fields: [guestId], references: [id])
-  package             SafariPackage     @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  departure           Departure?        @relation(fields: [departureId], references: [id])
-  participantGear     ParticipantGear[]
+  guestEmail           String
+  guestName            String
+  packageId            Int
+  participantGearSizes Json?
+  phone                String?
+  bookingDate          String?
+  bookingTime          String?
+  departure            Departure?        @relation(fields: [departureId], references: [id])
+  guest                Guest             @relation(fields: [guestId], references: [id])
+  package              SafariPackage     @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  participantGear      ParticipantGear[]
 }
 
 model ParticipantGear {
   id        Int      @id @default(autoincrement())
   bookingId Int
   name      String
-  overalls  String
   boots     String
   gloves    String
   helmet    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  overalls  String
   booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
@@ -108,17 +107,17 @@ model Snowmobile {
   status            String                       @default("available")
   createdAt         DateTime                     @default(now())
   updatedAt         DateTime                     @updatedAt
-  rentals           SnowmobileRental[]
   safariAssignments SafariSnowmobileAssignment[]
+  rentals           SnowmobileRental[]
 }
 
 model SafariSnowmobileAssignment {
   id           Int        @id @default(autoincrement())
   departureId  Int
   snowmobileId Int
+  createdAt    DateTime   @default(now())
   departure    Departure  @relation(fields: [departureId], references: [id], onDelete: Cascade)
   snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
 
   @@unique([departureId, snowmobileId])
 }
@@ -134,16 +133,17 @@ model SnowmobileRental {
   notes        String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
   guest        Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
 }
 
 model ContactMessage {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   name      String
   email     String
   phone     String?
   subject   String
   message   String
-  createdAt DateTime @default(now())
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
 }

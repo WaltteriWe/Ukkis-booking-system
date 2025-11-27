@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface CreateBookingRequest {
   packageId: number;
@@ -458,6 +458,21 @@ export async function deleteContactMessage(id: number) {
 
   if (!response.ok) {
     throw new Error('Failed to delete contact message');
+  }
+
+  return response.json();
+}
+
+export async function sendContactReply(id: number, payload: { to?: string; subject?: string; body: string }) {
+  const response = await fetch(`${API_BASE_URL}/contact/${id}/reply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => 'Failed to send reply');
+    throw new Error(err || 'Failed to send reply');
   }
 
   return response.json();
