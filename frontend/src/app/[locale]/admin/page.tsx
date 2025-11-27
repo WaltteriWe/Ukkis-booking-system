@@ -989,7 +989,6 @@ async function handleCreateDeparture(e: React.FormEvent) {
         {/* Packages List */}
         {activeTab === "packages" && (
           <>
-            {/* ADD THIS DEPARTURE SECTION BEFORE "Existing Packages" */}
             {!showCreateForm && (
               <div className="bg-white rounded-lg shadow p-6 mb-8">
                 <div className="flex justify-between items-center mb-4">
@@ -1827,3 +1826,84 @@ async function handleCreateDeparture(e: React.FormEvent) {
 }
 
 
+
+    function AdminContact({loadContactMessages, m, handleOpenReply, handleDeleteMessage, replyingToId, handleSendReply, replyToEmail, e, setReplyToEmail, replyBody, setReplyBody, setReplyingToId, sendingReply}) {
+      return (<div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-xl font-bold">Contact Messages</h2>
+              <div>
+                <button onClick={loadContactMessages} className="px-3 py-1 border rounded bg-gray-50 hover:bg-gray-100">
+                  Refresh
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-auto">
+              {contactMessages.length === 0 ? <p className="text-sm text-gray-600">No messages found.</p> : <table className="w-full text-left table-auto">
+                  <thead>
+                    <tr className="text-sm text-gray-600">
+                      <th className="px-3 py-2">#</th>
+                      <th className="px-3 py-2">Name</th>
+                      <th className="px-3 py-2">Email</th>
+                      <th className="px-3 py-2">Subject</th>
+                      <th className="px-3 py-2">Message</th>
+                      <th className="px-3 py-2">Received</th>
+                      <th className="px-3 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contactMessages.map(m => <tr key={m.id} className="border-t">
+                        <td className="px-3 py-2 text-sm">{m.id}</td>
+                        <td className="px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <div>{m.name}</div>
+                            {m.repliedAt && <span className="inline-block text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
+                                Replied
+                              </span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-sm">{m.email}</td>
+                        <td className="px-3 py-2 text-sm">{m.subject}</td>
+                        <td className="px-3 py-2 text-sm max-w-xl">{m.message}</td>
+                        <td className="px-3 py-2 text-sm">{new Date(m.createdAt).toLocaleString()}</td>
+                        <td className="px-3 py-2 text-sm">
+                          <div className="flex gap-2">
+                            <button onClick={() => handleOpenReply(m)} className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                              Reply
+                            </button>
+                            <button onClick={() => handleDeleteMessage(m.id)} className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 text-sm">
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>)}
+                  </tbody>
+                </table>}
+            </div>
+
+            {
+    /* Reply Modal */
+  }
+            {replyingToId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-2xl p-6">
+                  <h3 className="text-lg font-semibold mb-3">Reply to message #{replyingToId}</h3>
+                  <form onSubmit={handleSendReply} className="space-y-3">
+                    <div>
+                      <label className="block text-sm">To</label>
+                      <input value={replyToEmail} onChange={e => setReplyToEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm">Message</label>
+                      <textarea value={replyBody} onChange={e => setReplyBody(e.target.value)} rows={8} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setReplyingToId(null)} className="px-4 py-2 border rounded">Cancel</button>
+                      <button type="submit" disabled={sendingReply} className="px-4 py-2 bg-blue-600 text-white rounded">
+                        {sendingReply ? "Sending..." : "Send Reply"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>}
+          </div>);
+    }
+  

@@ -1,16 +1,24 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { colors, routes } from "@/lib/constants";
 import { cn, getHoverColorProps } from "@/lib/utils";
 import Image from "next/image";
 import ThemeToggle from "./ThemeToggle";
 import { Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useTranslations } from 'next-intl';
+import { useTheme } from "@/context/ThemeContext";
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
-  const [darkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { darkMode } = useTheme();
+  const t = useTranslations('nav');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -20,14 +28,20 @@ export function Navigation() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <nav className={cn("py-4 px-3 shadow-md")} style={{ backgroundColor: colors.white }}>
+        <div className={cn("container mx-auto flex items-center justify-between")}>
+          <div className="h-12" />
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <nav
-      className={cn(" py-4 px-3 shadow-md")}
-      style={{ backgroundColor: colors.white }}
-    >
-      <div
-        className={cn("container mx-auto flex items-center justify-between")}
-      >
+    <nav className={cn("py-4 px-3 shadow-md")} style={{ backgroundColor: colors.white }}>
+      <div className={cn("container mx-auto flex items-center justify-between")}>
         {/* Left side: Logo + Nav Links */}
         <div className={cn("flex items-center space-x-8")}>
           {/* Logo */}
@@ -44,29 +58,17 @@ export function Navigation() {
 
           {/* Nav Links */}
           <div className={cn("hidden md:flex items-center space-x-5 text-xl")}>
-            <Link
-              href={routes.home}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
-              Home
+            <Link href={routes.home} {...getHoverColorProps(colors.navy, colors.pink)} className="inline-block">
+              {t('home')}
             </Link>
-            <Link
-              href={routes.bookings + "?tab=safari"}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
-              Safari Tours
+            <Link href={routes.bookings + "?tab=safari"} {...getHoverColorProps(colors.navy, colors.pink)} className="inline-block">
+              {t('safariTours')}
             </Link>
-            <Link
-              href={routes.bookings + "?tab=rental"}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
-              Snowmobile Rental
+            <Link href={routes.bookings + "?tab=rental"} {...getHoverColorProps(colors.navy, colors.pink)} className="inline-block">
+              {t('snowmobileRental')}
             </Link>
-            <Link
-              href={routes.contact}
-              {...getHoverColorProps(colors.navy, colors.pink)}
-            >
-              Contact Us
+            <Link href={routes.contact} {...getHoverColorProps(colors.navy, colors.pink)} className="inline-block">
+              {t('contactUs')}
             </Link>
           </div>
         </div>
@@ -84,16 +86,14 @@ export function Navigation() {
             onClick={() => setOpen((s) => !s)}
             className={cn("ml-3 p-2 rounded-md")}
             style={{
-              ...(darkMode
-                ? { backgroundColor: colors.navy }
-                : { backgroundColor: colors.pink }),
+              backgroundColor: darkMode ? colors.navy : colors.pink,
             }}
           >
             {open ? (
               <X className="w-5 h-5" />
             ) : (
               <Menu className="w-5 h-5" />
-            )}{" "}
+            )}
           </button>
         </div>
       </div>
@@ -129,16 +129,16 @@ export function Navigation() {
 
           <nav className="mt-6 space-y-4">
             <Link href={routes.home} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Home
+              {t('home')}
             </Link>
             <Link href={routes.bookings + "?tab=safari"} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Safari Tours
+              {t('safariTours')}
             </Link>
             <Link href={routes.bookings + "?tab=rental"} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Snowmobile Rental
+              {t('snowmobileRental')}
             </Link>
             <Link href={routes.contact} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Contact Us
+              {t('contactUs')}
             </Link>
           </nav>
         </div>
@@ -146,4 +146,3 @@ export function Navigation() {
     </nav>
   );
 }
-

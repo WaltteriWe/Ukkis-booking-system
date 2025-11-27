@@ -1,0 +1,41 @@
+{
+  "nav": {
+    "home": "Home",
+    "safariTours": "Safari Tours",
+    "snowmobileRental": "Snowmobile Rental",
+    "contactUs": "Contact Us"
+  },
+  "hero": {
+    "title": "Arctic Adventure Awaits",
+    "subtitle": "Experience the magic of Lapland through premium snowmobile safaris or personal adventures with our wide range of vehicles and expert guides."
+  },
+  "gateway": {
+    "title": "Your gateway to arctic adventures",
+    "description1": "Discover the beauty of nature with Ukkis Safaris. We offer a variety of tours and adventures that allow you to explore the stunning landscapes and wildlife of our region. Whether you're looking for a thrilling snowmobile ride, a peaceful nature walk, or a cultural experience, we have something for everyone.",
+    "description2": "Our experienced guides are passionate about sharing their knowledge and love for the outdoors. They will ensure that your adventure is safe, enjoyable, and unforgettable. Join us for an experience of a lifetime!"
+  },
+  "features": {
+    "variableRoutes": {
+      "title": "Variable routes",
+      "description": "From 2-hour scenic rides to multi-day expeditions through untouched wilderness"
+    },
+    "flexibleDurations": {
+      "title": "Flexible durations",
+      "description": "Flexible booking options to suit your schedule and preferences"
+    },
+    "safetyFirst": {
+      "title": "Safety First",
+      "description": "Professional guides, premium equipment, and comprehensive safety protocols"
+    }
+  },
+  "contact": {
+    "title": "Contact Us",
+    "name": "Name",
+    "email": "Email",
+    "message": "Message",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "success": "Message sent successfully!",
+    "error": "Failed to send message. Please try again."
+  }
+}

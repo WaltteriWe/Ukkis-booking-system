@@ -1,9 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 const config = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // Look inside the top-level 'app' folder (which contains [locale])
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    
+    // Look inside a top-level 'components' folder (if it exists)
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    
+    // Keep the 'src' path if you still have files inside a 'src' folder
+    "./src/**/*.{js,ts,jsx,tsx,mdx}", 
   ],
   darkMode: 'class',
   theme: {
