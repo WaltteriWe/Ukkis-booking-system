@@ -1,0 +1,41 @@
+{
+  "nav": {
+    "home": "Etusivu",
+    "safariTours": "Safari-retket",
+    "snowmobileRental": "Moottorikelkkavuokraus",
+    "contactUs": "Ota yhteyttä"
+  },
+  "hero": {
+    "title": "Arktinen seikkailu odottaa",
+    "subtitle": "Koe Lapin taika premium moottorikelkkasafareilla tai henkilökohtaisilla seikkailuilla laajan ajoneuvovalikoiman ja asiantuntevan oppaan kanssa."
+  },
+  "gateway": {
+    "title": "Porttisi arktisiin seikkailuihin",
+    "description1": "Tutustu luonnon kauneuteen Ukkis Safarien kanssa. Tarjoamme erilaisia retkiä ja seikkailuja, joiden avulla voit tutkia alueen upeat maisemat ja villieläimet. Olitpa sitten etsimässä jännittävää moottorikelkka-ajelua, rauhallista luontovaellusta tai kulttuurikokemusta, meillä on jokaiselle jotakin.",
+    "description2": "Kokeneet oppaamme ovat intohimoisia jakamaan tietojaan ja rakkauttaan ulkoilmaan. He varmistavat, että seikkailusi on turvallinen, nautinnollinen ja unohtumaton. Liity mukaamme elämäsi kokemukseen!"
+  },
+  "features": {
+    "variableRoutes": {
+      "title": "Vaihtelevia reittejä",
+      "description": "2 tunnin maisema-ajeluista monipäiväisiin retkiin koskemattoman erämaan halki"
+    },
+    "flexibleDurations": {
+      "title": "Joustavat kestot",
+      "description": "Joustavat varausvaihtoehdot aikatauluusi ja mieltymyksiisi sopiviksi"
+    },
+    "safetyFirst": {
+      "title": "Turvallisuus ensin",
+      "description": "Ammattitaitoisia oppaita, huippuluokan välineitä ja kattavat turvallisuusprotokollat"
+    }
+  },
+  "contact": {
+    "title": "Ota yhteyttä",
+    "name": "Nimi",
+    "email": "Sähköposti",
+    "message": "Viesti",
+    "send": "Lähetä viesti",
+    "sending": "Lähetetään...",
+    "success": "Viesti lähetetty onnistuneesti!",
+    "error": "Viestin lähettäminen epäonnistui. Yritä uudelleen."
+  }
+}
