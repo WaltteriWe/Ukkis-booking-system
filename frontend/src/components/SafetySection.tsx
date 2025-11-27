@@ -1,29 +1,3 @@
-<<<<<<< HEAD
-"use client";
-
-import { colors } from "@/lib/constants";
-import { Shield, Star, Wrench } from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext";
-
-const SafetySection = () => {
-  const { t } = useLanguage();
-
-  const features = [
-    {
-      icon: Star,
-      title: t("certifiedGuides"),
-      description: t("certifiedGuidesDesc"),
-    },
-    {
-      icon: Wrench,
-      title: t("premiumEquipment"),
-      description: t("premiumEquipmentDesc"),
-    },
-    {
-      icon: Shield,
-      title: t("emergencyPrepared"),
-      description: t("emergencyPreparedDesc"),
-=======
 import { colors } from "@/lib/constants";
 import { Shield, Star, Wrench } from "lucide-react";
 
@@ -46,7 +20,6 @@ const SafetySection = () => {
       title: "Emergency Prepared",
       description:
         "Comprehensive emergency protocols and wilderness first aid training",
->>>>>>> c4502a66a64baff9a3b5e2c22d1ab8f4d932013e
     },
   ];
 
@@ -62,24 +35,16 @@ const SafetySection = () => {
               className="text-4xl font-bold mb-6"
               style={{ color: colors.teal }}
             >
-<<<<<<< HEAD
-              {t("safetyTitle")}
-=======
               Safety & Professionalism First
->>>>>>> c4502a66a64baff9a3b5e2c22d1ab8f4d932013e
             </h2>
             <p
               className="text-lg mb-8 leading-relaxed"
               style={{ color: colors.darkGray }}
             >
-<<<<<<< HEAD
-              {t("safetyText1")}
-=======
               Your safety is our top priority. Every adventure begins with
               comprehensive safety briefings and equipment checks. Our certified
               guides have years of Arctic experience and are trained in
               wilderness first aid.
->>>>>>> c4502a66a64baff9a3b5e2c22d1ab8f4d932013e
             </p>
 
             <div className="space-y-6">
