@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify from "fastify";
+import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import path from "path";
 import { API_PREFIX } from "../shared/constants";
@@ -12,9 +12,44 @@ import { uploadRoutes } from "./routes/uploadRoutes";
 import { paymentRoutes } from "./routes/paymentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
+import { requireAuth } from "../middleware/auth";
 
 async function main() {
   const app = Fastify({ logger: true });
+
+  const protectedRoutes = [
+    "/api/bookings",
+    "/api/snowmobiles",
+    "/api/departures",
+    "/api/contact", // Admin viewing messages
+    "/api/upload",
+    "/api/snowmobile-rentals",
+    "/api/reservations",
+  ];
+
+  app.addHook(
+    "preHandler",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const path = request.url.split("?")[0];
+
+      const needsAuth = protectedRoutes.some((route) => path.startsWith(route));
+
+      if (!needsAuth) {
+        return;
+      }
+
+      // special case for GET /api/packages?activeOnly=true being public
+      if (path === "/api/packages" && request.method === "GET") {
+        const params = new URL(request.url, `http://${request.headers.host}`)
+          .searchParams;
+        if (params.get("activeOnly") === "true") {
+          return;
+        }
+      }
+
+      await requireAuth(request, reply);
+    }
+  );
 
   // Enable CORS
   await app.register(cors, {
