@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export interface CreateBookingRequest {
   packageId: number;
@@ -37,16 +38,18 @@ export interface EmailConfirmationRequest {
 // Booking API calls
 export async function createBooking(data: CreateBookingRequest) {
   const response = await fetch(`${API_BASE_URL}/bookings`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to create booking' }));
-    throw new Error(error.error || 'Failed to create booking');
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to create booking" }));
+    throw new Error(error.error || "Failed to create booking");
   }
 
   return response.json();
@@ -54,25 +57,28 @@ export async function createBooking(data: CreateBookingRequest) {
 
 export async function getBookings() {
   const response = await fetch(`${API_BASE_URL}/bookings`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch bookings');
+    throw new Error("Failed to fetch bookings");
   }
-  
+
   return response.json();
 }
 
-export async function updateBookingStatus(id: number, status: 'confirmed' | 'pending' | 'cancelled') {
+export async function updateBookingStatus(
+  id: number,
+  status: "confirmed" | "pending" | "cancelled"
+) {
   const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
-    method: 'PUT',
+    method: "PUT",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ status }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update booking status');
+    throw new Error("Failed to update booking status");
   }
 
   return response.json();
@@ -80,33 +86,33 @@ export async function updateBookingStatus(id: number, status: 'confirmed' | 'pen
 
 // Package API calls
 export async function getPackages(activeOnly = true) {
-  const queryParam = activeOnly ? '?activeOnly=true' : '';
+  const queryParam = activeOnly ? "?activeOnly=true" : "";
   const response = await fetch(`${API_BASE_URL}/packages${queryParam}`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch packages');
+    throw new Error("Failed to fetch packages");
   }
-  
+
   return response.json();
 }
 
 export async function getPackageById(id: number) {
   const response = await fetch(`${API_BASE_URL}/packages/id/${id}`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch package');
+    throw new Error("Failed to fetch package");
   }
-  
+
   return response.json();
 }
 
 export async function getPackageBySlug(slug: string) {
   const response = await fetch(`${API_BASE_URL}/packages/${slug}`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch package');
+    throw new Error("Failed to fetch package");
   }
-  
+
   return response.json();
 }
 
@@ -118,29 +124,29 @@ export async function getDepartures(params?: {
   onlyAvailable?: boolean;
 }) {
   const searchParams = new URLSearchParams();
-  
+
   if (params?.packageId) {
-    searchParams.append('packageId', params.packageId.toString());
+    searchParams.append("packageId", params.packageId.toString());
   }
   if (params?.from) {
-    searchParams.append('from', params.from);
+    searchParams.append("from", params.from);
   }
   if (params?.to) {
-    searchParams.append('to', params.to);
+    searchParams.append("to", params.to);
   }
   if (params?.onlyAvailable) {
-    searchParams.append('onlyAvailable', 'true');
+    searchParams.append("onlyAvailable", "true");
   }
 
   const queryString = searchParams.toString();
-  const url = `${API_BASE_URL}/departures${queryString ? '?' + queryString : ''}`;
-  
+  const url = `${API_BASE_URL}/departures${queryString ? "?" + queryString : ""}`;
+
   const response = await fetch(url);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch departures');
+    throw new Error("Failed to fetch departures");
   }
-  
+
   return response.json();
 }
 
@@ -150,33 +156,37 @@ export async function createDeparture(departureData: {
   capacity?: number;
 }) {
   const response = await fetch(`${API_BASE_URL}/departures`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(departureData),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create departure');
+    throw new Error("Failed to create departure");
   }
 
   return response.json();
 }
 
 // Email API calls
-export async function sendConfirmationEmail(emailData: EmailConfirmationRequest) {
+export async function sendConfirmationEmail(
+  emailData: EmailConfirmationRequest
+) {
   const response = await fetch(`${API_BASE_URL}/send-confirmation`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(emailData),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to send confirmation email' }));
-    throw new Error(error.error || 'Failed to send confirmation email');
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to send confirmation email" }));
+    throw new Error(error.error || "Failed to send confirmation email");
   }
 
   return response.json();
@@ -184,11 +194,13 @@ export async function sendConfirmationEmail(emailData: EmailConfirmationRequest)
 
 // Package management API calls
 export const createPackage = async (packageData: any) => {
-  const baseSlug = packageData.slug || packageData.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-  
+  const baseSlug =
+    packageData.slug ||
+    packageData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+
   const slug = `${baseSlug}-${Date.now()}`;
 
   const response = await fetch(`${API_BASE_URL}/packages`, {
@@ -216,27 +228,30 @@ export const createPackage = async (packageData: any) => {
   return response.json();
 };
 
-export async function updatePackage(id: number, packageData: Partial<{
-  slug: string;
-  name: string;
-  description: string;
-  basePrice: number;
-  durationMin: number;
-  capacity: number;
-  difficulty: "Easy" | "Moderate" | "Advanced";
-  imageUrl: string;
-  active: boolean;
-}>) {
+export async function updatePackage(
+  id: number,
+  packageData: Partial<{
+    slug: string;
+    name: string;
+    description: string;
+    basePrice: number;
+    durationMin: number;
+    capacity: number;
+    difficulty: "Easy" | "Moderate" | "Advanced";
+    imageUrl: string;
+    active: boolean;
+  }>
+) {
   const response = await fetch(`${API_BASE_URL}/packages/id/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(packageData),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update package');
+    throw new Error("Failed to update package");
   }
 
   return response.json();
@@ -244,13 +259,14 @@ export async function updatePackage(id: number, packageData: Partial<{
 
 export async function deletePackage(id: number) {
   const response = await fetch(`${API_BASE_URL}/packages/id/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 
   if (!response.ok) {
-    if (response.status === 404) throw new Error('Package not found');
-    if (response.status === 409) throw new Error('Cannot delete: package has related data');
-    throw new Error('Failed to delete package');
+    if (response.status === 404) throw new Error("Package not found");
+    if (response.status === 409)
+      throw new Error("Cannot delete: package has related data");
+    throw new Error("Failed to delete package");
   }
 
   return true;
@@ -259,16 +275,18 @@ export async function deletePackage(id: number) {
 // Image upload API calls
 export async function uploadImage(file: File) {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   const response = await fetch(`${API_BASE_URL}/upload/image`, {
-    method: 'POST',
+    method: "POST",
     body: formData,
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to upload image' }));
-    throw new Error(error.error || 'Failed to upload image');
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to upload image" }));
+    throw new Error(error.error || "Failed to upload image");
   }
 
   return response.json();
@@ -276,11 +294,11 @@ export async function uploadImage(file: File) {
 
 export async function deleteImage(filename: string) {
   const response = await fetch(`${API_BASE_URL}/upload/image/${filename}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 
   if (!response.ok) {
-    throw new Error('Failed to delete image');
+    throw new Error("Failed to delete image");
   }
 
   return response.json();
@@ -288,11 +306,11 @@ export async function deleteImage(filename: string) {
 
 export async function getImages() {
   const response = await fetch(`${API_BASE_URL}/upload/images`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to get images');
+    throw new Error("Failed to get images");
   }
-  
+
   return response.json();
 }
 
@@ -313,15 +331,15 @@ export async function createPaymentIntent(paymentData: {
   };
 }) {
   const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(paymentData),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create payment intent');
+    throw new Error("Failed to create payment intent");
   }
 
   return response.json();
@@ -335,29 +353,35 @@ export interface AdminAuthResponse {
 
 export async function adminLogin(email: string, password: string) {
   const response = await fetch(`${API_BASE_URL}/admin/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: 'Login failed' }));
-    throw new Error(err.error || 'Login failed');
+    const err = await response.json().catch(() => ({ error: "Login failed" }));
+    throw new Error(err.error || "Login failed");
   }
 
   return response.json() as Promise<AdminAuthResponse>;
 }
 
-export async function adminRegister(name: string, email: string, password: string) {
+export async function adminRegister(
+  name: string,
+  email: string,
+  password: string
+) {
   const response = await fetch(`${API_BASE_URL}/admin/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: 'Registration failed' }));
-    throw new Error(err.error || 'Registration failed');
+    const err = await response
+      .json()
+      .catch(() => ({ error: "Registration failed" }));
+    throw new Error(err.error || "Registration failed");
   }
 
   return response.json() as Promise<AdminAuthResponse>;
@@ -366,15 +390,18 @@ export async function adminRegister(name: string, email: string, password: strin
 // Snowmobile Rental API calls
 export async function getSnowmobiles() {
   const response = await fetch(`${API_BASE_URL}/snowmobiles`);
-  if (!response.ok) throw new Error('Failed to fetch snowmobiles');
+  if (!response.ok) throw new Error("Failed to fetch snowmobiles");
   return response.json();
 }
 
-export async function getAvailableSnowmobiles(startTime: string, endTime: string) {
+export async function getAvailableSnowmobiles(
+  startTime: string,
+  endTime: string
+) {
   const response = await fetch(
     `${API_BASE_URL}/snowmobiles/available?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`
   );
-  if (!response.ok) throw new Error('Failed to fetch available snowmobiles');
+  if (!response.ok) throw new Error("Failed to fetch available snowmobiles");
   return response.json();
 }
 
@@ -389,11 +416,11 @@ export async function createSnowmobileRental(data: {
   notes?: string;
 }) {
   const response = await fetch(`${API_BASE_URL}/snowmobile-rentals`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error('Failed to create rental');
+  if (!response.ok) throw new Error("Failed to create rental");
   return response.json();
 }
 
@@ -404,75 +431,92 @@ export async function createSnowmobile(data: {
   year?: number;
 }) {
   const response = await fetch(`${API_BASE_URL}/snowmobiles`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error('Failed to create snowmobile');
+  if (!response.ok) throw new Error("Failed to create snowmobile");
   return response.json();
 }
 
 export async function getSingleReservations() {
   const response = await fetch(`${API_BASE_URL}/reservations`);
-  if (!response.ok) throw new Error('Failed to fetch single reservations');
+  if (!response.ok) throw new Error("Failed to fetch single reservations");
   return response.json();
 }
 
-export async function updateRentalStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled') {
-  const response = await fetch(`${API_BASE_URL}/snowmobile-rentals/${id}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
-  });
-  if (!response.ok) throw new Error('Failed to update rental status');
+export async function updateRentalStatus(
+  id: number,
+  status: "pending" | "confirmed" | "completed" | "cancelled"
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/snowmobile-rentals/${id}/status`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to update rental status");
   return response.json();
 }
 
-export async function assignSnowmobilesToDeparture(departureId: number, snowmobileIds: number[]) {
-  const response = await fetch(`${API_BASE_URL}/departures/${departureId}/snowmobiles`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ snowmobileIds }),
-  });
-  if (!response.ok) throw new Error('Failed to assign snowmobiles');
+export async function assignSnowmobilesToDeparture(
+  departureId: number,
+  snowmobileIds: number[]
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/departures/${departureId}/snowmobiles`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ snowmobileIds }),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to assign snowmobiles");
   return response.json();
 }
 
 export async function getSnowmobileAssignments(departureId: number) {
-  const response = await fetch(`${API_BASE_URL}/departures/${departureId}/snowmobiles`);
-  if (!response.ok) throw new Error('Failed to get assignments');
+  const response = await fetch(
+    `${API_BASE_URL}/departures/${departureId}/snowmobiles`
+  );
+  if (!response.ok) throw new Error("Failed to get assignments");
   return response.json();
 }
 
 // Contact messages (admin)
 export async function getContactMessages() {
   const response = await fetch(`${API_BASE_URL}/contact`);
-  if (!response.ok) throw new Error('Failed to fetch contact messages');
+  if (!response.ok) throw new Error("Failed to fetch contact messages");
   return response.json();
 }
 
 export async function deleteContactMessage(id: number) {
   const response = await fetch(`${API_BASE_URL}/contact/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 
   if (!response.ok) {
-    throw new Error('Failed to delete contact message');
+    throw new Error("Failed to delete contact message");
   }
 
   return response.json();
 }
 
-export async function sendContactReply(id: number, payload: { to?: string; subject?: string; body: string }) {
+export async function sendContactReply(
+  id: number,
+  payload: { to?: string; subject?: string; body: string }
+) {
   const response = await fetch(`${API_BASE_URL}/contact/${id}/reply`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const err = await response.text().catch(() => 'Failed to send reply');
-    throw new Error(err || 'Failed to send reply');
+    const err = await response.text().catch(() => "Failed to send reply");
+    throw new Error(err || "Failed to send reply");
   }
 
   return response.json();
