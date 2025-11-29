@@ -6,22 +6,24 @@ import { animations, colors } from "@/lib/constants";
 import { Clock2Icon, RouteIcon, Shield } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useInView } from "@/hooks/useInView";
 
 export default function Home() {
   const { darkMode } = useTheme();
-  
+  const { t } = useLanguage();
+
   // Create separate refs for each section
-  const heroView = useInView({ threshold: 0.1, rootMargin: '-100px 0px' });
-  const introView = useInView({ threshold: 0.2, rootMargin: '-150px 0px' });
-  const featuresView = useInView({ threshold: 0.2, rootMargin: '-150px 0px' });
-  const safetyView = useInView({ threshold: 0.2, rootMargin: '-100px 0px' });
-  const ctaView = useInView({ threshold: 0.2, rootMargin: '-100px 0px' });
+  const heroView = useInView({ threshold: 0.1, rootMargin: "-100px 0px" });
+  const introView = useInView({ threshold: 0.2, rootMargin: "-150px 0px" });
+  const featuresView = useInView({ threshold: 0.2, rootMargin: "-150px 0px" });
+  const safetyView = useInView({ threshold: 0.2, rootMargin: "-100px 0px" });
+  const ctaView = useInView({ threshold: 0.2, rootMargin: "-100px 0px" });
 
   return (
     <div
       className="relative z-10 min-h-screen transition-colors duration-700 ease-in-out dark:bg-transparent"
-      style={{ backgroundColor: darkMode ? 'transparent' : colors.white }}
+      style={{ backgroundColor: darkMode ? "transparent" : colors.white }}
     >
       {/* Hero Section */}
       <div
@@ -35,9 +37,10 @@ export default function Home() {
         "
         style={{
           ...(darkMode ? {} : { backgroundColor: colors.beige }),
-          ...(heroView.isInView ? animations.fadeInFloat(0) : { opacity: 0, transform: 'translateY(20px)' }),
+          ...(heroView.isInView
+            ? animations.fadeInFloat(0)
+            : { opacity: 0, transform: "translateY(20px)" }),
         }}
-        
       >
         <div className="absolute inset-0 z-0 rounded-xl overflow-hidden">
           <Image
@@ -51,11 +54,17 @@ export default function Home() {
         </div>
 
         <div className="relative z-10 text-center px-4 rounded-xl">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4" style={{ color: colors.pink }}>
-            Arctic Adventure Awaits
+          <h1
+            className="text-4xl md:text-6xl font-bold mb-4"
+            style={{ color: colors.pink }}
+          >
+            {t("heroTitle")}
           </h1>
-          <p className="text-lg md:text-2xl mb-6 font-medium drop-shadow-md" style={{ color: colors.white }}>
-            Experience the magic of Lapland through premium snowmobile safaris or personal adventures with our wide range of vehicles and expert guides.
+          <p
+            className="text-lg md:text-2xl mb-6 font-medium drop-shadow-md"
+            style={{ color: colors.white }}
+          >
+            {t("heroSubtitle")}
           </p>
         </div>
       </div>
@@ -70,21 +79,28 @@ export default function Home() {
         "
         style={{
           ...(darkMode ? {} : { backgroundColor: colors.white }),
-          ...(introView.isInView ? animations.fadeInFloat(0) : { opacity: 0, transform: 'translateY(20px)' }),
+          ...(introView.isInView
+            ? animations.fadeInFloat(0)
+            : { opacity: 0, transform: "translateY(20px)" }),
         }}
       >
-        <h1 className="text-3xl font-bold" style={{ color: darkMode ? colors.white : colors.teal }}>
-          Your gateway to arctic adventures
+        <h1
+          className="text-3xl font-bold"
+          style={{ color: darkMode ? colors.white : colors.teal }}
+        >
+          {t("introTitle")}
         </h1>
-        <p className="mt-4 text-lg" style={{ color: darkMode ? colors.white : colors.darkGray }}>
-          Discover the beauty of nature with Ukkis Safaris. We offer a variety
-          of tours and adventures that allow you to explore the stunning
-          landscapes and wildlife of our region.
+        <p
+          className="mt-4 text-lg"
+          style={{ color: darkMode ? colors.white : colors.darkGray }}
+        >
+          {t("introText1")}
         </p>
-        <p className="mt-4 text-lg" style={{ color: darkMode ? colors.white : colors.darkGray }}>
-          Our experienced guides are passionate about sharing their knowledge
-          and love for the outdoors. They will ensure that your adventure is
-          safe, enjoyable, and unforgettable.
+        <p
+          className="mt-4 text-lg"
+          style={{ color: darkMode ? colors.white : colors.darkGray }}
+        >
+          {t("introText2")}
         </p>
       </div>
 
@@ -103,7 +119,11 @@ export default function Home() {
       >
         <div
           className="flex flex-col items-center transition-all duration-700 ease-in-out"
-          style={featuresView.isInView ? animations.fadeInFloat(200) : { opacity: 0, transform: 'translateY(20px)' }}
+          style={
+            featuresView.isInView
+              ? animations.fadeInFloat(200)
+              : { opacity: 0, transform: "translateY(20px)" }
+          }
         >
           <RouteIcon
             className="h-16 w-16 mt-6"
@@ -113,16 +133,22 @@ export default function Home() {
             className="font-bold text-xl mt-2"
             style={{ color: darkMode ? colors.white : colors.navy }}
           >
-            Variable routes
+            {t("professionalGuidance")}
           </h1>
-          <p className="mt-4 text-lg" style={{ color: darkMode ? colors.white : colors.darkGray }}>
-            From 2-hour scenic rides to multi-day expeditions through
-            untouched wilderness
+          <p
+            className="mt-4 text-lg"
+            style={{ color: darkMode ? colors.white : colors.darkGray }}
+          >
+            {t("professionalGuidanceDesc")}
           </p>
         </div>
         <div
           className="flex flex-col items-center transition-all duration-700 ease-in-out"
-          style={featuresView.isInView ? animations.fadeInFloat(400) : { opacity: 0, transform: 'translateY(20px)' }}
+          style={
+            featuresView.isInView
+              ? animations.fadeInFloat(400)
+              : { opacity: 0, transform: "translateY(20px)" }
+          }
         >
           <Clock2Icon
             className="h-16 w-16 mt-6"
@@ -132,42 +158,59 @@ export default function Home() {
             className="font-bold text-xl mt-2"
             style={{ color: darkMode ? colors.white : colors.navy }}
           >
-            Flexible durations
+            {t("premiumEquipment")}
           </h1>
-          <p className="mt-4 text-lg" style={{ color: darkMode ? colors.white : colors.darkGray }}>
-            Flexible booking options to suit your schedule and preferences
+          <p
+            className="mt-4 text-lg"
+            style={{ color: darkMode ? colors.white : colors.darkGray }}
+          >
+            {t("premiumEquipmentDesc")}
           </p>
         </div>
         <div
           className="flex flex-col items-center transition-all duration-700 ease-in-out"
-          style={featuresView.isInView ? animations.fadeInFloat(600) : { opacity: 0, transform: 'translateY(20px)' }}
+          style={
+            featuresView.isInView
+              ? animations.fadeInFloat(600)
+              : { opacity: 0, transform: "translateY(20px)" }
+          }
         >
           <Shield className="h-16 w-16 mt-6" style={{ color: colors.teal }} />
           <h1
             className="font-bold text-xl mt-2"
             style={{ color: darkMode ? colors.white : colors.navy }}
           >
-            Safety First
+            {t("unforgettableExperiences")}
           </h1>
-          <p className="mt-4 text-lg" style={{ color: darkMode ? colors.white : colors.darkGray }}>
-            Professional guides, premium equipment, and comprehensive safety
-            protocols
+          <p
+            className="mt-4 text-lg"
+            style={{ color: darkMode ? colors.white : colors.darkGray }}
+          >
+            {t("unforgettableExperiencesDesc")}
           </p>
         </div>
       </div>
 
       {/* Additional Sections */}
-      <div 
+      <div
         ref={safetyView.ref}
         className="mt-20 transition-all duration-700 ease-in-out"
-        style={safetyView.isInView ? animations.fadeInFloat(0) : { opacity: 0, transform: 'translateY(20px)' }}
+        style={
+          safetyView.isInView
+            ? animations.fadeInFloat(0)
+            : { opacity: 0, transform: "translateY(20px)" }
+        }
       >
         <SafetySection />
       </div>
-      <div 
+      <div
         ref={ctaView.ref}
         className="mt-20 transition-all duration-700 ease-in-out"
-        style={ctaView.isInView ? animations.fadeInFloat(0) : { opacity: 0, transform: 'translateY(20px)' }}
+        style={
+          ctaView.isInView
+            ? animations.fadeInFloat(0)
+            : { opacity: 0, transform: "translateY(20px)" }
+        }
       >
         <CTASection />
       </div>

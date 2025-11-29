@@ -15,6 +15,7 @@ import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { format } from "date-fns";
+import { useLanguage } from "@/context/LanguageContext";
 
 // (TabNavigation UI removed - using top navigation links instead)
 
@@ -117,6 +118,7 @@ const ADDONS: Addon[] = [
 ];
 
 export default function Bookings() {
+  const { t } = useLanguage();
   // Add activeTab state at the top
   const [activeTab, setActiveTab] = useState<"safari" | "rental">("safari");
 
@@ -458,9 +460,9 @@ export default function Bookings() {
             <div className="mb-10">
               <div className="grid grid-cols-3 gap-6">
                 {[
-                  { n: 1, label: "Select Tour" },
-                  { n: 2, label: "Customize" },
-                  { n: 3, label: "Confirm" },
+                  { n: 1, label: t("selectYourTour") },
+                  { n: 2, label: t("customize") },
+                  { n: 3, label: t("confirm") },
                 ].map((s) => (
                   <div key={s.n} className="flex items-center gap-3">
                     <div
@@ -499,34 +501,32 @@ export default function Bookings() {
             {step === 1 && (
               <section>
                 <h1 className="text-4xl font-extrabold text-[#101651]">
-                  Choose Your Arctic Adventure
+                  {t("chooseYourAdventure")}
                 </h1>
                 <p className="mt-2 text-lg text-[#3b4463]">
-                  Select from our premium collection of Lapland experiences
+                  {t("selectFromPremiumCollection")}
                 </p>
 
                 <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {loading ? (
                     <div className="col-span-full text-center py-8">
                       <div className="animate-spin h-8 w-8 border-2 border-[#ffb64d] border-t-transparent rounded-full mx-auto mb-2"></div>
-                      <p className="text-gray-500">Loading tours...</p>
+                      <p className="text-gray-500">{t("loadingTours")}</p>
                     </div>
                   ) : error ? (
                     <div className="col-span-full text-center py-8">
                       <p className="text-red-500 mb-2">⚠️ {error}</p>
-                      <p className="text-gray-500">
-                        Showing demo tours instead
-                      </p>
+                      <p className="text-gray-500">{t("showingDemoTours")}</p>
                     </div>
                   ) : null}
 
-                  {tours.map((t) => {
-                    const active = selectedTour?.id === t.id;
+                  {tours.map((tour) => {
+                    const active = selectedTour?.id === tour.id;
                     return (
                       <button
                         type="button"
-                        key={t.id}
-                        onClick={() => setSelectedTour(t)}
+                        key={tour.id}
+                        onClick={() => setSelectedTour(tour)}
                         className={
                           "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
                           (active
@@ -536,38 +536,48 @@ export default function Bookings() {
                       >
                         <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
                           <img
-                            src={t.imageUrl || "/images/atv.jpg"}
-                            alt={t.name}
+                            src={tour.imageUrl || "/images/atv.jpg"}
+                            alt={tour.name}
                             className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         </div>
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-[#101651] hover:underline">
-                            {t.name}
+                            {t(`tour_${tour.slug}_name`) !==
+                            `tour_${tour.slug}_name`
+                              ? t(`tour_${tour.slug}_name`)
+                              : tour.name}
                           </h3>
-                          {t.description && (
+                          {tour.description && (
                             <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                              {t.description}
+                              {t(`tour_${tour.slug}_desc`) !==
+                              `tour_${tour.slug}_desc`
+                                ? t(`tour_${tour.slug}_desc`)
+                                : tour.description}
                             </p>
                           )}
                           <ul className="mt-3 space-y-1 text-[#3b4463]">
                             <li>
-                              🕒 {Math.floor(t.durationMin / 60)}h{" "}
-                              {t.durationMin % 60}min
+                              🕒 {Math.floor(tour.durationMin / 60)}h{" "}
+                              {tour.durationMin % 60}min
                             </li>
-                            <li>👥 Max {t.capacity || 8} people</li>
-                            <li>⭐ Difficulty: {t.difficulty}</li>
+                            <li>
+                              👥 {tour.capacity || 8} {t("people")}
+                            </li>
+                            <li>
+                              ⭐ {t("difficulty")}: {tour.difficulty}
+                            </li>
                           </ul>
                           <div className="mt-4 text-2xl font-extrabold text-[#ff8c3a]">
-                            €{t.basePrice}
+                            €{tour.basePrice}
                             <span className="text-base font-semibold text-[#3b4463]">
-                              /person
+                              /{t("person")}
                             </span>
                           </div>
                         </div>
                         {active && (
                           <span className="absolute left-4 top-4 rounded-full bg-[#ffb64d] px-3 py-1 text-sm font-semibold text-white shadow">
-                            Selected
+                            {t("selectedTour")}
                           </span>
                         )}
                       </button>
@@ -580,7 +590,7 @@ export default function Bookings() {
                     onClick={() => setStep(2)}
                     className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold shadow hover:opacity-95"
                   >
-                    Continue
+                    {t("continue")}
                   </button>
                 </div>
               </section>
@@ -591,21 +601,20 @@ export default function Bookings() {
               <section className="grid gap-10 md:grid-cols-2">
                 <div>
                   <h2 className="text-3xl font-extrabold text-[#101651]">
-                    Customize Your Experience
+                    {t("customizeYourExperience")}
                   </h2>
                   <p className="mt-1 text-[#3b4463]">
-                    Personalize your Arctic adventure
+                    {t("personalizeYourAdventure")}
                   </p>
 
                   <div className="mt-6 space-y-6">
                     <div>
-                      
                       <div className="mb-6">
                         <label
                           className="mb-2 block text-sm font-semibold"
                           style={{ color: colors.navy }}
                         >
-                          Select Date
+                          {t("chooseDate")}
                         </label>
                         <AvailabilityCalendar
                           packageId={selectedTour!.id}
@@ -621,14 +630,21 @@ export default function Bookings() {
 
                     <div>
                       <label className="block text-sm font-semibold text-[#101651]">
-                        Select Start Time
+                        {t("chooseTime")}
                       </label>
                       <select
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
                         className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
                       >
-                        {["09:00", "10:00", "12:00", "14:00", "15:00", "16:00"].map((t) => (
+                        {[
+                          "09:00",
+                          "10:00",
+                          "12:00",
+                          "14:00",
+                          "15:00",
+                          "16:00",
+                        ].map((t) => (
                           <option key={t} value={t}>
                             {t}
                           </option>
@@ -638,7 +654,7 @@ export default function Bookings() {
 
                     <div>
                       <label className="block text-sm font-semibold text-[#101651]">
-                        Number of Participants
+                        {t("numberOfParticipants")}
                       </label>
 
                       <div className="mt-2 flex items-center gap-3">
@@ -665,7 +681,7 @@ export default function Bookings() {
                     {/* Gear Size Selection for Each Participant */}
                     <div className="mt-6">
                       <h4 className="text-lg font-semibold text-[#101651] mb-4">
-                        Gear Sizes for Each Participant
+                        {t("gearSizes")}
                       </h4>
                       <div className="space-y-6">
                         {Array.from({ length: participants }, (_, i) => (
@@ -676,7 +692,7 @@ export default function Bookings() {
                             {/* Participant Name Input */}
                             <div className="mb-4">
                               <label className="block text-sm font-medium text-[#101651] mb-2">
-                                Participant {i + 1} Name:
+                                {t("participant")} {i + 1} {t("name")}:
                               </label>
                               <input
                                 type="text"
@@ -684,20 +700,20 @@ export default function Bookings() {
                                 onChange={(e) =>
                                   updateParticipantName(i + 1, e.target.value)
                                 }
-                                placeholder={`Enter name for participant ${i + 1}`}
+                                placeholder={`${t("enterNameFor")} ${t("participant").toLowerCase()} ${i + 1}`}
                                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
                                 required
                               />
                             </div>
 
                             <h6 className="text-sm font-medium text-gray-600 mb-3">
-                              Gear Sizes:
+                              {t("gearSizes")}:
                             </h6>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                               {/* Overall Size */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Overalls
+                                  {t("overalls")}
                                 </label>
                                 <select
                                   value={
@@ -725,7 +741,7 @@ export default function Bookings() {
                               {/* Boots Size */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Boots
+                                  {t("boots")}
                                 </label>
                                 <select
                                   value={
@@ -753,7 +769,7 @@ export default function Bookings() {
                               {/* Gloves Size */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Gloves
+                                  {t("gloves")}
                                 </label>
                                 <select
                                   value={
@@ -781,7 +797,7 @@ export default function Bookings() {
                               {/* Helmet Size */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Helmet
+                                  {t("helmet")}
                                 </label>
                                 <select
                                   value={
@@ -815,10 +831,10 @@ export default function Bookings() {
 
                 <div>
                   <h2 className="text-3xl font-extrabold text-[#101651]">
-                    Add-Ons and Summary
+                    {t("addonsAndSummary")}
                   </h2>
                   <p className="mt-1 text-[#3b4463]">
-                    Enhance your experience with our optional add-ons
+                    {t("enhanceYourExperience")}
                   </p>
 
                   {/* Add-ons Section */}
@@ -833,9 +849,11 @@ export default function Bookings() {
                         }`}
                         onClick={() => toggleAddon(addon.id)}
                       >
-                        <h4 className="font-semibold">{addon.title}</h4>
+                        <h4 className="font-semibold">
+                          {t(`addon_${addon.id}_title`)}
+                        </h4>
                         <p className="text-sm text-gray-600 mb-2">
-                          {addon.desc}
+                          {t(`addon_${addon.id}_desc`)}
                         </p>
                         <div
                           className="text-lg font-bold"
@@ -850,7 +868,7 @@ export default function Bookings() {
                   {/* Summary Section */}
                   <div className="bg-gray-50 rounded-lg p-6 mt-6">
                     <div className="flex justify-between items-center text-xl font-bold">
-                      <span>Total:</span>
+                      <span>{t("total")}:</span>
                       <span style={{ color: "#0070f3" }}>€{total}</span>
                     </div>
                   </div>
@@ -860,14 +878,14 @@ export default function Bookings() {
                       onClick={() => setStep(1)}
                       className="flex-1 py-3 rounded-md border border-gray-300 font-semibold hover:bg-gray-50"
                     >
-                      ← Back
+                      ← {t("back")}
                     </button>
                     <button
                       onClick={() => setStep(3)}
                       className="flex-1 py-3 rounded-md text-white font-semibold transition-opacity hover:opacity-90"
                       style={{ backgroundColor: "#0070f3" }}
                     >
-                      Confirm & Continue →
+                      {t("confirmAndContinue")} →
                     </button>
                   </div>
                 </div>
@@ -878,21 +896,21 @@ export default function Bookings() {
             {step === 3 && (
               <section>
                 <h2 className="text-3xl font-extrabold text-[#101651]">
-                  Confirm Your Booking
+                  {t("confirmYourBooking")}
                 </h2>
                 <p className="mt-1 text-[#3b4463]">
-                  Please review your booking details and confirm
+                  {t("reviewBookingDetails")}
                 </p>
 
                 {/* Contact Information */}
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">
-                    Contact Information
+                    {t("contactInformation")}
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <input
                       type="text"
-                      placeholder="Full Name"
+                      placeholder={t("fullName")}
                       value={customerInfo.name}
                       onChange={(e) =>
                         setCustomerInfo({
@@ -905,7 +923,7 @@ export default function Bookings() {
                     />
                     <input
                       type="email"
-                      placeholder="Email Address"
+                      placeholder={t("emailAddress")}
                       value={customerInfo.email}
                       onChange={(e) =>
                         setCustomerInfo({
@@ -918,7 +936,7 @@ export default function Bookings() {
                     />
                     <input
                       type="tel"
-                      placeholder="Phone Number"
+                      placeholder={t("phoneNumber")}
                       value={customerInfo.phone}
                       onChange={(e) =>
                         setCustomerInfo({
@@ -1026,7 +1044,7 @@ export default function Bookings() {
                 {/* Add-ons Summary */}
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">
-                    Optional Add-ons
+                    {t("optionalAddons")}
                   </h3>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {ADDONS.map((addon) => (
@@ -1039,9 +1057,11 @@ export default function Bookings() {
                         }`}
                         onClick={() => toggleAddon(addon.id)}
                       >
-                        <h4 className="font-semibold">{addon.title}</h4>
+                        <h4 className="font-semibold">
+                          {t(`addon_${addon.id}_title`)}
+                        </h4>
                         <p className="text-sm text-gray-600 mb-2">
-                          {addon.desc}
+                          {t(`addon_${addon.id}_desc`)}
                         </p>
                         <div
                           className="text-lg font-bold"
@@ -1057,7 +1077,7 @@ export default function Bookings() {
                 {/* Summary & Submit */}
                 <div className="bg-gray-50 rounded-lg p-6 mt-6">
                   <div className="flex justify-between items-center text-xl font-bold">
-                    <span>Total:</span>
+                    <span>{t("total")}:</span>
                     <span style={{ color: "#0070f3" }}>€{total}</span>
                   </div>
                 </div>
@@ -1067,7 +1087,7 @@ export default function Bookings() {
                     onClick={() => setStep(2)}
                     className="flex-1 py-3 rounded-md border border-gray-300 font-semibold hover:bg-gray-50"
                   >
-                    ← Back
+                    ← {t("back")}
                   </button>
                   <button
                     onClick={() => {
@@ -1077,20 +1097,29 @@ export default function Bookings() {
                         return;
                       }
                       if (!date || !time) {
-                        alert("Please select a date and time from the calendar");
+                        alert(
+                          "Please select a date and time from the calendar"
+                        );
                         return;
                       }
                       if (!validateGearSizes()) {
-                        alert("Please complete all participant details and gear sizes");
+                        alert(
+                          "Please complete all participant details and gear sizes"
+                        );
                         return;
                       }
 
-                      console.log("Opening payment with date:", date, "time:", time);
+                      console.log(
+                        "Opening payment with date:",
+                        date,
+                        "time:",
+                        time
+                      );
                       setShowPayment(true);
                     }}
                     className="w-full rounded-lg bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-8 py-4 text-lg font-bold text-white transition-all hover:opacity-90"
                   >
-                    Confirm Booking
+                    {t("confirmBooking")}
                   </button>
                 </div>
 
@@ -1114,12 +1143,10 @@ export default function Bookings() {
                 className="text-3xl font-bold mb-4"
                 style={{ color: colors.navy }}
               >
-                Rent a Snowmobile for Your Private Adventure
+                {t("rentSnowmobileTitle")}
               </h2>
               <p className="mb-6" style={{ color: colors.darkGray }}>
-                Explore the Arctic wilderness at your own pace. Our snowmobiles
-                are perfect for experienced riders who want the freedom to
-                create their own adventure.
+                {t("rentSnowmobileDescription")}
               </p>
 
               <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -1149,11 +1176,10 @@ export default function Bookings() {
                       className="font-bold mb-1"
                       style={{ color: colors.navy }}
                     >
-                      Flexible Duration
+                      {t("flexibleDuration")}
                     </h3>
                     <p className="text-sm" style={{ color: colors.darkGray }}>
-                      Rent by the hour - perfect for short trips or full-day
-                      adventures
+                      {t("flexibleDurationDesc")}
                     </p>
                   </div>
                 </div>
@@ -1183,10 +1209,10 @@ export default function Bookings() {
                       className="font-bold mb-1"
                       style={{ color: colors.navy }}
                     >
-                      Quality Equipment
+                      {t("qualityEquipment")}
                     </h3>
                     <p className="text-sm" style={{ color: colors.darkGray }}>
-                      Well-maintained modern snowmobiles
+                      {t("qualityEquipmentDesc")}
                     </p>
                   </div>
                 </div>
@@ -1216,10 +1242,10 @@ export default function Bookings() {
                       className="font-bold mb-1"
                       style={{ color: colors.navy }}
                     >
-                      From €50/hour
+                      {t("from50PerHour")}
                     </h3>
                     <p className="text-sm" style={{ color: colors.darkGray }}>
-                      Competitive pricing for premium snowmobiles
+                      {t("competitivePricing")}
                     </p>
                   </div>
                 </div>
@@ -1249,10 +1275,10 @@ export default function Bookings() {
                       className="font-bold mb-1"
                       style={{ color: colors.navy }}
                     >
-                      Safety First
+                      {t("safetyFirst")}
                     </h3>
                     <p className="text-sm" style={{ color: colors.darkGray }}>
-                      All necessary safety gear included
+                      {t("safetyFirstDesc")}
                     </p>
                   </div>
                 </div>
@@ -1266,8 +1292,7 @@ export default function Bookings() {
                 }}
               >
                 <p className="text-sm" style={{ color: colors.darkGray }}>
-                  <strong>Note:</strong> Valid driver's license required.
-                  Experience with snowmobiles recommended.
+                  <strong>{t("note")}:</strong> {t("driverLicenseRequired")}
                 </p>
               </div>
 
@@ -1276,7 +1301,7 @@ export default function Bookings() {
                 className="inline-block px-8 py-3 rounded-md text-white transition-opacity hover:opacity-90 font-semibold text-lg"
                 style={{ backgroundColor: colors.navy }}
               >
-                Check Availability & Book
+                {t("checkAvailability")}
               </Link>
             </div>
           </div>

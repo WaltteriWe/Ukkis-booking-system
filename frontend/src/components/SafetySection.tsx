@@ -1,25 +1,27 @@
+"use client";
+
 import { colors } from "@/lib/constants";
 import { Shield, Star, Wrench } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const SafetySection = () => {
+  const { t } = useLanguage();
+
   const features = [
     {
       icon: Star,
-      title: "Certified Guides",
-      description:
-        "All guides are certified professionals with extensive Arctic experience",
+      title: t("certifiedGuides"),
+      description: t("certifiedGuidesDesc"),
     },
     {
       icon: Wrench,
-      title: "Premium Equipment",
-      description:
-        "Top-quality vehicles and safety gear maintained to the highest standards",
+      title: t("premiumEquipment"),
+      description: t("premiumEquipmentDesc"),
     },
     {
       icon: Shield,
-      title: "Emergency Prepared",
-      description:
-        "Comprehensive emergency protocols and wilderness first aid training",
+      title: t("emergencyPrepared"),
+      description: t("emergencyPreparedDesc"),
     },
   ];
 
@@ -35,16 +37,13 @@ const SafetySection = () => {
               className="text-4xl font-bold mb-6"
               style={{ color: colors.teal }}
             >
-              Safety & Professionalism First
+              {t("safetyTitle")}
             </h2>
             <p
               className="text-lg mb-8 leading-relaxed"
               style={{ color: colors.darkGray }}
             >
-              Your safety is our top priority. Every adventure begins with
-              comprehensive safety briefings and equipment checks. Our certified
-              guides have years of Arctic experience and are trained in
-              wilderness first aid.
+              {t("safetyText1")}
             </p>
 
             <div className="space-y-6">

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 import { StarryBackground } from "@/components/StarryBackground";
 
@@ -38,14 +39,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          <StarryBackground />
-          <Navigation />
-          <main className="container mx-auto px-6 py-8">
-            {children}
-            <Footer />
-          </main>
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <StarryBackground />
+            <Navigation />
+            <main className="container mx-auto px-6 py-8">
+              {children}
+              <Footer />
+            </main>
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

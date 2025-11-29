@@ -5,12 +5,15 @@ import { colors, routes } from "@/lib/constants";
 import { cn, getHoverColorProps } from "@/lib/utils";
 import Image from "next/image";
 import ThemeToggle from "./ThemeToggle";
+import LanguageToggle from "./LanguageToggle";
+import { useLanguage } from "@/context/LanguageContext";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
   const [darkMode] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -48,35 +51,37 @@ export function Navigation() {
               href={routes.home}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
-              Home
+              {t("home")}
             </Link>
             <Link
               href={routes.bookings + "?tab=safari"}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
-              Safari Tours
+              {t("safariTours")}
             </Link>
             <Link
               href={routes.bookings + "?tab=rental"}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
-              Snowmobile Rental
+              {t("snowmobileRental")}
             </Link>
             <Link
               href={routes.contact}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
-              Contact Us
+              {t("contactUs")}
             </Link>
           </div>
         </div>
-        {/* Right side: Theme Toggle (desktop only) */}
+        {/* Right side: Language Toggle and Theme Toggle (desktop only) */}
         <div className={cn("hidden md:flex items-center space-x-4")}>
+          <LanguageToggle />
           <ThemeToggle />
         </div>
 
-        {/* Mobile Hamburger Menu (includes mobile ThemeToggle) */}
+        {/* Mobile Hamburger Menu (includes mobile LanguageToggle and ThemeToggle) */}
         <div className="md:hidden flex items-center">
+          <LanguageToggle />
           <ThemeToggle />
           <button
             aria-label="Toggle Menu"
@@ -101,7 +106,9 @@ export function Navigation() {
       <div
         className={cn(
           "fixed inset-0 z-40 transition-opacity duration-200",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         )}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
@@ -119,26 +126,53 @@ export function Navigation() {
       >
         <div className="container mx-auto px-4 py-6 md:px-6">
           <div className="flex items-center justify-between">
-            <Link href={routes.home} className="text-lg font-semibold text-navy dark:text-white">
+            <Link
+              href={routes.home}
+              className="text-lg font-semibold text-navy dark:text-white"
+            >
               Ukkohalla Safaris and Adventures
             </Link>
-            <button onClick={() => setOpen(false)} aria-label="Close menu" className="p-2">
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close menu"
+              className="p-2"
+            >
               <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
             </button>
           </div>
 
           <nav className="mt-6 space-y-4">
-            <Link href={routes.home} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Home
+            <Link
+              href={routes.home}
+              onClick={() => setOpen(false)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
+              className="block text-lg"
+            >
+              {t("home")}
             </Link>
-            <Link href={routes.bookings + "?tab=safari"} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Safari Tours
+            <Link
+              href={routes.bookings + "?tab=safari"}
+              onClick={() => setOpen(false)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
+              className="block text-lg"
+            >
+              {t("safariTours")}
             </Link>
-            <Link href={routes.bookings + "?tab=rental"} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Snowmobile Rental
+            <Link
+              href={routes.bookings + "?tab=rental"}
+              onClick={() => setOpen(false)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
+              className="block text-lg"
+            >
+              {t("snowmobileRental")}
             </Link>
-            <Link href={routes.contact} onClick={() => setOpen(false)} {...getHoverColorProps(colors.navy, colors.pink)} className="block text-lg">
-              Contact Us
+            <Link
+              href={routes.contact}
+              onClick={() => setOpen(false)}
+              {...getHoverColorProps(colors.navy, colors.pink)}
+              className="block text-lg"
+            >
+              {t("contactUs")}
             </Link>
           </nav>
         </div>
@@ -146,4 +180,3 @@ export function Navigation() {
     </nav>
   );
 }
-

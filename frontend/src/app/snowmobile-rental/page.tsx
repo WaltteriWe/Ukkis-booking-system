@@ -1,33 +1,41 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
-import { getAvailableSnowmobiles, createSnowmobileRental, sendConfirmationEmail } from '@/lib/api';
-import { colors } from '@/lib/constants';
+import {
+  getAvailableSnowmobiles,
+  createSnowmobileRental,
+  sendConfirmationEmail,
+} from "@/lib/api";
+import { colors } from "@/lib/constants";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function SnowmobileRentalPage() {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState('10:00');
-  const [endTime, setEndTime] = useState('12:00');
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("12:00");
   const [availableSnowmobiles, setAvailableSnowmobiles] = useState<any[]>([]);
-  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(null);
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(
+    null
+  );
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   const HOURLY_RATE = 50; // €50 per hour
 
   async function checkAvailability() {
     if (!selectedDate || !startTime || !endTime) {
-      alert('Please select date, start time and end time');
+      alert("Please select date, start time and end time");
       return;
     }
 
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
     const startDateTime = `${dateStr}T${startTime}:00`;
     const endDateTime = `${dateStr}T${endTime}:00`;
 
@@ -35,18 +43,21 @@ export default function SnowmobileRentalPage() {
     const end = new Date(endDateTime);
 
     if (end <= start) {
-      alert('End time must be after start time');
+      alert("End time must be after start time");
       return;
     }
 
     setLoading(true);
     try {
-      const available = await getAvailableSnowmobiles(start.toISOString(), end.toISOString());
+      const available = await getAvailableSnowmobiles(
+        start.toISOString(),
+        end.toISOString()
+      );
       setAvailableSnowmobiles(available);
       setStep(2);
     } catch (error) {
       console.error(error);
-      alert('Failed to check availability');
+      alert("Failed to check availability");
     } finally {
       setLoading(false);
     }
@@ -54,26 +65,26 @@ export default function SnowmobileRentalPage() {
 
   function calculateTotal() {
     if (!startTime || !endTime) return 0;
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    const hours = (endHour + endMin/60) - (startHour + startMin/60);
+    const [startHour, startMin] = startTime.split(":").map(Number);
+    const [endHour, endMin] = endTime.split(":").map(Number);
+    const hours = endHour + endMin / 60 - (startHour + startMin / 60);
     return Math.ceil(hours) * HOURLY_RATE;
   }
 
   async function handleBooking(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!selectedSnowmobile || !selectedDate) {
-      alert('Please select a snowmobile and date');
+      alert("Please select a snowmobile and date");
       return;
     }
 
     setLoading(true);
     try {
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
       const startDateTime = `${dateStr}T${startTime}:00`;
       const endDateTime = `${dateStr}T${endTime}:00`;
-      
+
       const startTimeISO = new Date(startDateTime).toISOString();
       const endTimeISO = new Date(endDateTime).toISOString();
 
@@ -92,7 +103,7 @@ export default function SnowmobileRentalPage() {
         await sendConfirmationEmail({
           email: guestEmail,
           name: guestName,
-          tour: `Snowmobile Rental - ${availableSnowmobiles.find(sm => sm.id === selectedSnowmobile)?.name || 'Snowmobile'}`,
+          tour: `Snowmobile Rental - ${availableSnowmobiles.find((sm) => sm.id === selectedSnowmobile)?.name || "Snowmobile"}`,
           date: format(selectedDate, "MMMM d, yyyy"),
           time: `${startTime} - ${endTime}`,
           participants: 1,
@@ -100,21 +111,21 @@ export default function SnowmobileRentalPage() {
           bookingId: rental.id.toString(),
         });
       } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
+        console.error("Failed to send confirmation email:", emailError);
       }
 
-      alert('Booking confirmed! Check your email for details.');
+      alert("Booking confirmed! Check your email for details.");
       setStep(1);
       setSelectedDate(undefined);
-      setStartTime('10:00');
-      setEndTime('12:00');
+      setStartTime("10:00");
+      setEndTime("12:00");
       setSelectedSnowmobile(null);
-      setGuestName('');
-      setGuestEmail('');
-      setPhone('');
+      setGuestName("");
+      setGuestEmail("");
+      setPhone("");
     } catch (error) {
       console.error(error);
-      alert('Booking failed. Please try again.');
+      alert("Booking failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -122,24 +133,40 @@ export default function SnowmobileRentalPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: colors.beige }}>
-      <header className="text-white py-12" style={{ backgroundColor: colors.navy }}>
+      <header
+        className="text-white py-12"
+        style={{ backgroundColor: colors.navy }}
+      >
         <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-2">Snowmobile Rental</h1>
-          <p className="text-lg text-gray-300">Book a snowmobile for your private adventure</p>
+          <h1 className="text-4xl font-bold mb-2">
+            {t("snowmobileRentalPageTitle")}
+          </h1>
+          <p className="text-lg text-gray-300">
+            {t("snowmobileRentalPageSubtitle")}
+          </p>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
         {step === 1 && (
-          <div className="rounded-lg shadow-md p-8" style={{ backgroundColor: colors.white }}>
-            <h2 className="text-2xl font-bold mb-6" style={{ color: colors.navy }}>
-              Check Availability
+          <div
+            className="rounded-lg shadow-md p-8"
+            style={{ backgroundColor: colors.white }}
+          >
+            <h2
+              className="text-2xl font-bold mb-6"
+              style={{ color: colors.navy }}
+            >
+              {t("checkAvailabilityButton")}
             </h2>
-            
+
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                  Select Date
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: colors.darkGray }}
+                >
+                  {t("selectDateLabel")}
                 </label>
                 <div className="border rounded-lg p-4 bg-white">
                   <DayPicker
@@ -152,15 +179,18 @@ export default function SnowmobileRentalPage() {
                 </div>
                 {selectedDate && (
                   <p className="text-sm text-gray-600 mt-2">
-                    Selected: {format(selectedDate, "MMMM d, yyyy")}
+                    {t("selectedDate")}: {format(selectedDate, "MMMM d, yyyy")}
                   </p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                    Start Time
+                  <label
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: colors.darkGray }}
+                  >
+                    {t("startTimeLabel")}
                   </label>
                   <select
                     value={startTime}
@@ -168,17 +198,23 @@ export default function SnowmobileRentalPage() {
                     className="w-full p-3 border border-gray-300 rounded-md"
                     style={{ color: colors.darkGray }}
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
-                      <option key={hour} value={`${hour.toString().padStart(2, '0')}:00`}>
-                        {`${hour.toString().padStart(2, '0')}:00`}
+                    {Array.from({ length: 12 }, (_, i) => i + 8).map((hour) => (
+                      <option
+                        key={hour}
+                        value={`${hour.toString().padStart(2, "0")}:00`}
+                      >
+                        {`${hour.toString().padStart(2, "0")}:00`}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                    End Time
+                  <label
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: colors.darkGray }}
+                  >
+                    {t("endTimeLabel")}
                   </label>
                   <select
                     value={endTime}
@@ -186,9 +222,12 @@ export default function SnowmobileRentalPage() {
                     className="w-full p-3 border border-gray-300 rounded-md"
                     style={{ color: colors.darkGray }}
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
-                      <option key={hour} value={`${hour.toString().padStart(2, '0')}:00`}>
-                        {`${hour.toString().padStart(2, '0')}:00`}
+                    {Array.from({ length: 12 }, (_, i) => i + 8).map((hour) => (
+                      <option
+                        key={hour}
+                        value={`${hour.toString().padStart(2, "0")}:00`}
+                      >
+                        {`${hour.toString().padStart(2, "0")}:00`}
                       </option>
                     ))}
                   </select>
@@ -196,12 +235,19 @@ export default function SnowmobileRentalPage() {
               </div>
 
               {selectedDate && startTime && endTime && (
-                <div className="p-4 rounded-md" style={{ backgroundColor: `${colors.teal}20` }}>
+                <div
+                  className="p-4 rounded-md"
+                  style={{ backgroundColor: `${colors.teal}20` }}
+                >
                   <p className="text-sm" style={{ color: colors.darkGray }}>
-                    Duration: {Math.ceil(calculateTotal() / HOURLY_RATE)} hours
+                    {t("durationLabel")}:{" "}
+                    {Math.ceil(calculateTotal() / HOURLY_RATE)} {t("hours")}
                   </p>
-                  <p className="text-lg font-bold mt-2" style={{ color: colors.navy }}>
-                    Estimated Total: €{calculateTotal()}
+                  <p
+                    className="text-lg font-bold mt-2"
+                    style={{ color: colors.navy }}
+                  >
+                    {t("estimatedTotal")}: €{calculateTotal()}
                   </p>
                 </div>
               )}
@@ -212,7 +258,7 @@ export default function SnowmobileRentalPage() {
                 className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: colors.navy }}
               >
-                {loading ? 'Checking...' : 'Check Availability'}
+                {loading ? t("checking") : t("checkAvailabilityButton")}
               </button>
             </div>
           </div>
@@ -225,22 +271,31 @@ export default function SnowmobileRentalPage() {
               className="mb-4 hover:underline"
               style={{ color: colors.teal }}
             >
-              ← Back to time selection
+              {t("backToTimeSelection")}
             </button>
 
             {availableSnowmobiles.length === 0 ? (
-              <div className="rounded-lg shadow-md p-8 text-center" style={{ backgroundColor: colors.white }}>
+              <div
+                className="rounded-lg shadow-md p-8 text-center"
+                style={{ backgroundColor: colors.white }}
+              >
                 <p className="text-xl" style={{ color: colors.darkGray }}>
-                  No snowmobiles available for the selected time.
+                  {t("noSnowmobilesAvailable")}
                 </p>
-                <p className="text-sm mt-2" style={{ color: colors.darkGray, opacity: 0.7 }}>
-                  Please try different dates/times.
+                <p
+                  className="text-sm mt-2"
+                  style={{ color: colors.darkGray, opacity: 0.7 }}
+                >
+                  {t("tryDifferentTime")}
                 </p>
               </div>
             ) : (
               <>
-                <h2 className="text-2xl font-bold mb-6" style={{ color: colors.navy }}>
-                  Select a Snowmobile
+                <h2
+                  className="text-2xl font-bold mb-6"
+                  style={{ color: colors.navy }}
+                >
+                  {t("selectASnowmobile")}
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
                   {availableSnowmobiles.map((snowmobile) => (
@@ -249,30 +304,45 @@ export default function SnowmobileRentalPage() {
                       onClick={() => setSelectedSnowmobile(snowmobile.id)}
                       className={`rounded-lg shadow-md p-6 cursor-pointer transition ${
                         selectedSnowmobile === snowmobile.id
-                          ? 'ring-4'
-                          : 'hover:shadow-lg'
+                          ? "ring-4"
+                          : "hover:shadow-lg"
                       }`}
                       style={{
                         backgroundColor: colors.white,
-                        ringColor: selectedSnowmobile === snowmobile.id ? colors.teal : 'transparent'
+                        ringColor:
+                          selectedSnowmobile === snowmobile.id
+                            ? colors.teal
+                            : "transparent",
                       }}
                     >
-                      <h3 className="text-lg font-bold" style={{ color: colors.navy }}>
+                      <h3
+                        className="text-lg font-bold"
+                        style={{ color: colors.navy }}
+                      >
                         {snowmobile.name}
                       </h3>
                       {snowmobile.model && (
-                        <p className="text-sm" style={{ color: colors.darkGray }}>
+                        <p
+                          className="text-sm"
+                          style={{ color: colors.darkGray }}
+                        >
                           {snowmobile.model}
                         </p>
                       )}
                       {snowmobile.year && (
-                        <p className="text-sm" style={{ color: colors.darkGray, opacity: 0.7 }}>
-                          Year: {snowmobile.year}
+                        <p
+                          className="text-sm"
+                          style={{ color: colors.darkGray, opacity: 0.7 }}
+                        >
+                          {t("year")}: {snowmobile.year}
                         </p>
                       )}
                       {snowmobile.licensePlate && (
-                        <p className="text-xs mt-2" style={{ color: colors.darkGray, opacity: 0.5 }}>
-                          Plate: {snowmobile.licensePlate}
+                        <p
+                          className="text-xs mt-2"
+                          style={{ color: colors.darkGray, opacity: 0.5 }}
+                        >
+                          {t("plate")}: {snowmobile.licensePlate}
                         </p>
                       )}
                     </div>
@@ -280,15 +350,25 @@ export default function SnowmobileRentalPage() {
                 </div>
 
                 {selectedSnowmobile && (
-                  <form onSubmit={handleBooking} className="rounded-lg shadow-md p-8" style={{ backgroundColor: colors.white }}>
-                    <h3 className="text-xl font-bold mb-6" style={{ color: colors.navy }}>
-                      Your Details
+                  <form
+                    onSubmit={handleBooking}
+                    className="rounded-lg shadow-md p-8"
+                    style={{ backgroundColor: colors.white }}
+                  >
+                    <h3
+                      className="text-xl font-bold mb-6"
+                      style={{ color: colors.navy }}
+                    >
+                      {t("yourDetails")}
                     </h3>
-                    
+
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                          Name *
+                        <label
+                          className="block text-sm font-medium mb-2"
+                          style={{ color: colors.darkGray }}
+                        >
+                          {t("name")} {t("required")}
                         </label>
                         <input
                           type="text"
@@ -301,8 +381,11 @@ export default function SnowmobileRentalPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                          Email *
+                        <label
+                          className="block text-sm font-medium mb-2"
+                          style={{ color: colors.darkGray }}
+                        >
+                          {t("email")} {t("required")}
                         </label>
                         <input
                           type="email"
@@ -315,8 +398,11 @@ export default function SnowmobileRentalPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.darkGray }}>
-                          Phone
+                        <label
+                          className="block text-sm font-medium mb-2"
+                          style={{ color: colors.darkGray }}
+                        >
+                          {t("phone")}
                         </label>
                         <input
                           type="tel"
@@ -327,9 +413,15 @@ export default function SnowmobileRentalPage() {
                         />
                       </div>
 
-                      <div className="p-4 rounded-md" style={{ backgroundColor: `${colors.teal}20` }}>
-                        <p className="text-lg font-bold" style={{ color: colors.navy }}>
-                          Total: €{calculateTotal()}
+                      <div
+                        className="p-4 rounded-md"
+                        style={{ backgroundColor: `${colors.teal}20` }}
+                      >
+                        <p
+                          className="text-lg font-bold"
+                          style={{ color: colors.navy }}
+                        >
+                          {t("total")}: €{calculateTotal()}
                         </p>
                       </div>
 
@@ -339,7 +431,7 @@ export default function SnowmobileRentalPage() {
                         className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
                         style={{ backgroundColor: colors.navy }}
                       >
-                        {loading ? 'Processing...' : 'Confirm Booking'}
+                        {loading ? t("processing") : t("confirmBooking")}
                       </button>
                     </div>
                   </form>
