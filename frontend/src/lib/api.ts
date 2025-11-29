@@ -35,6 +35,42 @@ export interface EmailConfirmationRequest {
   gearSizes?: Record<string, any>;
 }
 
+function getAuthHeaders() {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+}
+
+// UPDATE these functions to use getAuthHeaders():
+export async function getBookings() {
+  const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+    headers: getAuthHeaders(), // ADD THIS
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch bookings");
+  }
+
+  return response.json();
+}
+
+export async function getPackages(activeOnly = true) {
+  const queryParam = activeOnly ? "?activeOnly=true" : "";
+  const response = await fetch(`${API_BASE_URL}/api/packages${queryParam}`, {
+    headers: activeOnly ? {} : getAuthHeaders(), // Only send token if getting all packages
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch packages");
+  }
+
+  return response.json();
+}
+
 // Booking API calls
 export async function createBooking(data: CreateBookingRequest) {
   const response = await fetch(`${API_BASE_URL}/bookings`, {
