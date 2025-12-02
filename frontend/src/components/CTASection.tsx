@@ -33,21 +33,7 @@ const CTASection = () => {
           >
             {t("ctaButton")}
           </Link>
-          <Link
-            href="/categories"
-            className="border-2 text-white font-bold px-8 py-4 rounded-full text-lg transition-colors"
-            style={{ borderColor: colors.white }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = colors.white;
-              e.currentTarget.style.color = colors.teal;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "white";
-            }}
-          >
-            {t("viewAllTours")}
-          </Link>
+          
         </div>
       </div>
     </div>

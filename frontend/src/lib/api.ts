@@ -1,3 +1,5 @@
+import { get } from "http";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
@@ -45,13 +47,60 @@ function getAuthHeaders() {
   };
 }
 
+// Image upload API calls
+export async function uploadImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+  const response = await fetch(`${API_BASE_URL}/upload/image`, {
+    method: "POST",
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }), // ✅ Only auth header, no Content-Type
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to upload image" }));
+    throw new Error(error.error || "Failed to upload image");
+  }
+
+  return response.json();
+}
+
+export async function deleteImage(filename: string) {
+  const response = await fetch(`${API_BASE_URL}/upload/image/${filename}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete image");
+  }
+
+  return response.json();
+}
+
+export async function getImages() {
+  const response = await fetch(`${API_BASE_URL}/upload/images`);
+
+  if (!response.ok) {
+    throw new Error("Failed to get images");
+  }
+
+  return response.json();
+}
+
 // Booking API calls
 export async function createBooking(data: CreateBookingRequest) {
   const response = await fetch(`${API_BASE_URL}/bookings`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
@@ -83,9 +132,7 @@ export async function updateBookingStatus(
 ) {
   const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ status }),
   });
 
@@ -99,9 +146,7 @@ export async function updateBookingStatus(
 // Package API calls
 export async function getPackages(activeOnly = true) {
   const queryParam = activeOnly ? "?activeOnly=true" : "";
-  const response = await fetch(`${API_BASE_URL}/packages${queryParam}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(`${API_BASE_URL}/packages${queryParam}`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch packages");
@@ -171,9 +216,7 @@ export async function createDeparture(departureData: {
 }) {
   const response = await fetch(`${API_BASE_URL}/departures`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(departureData),
   });
 
@@ -190,9 +233,7 @@ export async function sendConfirmationEmail(
 ) {
   const response = await fetch(`${API_BASE_URL}/send-confirmation`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" }, // ✅ No auth
     body: JSON.stringify(emailData),
   });
 
@@ -219,7 +260,7 @@ export const createPackage = async (packageData: any) => {
 
   const response = await fetch(`${API_BASE_URL}/packages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       name: packageData.name,
       slug: slug,
@@ -235,7 +276,6 @@ export const createPackage = async (packageData: any) => {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Package creation failed:", errorText);
     throw new Error(`Failed to create package: ${errorText}`);
   }
 
@@ -258,9 +298,7 @@ export async function updatePackage(
 ) {
   const response = await fetch(`${API_BASE_URL}/packages/id/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(packageData),
   });
 
@@ -274,6 +312,7 @@ export async function updatePackage(
 export async function deletePackage(id: number) {
   const response = await fetch(`${API_BASE_URL}/packages/id/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -284,48 +323,6 @@ export async function deletePackage(id: number) {
   }
 
   return true;
-}
-
-// Image upload API calls
-export async function uploadImage(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch(`${API_BASE_URL}/upload/image`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: "Failed to upload image" }));
-    throw new Error(error.error || "Failed to upload image");
-  }
-
-  return response.json();
-}
-
-export async function deleteImage(filename: string) {
-  const response = await fetch(`${API_BASE_URL}/upload/image/${filename}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to delete image");
-  }
-
-  return response.json();
-}
-
-export async function getImages() {
-  const response = await fetch(`${API_BASE_URL}/upload/images`);
-
-  if (!response.ok) {
-    throw new Error("Failed to get images");
-  }
-
-  return response.json();
 }
 
 // Stripe Payment Intent
@@ -346,9 +343,7 @@ export async function createPaymentIntent(paymentData: {
 }) {
   const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" }, // ✅ No auth
     body: JSON.stringify(paymentData),
   });
 
@@ -431,7 +426,7 @@ export async function createSnowmobileRental(data: {
 }) {
   const response = await fetch(`${API_BASE_URL}/snowmobile-rentals`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" }, // ✅ No auth
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to create rental");
@@ -446,7 +441,7 @@ export async function createSnowmobile(data: {
 }) {
   const response = await fetch(`${API_BASE_URL}/snowmobiles`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to create snowmobile");
@@ -467,7 +462,7 @@ export async function updateRentalStatus(
     `${API_BASE_URL}/snowmobile-rentals/${id}/status`,
     {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ status }),
     }
   );
@@ -483,7 +478,7 @@ export async function assignSnowmobilesToDeparture(
     `${API_BASE_URL}/departures/${departureId}/snowmobiles`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ snowmobileIds }),
     }
   );
@@ -501,7 +496,9 @@ export async function getSnowmobileAssignments(departureId: number) {
 
 // Contact messages (admin)
 export async function getContactMessages() {
-  const response = await fetch(`${API_BASE_URL}/contact`);
+  const response = await fetch(`${API_BASE_URL}/contact`, {
+    headers: getAuthHeaders(), // ✅ Keep auth — admin only
+  });
   if (!response.ok) throw new Error("Failed to fetch contact messages");
   return response.json();
 }
@@ -509,6 +506,7 @@ export async function getContactMessages() {
 export async function deleteContactMessage(id: number) {
   const response = await fetch(`${API_BASE_URL}/contact/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -524,7 +522,7 @@ export async function sendContactReply(
 ) {
   const response = await fetch(`${API_BASE_URL}/contact/${id}/reply`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 

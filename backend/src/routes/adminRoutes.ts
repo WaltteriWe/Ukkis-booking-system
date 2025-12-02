@@ -1,5 +1,6 @@
-import { FastifyInstance } from "fastify";
-import { registerAdmin, loginAdmin } from "../controllers/adminController";
+import { FastifyInstance  } from "fastify";
+import { loginAdmin, registerAdmin } from "../controllers/adminController";
+
 
 export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/register", async (req, reply) => {
@@ -24,3 +25,5 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 }
+
+  

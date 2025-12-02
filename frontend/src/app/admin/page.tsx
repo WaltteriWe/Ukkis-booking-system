@@ -468,23 +468,29 @@ async function handleCreateDeparture(e: React.FormEvent) {
 }
 
   // Admin auth handlers
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const res = await adminLogin(authEmail, authPassword);
-      if (res.token) {
-        try {
-          localStorage.setItem("adminToken", res.token);
-        } catch {}
-        setAdminToken(res.token);
-      } else {
-        alert(res.message || "Login successful");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Login failed";
-      alert(msg);
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: authEmail, password: authPassword }),
+    });
+
+    const data = await response.json();
+
+    if (data.token) {
+      localStorage.setItem("adminToken", data.token); // ✅ Store the token
+      setAdminToken(data.token); // ✅ Update state
+      setAuthEmail("");
+      setAuthPassword("");
+    } else {
+      setError("No token received");
     }
+  } catch (err) {
+    setError("Login failed");
   }
+};
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();

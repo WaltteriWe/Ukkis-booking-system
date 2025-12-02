@@ -17,8 +17,13 @@ import { requireAuth } from "../middleware/auth";
 async function main() {
   const app = Fastify({ logger: true });
 
+    // Enable CORS
+  await app.register(cors, {
+    origin: "*", // Allow all origins in development
+    credentials: true,
+  });
+
   const protectedRoutes = [
-    "/api/bookings",
     "/api/snowmobiles",
     "/api/departures",
     "/api/contact", // Admin viewing messages
@@ -51,11 +56,7 @@ async function main() {
     }
   );
 
-  // Enable CORS
-  await app.register(cors, {
-    origin: "*", // Allow all origins in development
-    credentials: true,
-  });
+
 
   await app.register(packageRoutes, { prefix: API_PREFIX });
   await app.register(departureRoutes, { prefix: API_PREFIX });

@@ -1,6 +1,9 @@
-import { PrismaClient } from "../../generated/prisma";
+import { Prisma, PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import crypto from "crypto";
+import { FastifyReply, FastifyRequest } from "fastify";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
@@ -22,10 +25,12 @@ function hashPassword(password: string, salt?: string) {
 }
 
 function signToken(adminId: number) {
-  const secret = process.env.ADMIN_TOKEN_SECRET || "dev-admin-secret";
-  const payload = `${adminId}:${Date.now()}`;
-  const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  return `${sig}.${Buffer.from(String(adminId)).toString("base64")}`;
+  const token = jwt.sign(
+    { id: adminId },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' }
+  );
+  return token;
 }
 
 export async function registerAdmin(body: unknown) {
@@ -55,20 +60,30 @@ export async function registerAdmin(body: unknown) {
   }
 }
 
-export async function loginAdmin(body: unknown) {
+export async function loginAdmin(body: any) {
   try {
     const data = loginSchema.parse(body);
 
     const admin = await prisma.admin.findUnique({ where: { email: data.email } });
+
     if (!admin) throw { status: 401, error: "InvalidCredentials" };
+    const { hash } = hashPassword(data.password, admin.passwordSalt)
+    if (hash !== admin.passwordHash) {
+      throw { status: 401, error: "InvalidCredentials" };
+    }
 
-    const { hash } = hashPassword(data.password, admin.passwordSalt);
-    if (hash !== admin.passwordHash) throw { status: 401, error: "InvalidCredentials" };
+    const token = signToken(admin.id)
 
-    const token = signToken(admin.id);
-    return { token };
+    return {
+      success: true,
+      token,
+      admin: {
+        id: admin.id,
+        name: admin.name,
+      },
+    };
   } catch (e: any) {
     if (e?.issues) throw { status: 400, error: e.issues };
     throw e;
-  }
+    }
 }

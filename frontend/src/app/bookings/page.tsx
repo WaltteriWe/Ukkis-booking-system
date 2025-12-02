@@ -258,8 +258,7 @@ export default function Bookings() {
       });
 
       console.log("Starting booking process...");
-      console.log("Customer info:", customerInfo);
-      console.log("Selected tour:", selectedTour);
+      
 
       // Generate booking ID
       const bookingId = `UK${Date.now().toString().slice(-6)}`;
@@ -276,12 +275,11 @@ export default function Bookings() {
         participantGearSizes: gearSizesForApi,
       };
 
-      console.log("Creating booking with data:", bookingRequest);
       const createdBooking = await createBooking(
         bookingRequest as CreateBookingRequest
+        
       );
-      console.log("✅ Booking created successfully:", createdBooking);
-
+     
       // Send confirmation email
       await sendConfirmationEmail({
         email: customerInfo.email,
