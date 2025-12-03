@@ -24,8 +24,6 @@ async function main() {
   });
 
   const protectedRoutes = [
-    "/api/snowmobiles",
-    "/api/departures",
     "/api/contact", // Admin viewing messages
     "/api/upload",
     "/api/snowmobile-rentals",
