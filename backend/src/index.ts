@@ -23,33 +23,43 @@ async function main() {
     credentials: true,
   });
 
-  const protectedRoutes = [
-    "/api/contact", // Admin viewing messages
-    "/api/upload",
-    "/api/snowmobile-rentals",
-    "/api/reservations",
+  const publicEndpoints = [
+    { method: "GET", path: "/api/packages" }, // Get packages (public)
+    { method: "GET", path: "/api/packages/slug/" }, // Get by slug (public)
+    { method: "GET", path: "/api/departures" }, // Get departures (public)
+    { method: "GET", path: "/api/upload/images" }, // Get images (public)
+    { method: "POST", path: "/api/bookings" }, // Create booking (customer)
+    { method: "POST", path: "/api/contact" }, // Create contact message (customer)
+    { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
+    { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
+    { method: "POST", path: "/api/create-payment-intent" }, // Payment (customer)
+    { method: "GET", path: "/api/snowmobiles" },
+    { method: "POST", path: "/api/admin/register" },
+    { method: "POST", path: "/api/admin/login" },
+    { method: "GET", path: "/api/reservations/" }, // Get availability (public)
   ];
 
-  app.addHook(
+ app.addHook(
     "preHandler",
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const path = request.url.split("?")[0];
+      const urlPath = request.url.split("?")[0];
+      const method = request.method;
 
-      const needsAuth = protectedRoutes.some((route) => path.startsWith(route));
-
-      if (!needsAuth) {
-        return;
-      }
-
-      // special case for GET /api/packages?activeOnly=true being public
-      if (path === "/api/packages" && request.method === "GET") {
-        const params = new URL(request.url, `http://${request.headers.host}`)
-          .searchParams;
-        if (params.get("activeOnly") === "true") {
-          return;
+      // Check if this endpoint is public
+      const isPublic = publicEndpoints.some((endpoint) => {
+        if (endpoint.method !== method) return false;
+        if (endpoint.path.includes("/")) {
+          // For paths with wildcards, check if URL starts with the path
+          return urlPath.startsWith(endpoint.path);
         }
+        return urlPath === endpoint.path;
+      });
+
+      if (isPublic) {
+        return; // Allow public endpoints
       }
 
+      // All other endpoints require auth
       await requireAuth(request, reply);
     }
   );

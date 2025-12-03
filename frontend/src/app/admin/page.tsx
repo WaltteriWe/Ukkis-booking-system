@@ -26,6 +26,7 @@ import {
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
+import { useError } from "@/hooks/useError";
 
 interface Tour {
   id: number;
@@ -468,8 +469,11 @@ async function handleCreateDeparture(e: React.FormEvent) {
 }
 
   // Admin auth handlers
+  const {setError} = useError();
+
  const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
+  setError("");
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
       method: "POST",
@@ -480,8 +484,8 @@ async function handleCreateDeparture(e: React.FormEvent) {
     const data = await response.json();
 
     if (data.token) {
-      localStorage.setItem("adminToken", data.token); // ✅ Store the token
-      setAdminToken(data.token); // ✅ Update state
+      localStorage.setItem("adminToken", data.token); 
+      setAdminToken(data.token); 
       setAuthEmail("");
       setAuthPassword("");
     } else {
