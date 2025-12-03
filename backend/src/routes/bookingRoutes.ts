@@ -1,5 +1,5 @@
 import fastify, { FastifyInstance } from "fastify";
-import { createBooking, getBookings, getBookingById, updateBookingStatus, getAvailability } from "../controllers/bookingController";
+import { createBooking, getBookings, getBookingById, updateBookingStatus, getAvailability, approveBooking, rejectBooking } from "../controllers/bookingController";
 
 export async function bookingRoutes(app: FastifyInstance) {
   app.post("/bookings", async (req, reply) => {
@@ -58,5 +58,28 @@ export async function bookingRoutes(app: FastifyInstance) {
         reply.status(500).send({ error: "Failed to fetch availability" });
     }
 });
+
+  app.put("/bookings/:id/approve", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const data = await approveBooking(Number(id), req.body);
+      return reply.send(data);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  app.put("/bookings/:id/reject", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const data = await rejectBooking(Number(id), req.body);
+      return reply.send(data);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
 }
-  

@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      =env("DATABASE_URL")
 }
 
 model Guest {
@@ -56,6 +56,9 @@ model Booking {
   participants         Int
   totalPrice           Float
   status               String            @default("confirmed")
+  approvalStatus       String            @default("pending")
+  adminMessage         String?
+  rejectionReason      String?
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt

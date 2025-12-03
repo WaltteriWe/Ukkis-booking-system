@@ -2,6 +2,7 @@ import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import { BOOKING_STATUS } from "../../shared/constants";
 import { format } from "date-fns";
+import { sendApprovalEmail, sendRejectionEmail, sendPendingBookingEmail } from "./emailController";
 
 
 const prisma = new PrismaClient();
@@ -20,6 +21,7 @@ const createBookingSchema = z.object({
   packageId: z.number().int().positive(),
   departureId: z.number().int().positive().optional(),
   participants: z.number().int().positive(),
+  totalPrice: z.number().positive().optional(), // Total price from frontend (includes add-ons)
   guestEmail: z.string().email(),
   guestName: z.string().min(1),
   phone: z.string().optional(),
@@ -33,7 +35,7 @@ export async function createBooking(body: unknown) {
     const data = createBookingSchema.parse(body);
     console.log("Validated data:", data);
 
-    return prisma.$transaction(async (tx) => {
+    const booking = await prisma.$transaction(async (tx) => {
         const pkg = await tx.safariPackage.findUnique({
             where: { id: data.packageId }
         });
@@ -45,7 +47,8 @@ export async function createBooking(body: unknown) {
 
         console.log("Package found:", pkg.name);
 
-        const totalPrice = Number(pkg.basePrice) * data.participants;
+        // Use totalPrice from frontend if provided, otherwise calculate from basePrice
+        const totalPrice = data.totalPrice ?? (Number(pkg.basePrice) * data.participants);
 
         const guest = await tx.guest.upsert({
             where: { email: data.guestEmail },
@@ -80,7 +83,8 @@ export async function createBooking(body: unknown) {
             packageId: data.packageId,
             participants: data.participants,
             totalPrice,
-            status: "confirmed",
+            status: "pending", // Changed to pending - requires admin approval
+            approvalStatus: "pending", // Explicitly set approval status
             notes: data.notes ?? null,
             guestEmail: data.guestEmail,
             guestName: data.guestName,
@@ -93,17 +97,20 @@ export async function createBooking(body: unknown) {
             bookingData.departureId = data.departureId;
         }
 
-        const booking = await tx.booking.create({
+        const createdBooking = await tx.booking.create({
             data: bookingData,
+            include: {
+                package: true
+            }
         });
 
-        console.log("Booking created:", booking.id, "for date:", bookingDate);
+        console.log("Booking created:", createdBooking.id, "for date:", bookingDate);
 
         if (data.participantGearSizes) {
             const gearPromises = Object.entries(data.participantGearSizes).map(([participantNum, gear]) =>
                 tx.participantGear.create({
                     data: {
-                        bookingId: booking.id,
+                        bookingId: createdBooking.id,
                         name: gear.name,
                         overalls: gear.overalls,
                         boots: gear.boots,
@@ -117,8 +124,29 @@ export async function createBooking(body: unknown) {
             console.log("Gear sizes saved for", Object.keys(data.participantGearSizes).length, "participants");
         }
 
-        return booking;
+        return createdBooking;
     }, { isolationLevel: "Serializable" });
+
+    // Send pending booking notification email (outside transaction)
+    try {
+        await sendPendingBookingEmail({
+            email: data.guestEmail,
+            name: data.guestName,
+            tour: booking.package?.name || 'Safari Tour',
+            date: booking.bookingDate || 'TBD',
+            time: booking.bookingTime || 'TBD',
+            total: Number(booking.totalPrice),
+            bookingId: String(booking.id),
+            participants: data.participants,
+            participantGearSizes: data.participantGearSizes
+        });
+        console.log(`✅ Pending booking email sent for booking ${booking.id}`);
+    } catch (error) {
+        console.error(`❌ Failed to send pending booking email for booking ${booking.id}:`, error);
+        // Don't throw error - booking is still created even if email fails
+    }
+
+    return booking;
 }
 
 export async function getBookings() {
@@ -253,3 +281,105 @@ export async function getAvailability(packageId: number, month: string) {
     return availability;
 }
 
+const approveBookingSchema = z.object({
+    adminMessage: z.string().optional(),
+});
+
+export async function approveBooking(id: number, body: unknown) {
+    const data = approveBookingSchema.parse(body);
+
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: {
+            package: true,
+            participantGear: true
+        }
+    });
+
+    if (!booking) {
+        throw { status: 404, error: "Booking not found" };
+    }
+
+    const updatedBooking = await prisma.booking.update({
+        where: { id },
+        data: { approvalStatus: "approved" },
+        include: {
+            guest: true,
+            package: true,
+            participantGear: true
+        }
+    });
+
+    // Send approval confirmation email
+    try {
+        await sendApprovalEmail({
+            email: booking.guestEmail,
+            name: booking.guestName,
+            tour: booking.package.name,
+            date: booking.bookingDate || 'TBD',
+            time: booking.bookingTime || 'TBD',
+            total: booking.totalPrice,
+            bookingId: String(booking.id),
+            participants: booking.participants,
+            adminMessage: data.adminMessage,
+            participantGearSizes: booking.participantGearSizes as any || undefined
+        });
+        console.log(`✅ Approval email sent for booking ${id}`);
+    } catch (error) {
+        console.error(`❌ Failed to send approval email for booking ${id}:`, error);
+        // Don't throw error - booking is still approved even if email fails
+    }
+
+    return updatedBooking;
+}
+
+
+const rejectBookingSchema = z.object({
+    rejectionReason: z.string().min(1, 'Rejection reason is required'),
+});
+
+export async function rejectBooking(id: number, body: unknown) {
+    const data = rejectBookingSchema.parse(body);
+
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: {
+            package: true,
+            participantGear: true
+        }
+    });
+
+    if (!booking) {
+        throw { status: 404, error: "Booking not found" };
+    }
+
+    const updatedBooking = await prisma.booking.update({
+        where: { id },
+        data: { 
+            approvalStatus: "rejected",
+            rejectionReason: data.rejectionReason
+        },
+        include: {
+            guest: true,
+            package: true,
+            participantGear: true
+        }
+    });
+
+    // Send rejection email
+    try {
+        await sendRejectionEmail({
+            email: booking.guestEmail,
+            name: booking.guestName,
+            tour: booking.package.name,
+            bookingId: String(booking.id),
+            rejectionReason: data.rejectionReason
+        });
+        console.log(`✅ Rejection email sent for booking ${id}`);
+    } catch (error) {
+        console.error(`❌ Failed to send rejection email for booking ${id}:`, error);
+        // Don't throw error - booking is still rejected even if email fails
+    }
+
+    return updatedBooking;
+}

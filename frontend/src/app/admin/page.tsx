@@ -9,6 +9,8 @@ import {
   deletePackage as apiDeletePackage,
   getBookings,
   updateBookingStatus,
+  approveBooking,
+  rejectBooking,
   adminLogin,
   adminRegister,
   getSingleReservations,
@@ -23,6 +25,19 @@ import {
   sendContactReply,
   createDeparture,
 } from "@/lib/api";
+
+// Helper to get full image URL (backend serves images)
+const getImageUrl = (url?: string) => {
+  if (!url) return undefined;
+  // If already absolute URL, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // If relative URL starting with /uploads, prepend backend base URL
+  if (url.startsWith('/uploads')) {
+    // Backend runs on port 3001
+    return `http://localhost:3001${url}`;
+  }
+  return url;
+};
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
@@ -48,8 +63,13 @@ interface Booking {
   participants: number;
   totalPrice: number | string; // Can be Decimal from Prisma
   status: string;
+  approvalStatus?: string; // pending, approved, rejected
+  adminMessage?: string;
+  rejectionReason?: string;
   notes?: string;
   createdAt: string;
+  bookingDate?: string;
+  bookingTime?: string;
   guest: {
     id: number;
     email: string;
@@ -66,6 +86,11 @@ interface Booking {
       name: string;
       slug: string;
     };
+  };
+  package?: {
+    id: number;
+    name: string;
+    slug: string;
   };
   participantGear?: {
     id: number;
@@ -587,23 +612,64 @@ async function handleCreateDeparture(e: React.FormEvent) {
     setShowCreateForm(true);
   }
 
-  // Flatten participants from
-  //  for the Participants tab
+  // Flatten participants from participantGear for the Participants tab
   const participantsList = bookings.flatMap((b) =>
-  Array.from({ length: b.participants }).map((_, i) => ({
-    bookingId: b.id,
-    guestName: b.guestName || b.guest?.name || 'Unknown',
-    tourName: b.departure?.package?.name || b.package?.name || 'Safari Tour', // Handle null departure
-    date: b.departure?.datetime ? new Date(b.departure.datetime).toLocaleDateString() : 'TBD',
-    participantIndex: i + 1,
-  }))
-);
+    (b.participantGear || []).map((gear, i) => ({
+      id: gear.id,
+      bookingId: b.id,
+      name: gear.name || `Participant ${i + 1}`,
+      boots: gear.boots || "N/A",
+      gloves: gear.gloves || "N/A",
+      helmet: gear.helmet || "N/A",
+      overalls: gear.overalls || "N/A",
+      guestName: b.guest?.name || "Unknown",
+      guestEmail: b.guest?.email || "",
+      packageName: b.departure?.package?.name || "Safari Tour",
+      departureTime: b.departure?.departureTime || "",
+    }))
+  );
 
   // Participants view state: allow filtering by booking and searching by name
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
     null
   );
   const [participantSearch, setParticipantSearch] = useState("");
+
+  // Approval modal state
+  const [approvalModal, setApprovalModal] = useState<{
+    open: boolean;
+    bookingId: number | null;
+    action: 'approve' | 'reject' | null;
+    message: string;
+  }>({ open: false, bookingId: null, action: null, message: '' });
+
+  // Handle approve booking
+  async function handleApprove(bookingId: number) {
+    try {
+      await approveBooking(bookingId, approvalModal.message || undefined);
+      alert('Booking approved successfully! Confirmation email sent to customer.');
+      setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
+      loadData(); // Refresh bookings
+    } catch (error: any) {
+      alert(`Failed to approve booking: ${error.message}`);
+    }
+  }
+
+  // Handle reject booking
+  async function handleReject(bookingId: number) {
+    if (!approvalModal.message.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    try {
+      await rejectBooking(bookingId, approvalModal.message);
+      alert('Booking rejected. Notification email sent to customer.');
+      setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
+      loadData(); // Refresh bookings
+    } catch (error: any) {
+      alert(`Failed to reject booking: ${error.message}`);
+    }
+  }
 
   // If not authenticated, show login/register form
   if (!adminToken) {
@@ -952,7 +1018,7 @@ async function handleCreateDeparture(e: React.FormEvent) {
                   <div className="mt-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={formData.imageUrl}
+                      src={getImageUrl(formData.imageUrl)}
                       alt="Preview"
                       className="h-20 w-20 object-cover rounded"
                     />
@@ -1126,7 +1192,7 @@ async function handleCreateDeparture(e: React.FormEvent) {
                       {tour.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={tour.imageUrl}
+                          src={getImageUrl(tour.imageUrl)}
                           alt={tour.name}
                           className="h-16 w-16 object-cover rounded"
                         />
@@ -1598,25 +1664,25 @@ async function handleCreateDeparture(e: React.FormEvent) {
                       Package
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Departure
+                      Date/Time
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Participants & Gear
+                      Participants
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Total
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
+                      Approval
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Created
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {bookings.map((booking) => (
-                    <tr key={booking.id} className="hover:bg-gray-50">
+                    <tr key={booking.id} className={`hover:bg-gray-50 ${booking.approvalStatus === 'pending' ? 'bg-yellow-50' : ''}`}>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         #{booking.id}
                       </td>
@@ -1639,11 +1705,8 @@ async function handleCreateDeparture(e: React.FormEvent) {
                         {booking.departure?.package?.name || booking.package?.name || 'Safari Tour'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {booking.bookingDate 
-    ? new Date(booking.bookingDate).toLocaleDateString()
-    : booking.departure?.datetime 
-      ? new Date(booking.departure.datetime).toLocaleDateString()
-      : 'TBD'}
+                        <div>{booking.bookingDate || 'TBD'}</div>
+                        <div className="text-xs">{booking.bookingTime || ''}</div>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="font-medium text-gray-900">
@@ -1669,42 +1732,51 @@ async function handleCreateDeparture(e: React.FormEvent) {
                           : Number(booking.totalPrice).toFixed(2)}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={booking.status}
-                          onChange={(e) =>
-                            handleStatusUpdate(
-                              booking.id,
-                              e.target.value as
-                                | "confirmed"
-                                | "pending"
-                                | "cancelled"
-                            )
-                          }
-                          className={`px-3 py-1 text-xs font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 ${
-                            booking.status === "confirmed"
-                              ? "bg-green-100 text-green-800"
-                              : booking.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : booking.status === "cancelled"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          <option value="confirmed">confirmed</option>
-                          <option value="pending">pending</option>
-                          <option value="cancelled">cancelled</option>
-                        </select>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          booking.approvalStatus === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : booking.approvalStatus === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {booking.approvalStatus || 'pending'}
+                        </span>
+                        {booking.rejectionReason && (
+                          <div className="text-xs text-red-600 mt-1" title={booking.rejectionReason}>
+                            {booking.rejectionReason.substring(0, 30)}...
+                          </div>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(booking.createdAt).toLocaleDateString(
-                          "fi-FI",
-                          {
-                            year: "numeric",
-                            month: "numeric",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
+                      <td className="px-6 py-4">
+                        {booking.approvalStatus === 'pending' || !booking.approvalStatus ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setApprovalModal({
+                                open: true,
+                                bookingId: booking.id,
+                                action: 'approve',
+                                message: ''
+                              })}
+                              className="px-3 py-1 text-xs font-semibold rounded bg-green-500 text-white hover:bg-green-600"
+                            >
+                              ✓ Approve
+                            </button>
+                            <button
+                              onClick={() => setApprovalModal({
+                                open: true,
+                                bookingId: booking.id,
+                                action: 'reject',
+                                message: ''
+                              })}
+                              className="px-3 py-1 text-xs font-semibold rounded bg-red-500 text-white hover:bg-red-600"
+                            >
+                              ✗ Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            {new Date(booking.createdAt).toLocaleDateString("fi-FI")}
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -1832,6 +1904,60 @@ async function handleCreateDeparture(e: React.FormEvent) {
           </div>
         )}
       </div>
+
+      {/* Approval/Rejection Modal */}
+      {approvalModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-xl font-bold mb-4">
+              {approvalModal.action === 'approve' ? '✅ Approve Booking' : '❌ Reject Booking'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {approvalModal.action === 'approve' 
+                ? 'You can optionally add a message to the customer with the approval confirmation.'
+                : 'Please provide a reason for rejecting this booking. This will be sent to the customer.'}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                {approvalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+              </label>
+              <textarea
+                value={approvalModal.message}
+                onChange={(e) => setApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                rows={4}
+                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder={approvalModal.action === 'approve' 
+                  ? 'e.g., Looking forward to seeing you!' 
+                  : 'e.g., Sorry, this date is fully booked. Please choose another date.'}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setApprovalModal({ open: false, bookingId: null, action: null, message: '' })}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (approvalModal.action === 'approve' && approvalModal.bookingId) {
+                    handleApprove(approvalModal.bookingId);
+                  } else if (approvalModal.action === 'reject' && approvalModal.bookingId) {
+                    handleReject(approvalModal.bookingId);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  approvalModal.action === 'approve' 
+                    ? 'bg-green-500 hover:bg-green-600' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {approvalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

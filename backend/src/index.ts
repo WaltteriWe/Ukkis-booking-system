@@ -23,6 +23,12 @@ async function main() {
     credentials: true,
   });
 
+  // Serve static files from uploads directory (BEFORE auth hook)
+  await app.register(import("@fastify/static"), {
+    root: path.join(process.cwd(), "uploads"),
+    prefix: "/uploads/",
+  });
+
   const publicEndpoints = [
     { method: "GET", path: "/api/packages" }, // Get packages (public)
     { method: "GET", path: "/api/packages/slug/" }, // Get by slug (public)
@@ -37,6 +43,7 @@ async function main() {
     { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
     { method: "GET", path: "/api/reservations/" }, // Get availability (public)
+    { method: "GET", path: "/uploads/" }, // Static files (images) - public
   ];
 
  app.addHook(
@@ -75,12 +82,6 @@ async function main() {
   await app.register(paymentRoutes, { prefix: API_PREFIX });
   await app.register(adminRoutes, { prefix: API_PREFIX });
   await app.register(rentalRoutes, { prefix: API_PREFIX });
-
-  // Serve static files from uploads directory
-  await app.register(import("@fastify/static"), {
-    root: path.join(__dirname, "../uploads"),
-    prefix: "/uploads/",
-  });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: "0.0.0.0" });

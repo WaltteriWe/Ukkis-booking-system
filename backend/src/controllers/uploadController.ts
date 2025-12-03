@@ -57,12 +57,10 @@ export async function uploadImage(request: FastifyRequest, reply: FastifyReply) 
     const filePath = path.join(uploadsDir, uniqueFilename);
     await fs.writeFile(filePath, buffer);
 
-    // Return file URL with full backend URL
-    const port = process.env.PORT || 3001;
-    const host = process.env.HOST || 'localhost';
-    const fileUrl = `http://${host}:${port}/uploads/images/${uniqueFilename}`;
+    // Return file URL with relative path (works for both http and https)
+    const fileUrl = `/uploads/images/${uniqueFilename}`;
     
-    console.log(`📸 Image uploaded: ${uniqueFilename} (${(buffer.length / 1024).toFixed(2)}KB)`);
+    console.log(`📸 Image uploaded: ${uniqueFilename} (${(buffer.length / 1024).toFixed(2)}KB) - URL: ${fileUrl}`);
 
     return reply.send({
       success: true,

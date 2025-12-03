@@ -17,6 +17,19 @@ import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 
+// Helper to get full image URL (backend serves images)
+const getImageUrl = (url?: string) => {
+  if (!url) return undefined;
+  // If already absolute URL, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // If relative URL starting with /uploads, prepend backend base URL
+  if (url.startsWith('/uploads')) {
+    // Backend runs on port 3001
+    return `http://localhost:3001${url}`;
+  }
+  return url;
+};
+
 // (TabNavigation UI removed - using top navigation links instead)
 
 // YOUR EXACT ORIGINAL CODE BELOW
@@ -268,6 +281,7 @@ export default function Bookings() {
         packageId: selectedTour!.id,
         // No departureId - it's optional
         participants: participants,
+        totalPrice: total, // Include total price with add-ons
         guestEmail: customerInfo.email,
         guestName: customerInfo.name,
         phone: customerInfo.phone,
@@ -280,21 +294,8 @@ export default function Bookings() {
         
       );
      
-      // Send confirmation email
-      await sendConfirmationEmail({
-        email: customerInfo.email,
-        name: customerInfo.name,
-        tour: selectedTour!.name,
-        date: date,
-        time: time,
-        participants: participants,
-        total: total,
-        bookingId: bookingId,
-        phone: customerInfo.phone || "",
-        addons: selectedAddons.map((a) => a.title).join(", ") || "None",
-        gearSizes: gearSizesForApi,
-      });
-      console.log("✅ Confirmation email sent");
+      // Email is sent automatically by the backend (pending booking notification)
+      console.log("✅ Booking created - email sent by backend");
 
       setShowPayment(false);
       setBookingComplete(true);
@@ -534,7 +535,7 @@ export default function Bookings() {
                       >
                         <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
                           <img
-                            src={tour.imageUrl || "/images/atv.jpg"}
+                            src={getImageUrl(tour.imageUrl) || "/images/atv.jpg"}
                             alt={tour.name}
                             className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                           />

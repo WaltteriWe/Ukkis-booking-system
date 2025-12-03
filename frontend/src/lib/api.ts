@@ -7,6 +7,7 @@ export interface CreateBookingRequest {
   packageId: number;
   departureId?: number; // Make optional
   participants: number;
+  totalPrice?: number; // Total price including add-ons
   guestEmail: string;
   guestName: string;
   phone?: string;
@@ -138,6 +139,38 @@ export async function updateBookingStatus(
 
   if (!response.ok) {
     throw new Error("Failed to update booking status");
+  }
+
+  return response.json();
+}
+
+// Approve booking
+export async function approveBooking(id: number, adminMessage?: string) {
+  const response = await fetch(`${API_BASE_URL}/bookings/${id}/approve`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ adminMessage }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to approve booking" }));
+    throw new Error(error.error || "Failed to approve booking");
+  }
+
+  return response.json();
+}
+
+// Reject booking
+export async function rejectBooking(id: number, rejectionReason: string) {
+  const response = await fetch(`${API_BASE_URL}/bookings/${id}/reject`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ rejectionReason }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to reject booking" }));
+    throw new Error(error.error || "Failed to reject booking");
   }
 
   return response.json();
