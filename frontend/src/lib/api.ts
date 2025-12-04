@@ -35,7 +35,16 @@ export interface EmailConfirmationRequest {
   bookingId: string;
   phone?: string;
   addons?: string;
-  gearSizes?: Record<string, any>;
+  gearSizes?: Record<
+    string,
+    {
+      name: string;
+      overalls: string;
+      boots: string;
+      gloves: string;
+      helmet: string;
+    }
+  >;
 }
 
 function getAuthHeaders() {
@@ -281,7 +290,16 @@ export async function sendConfirmationEmail(
 }
 
 // Package management API calls
-export const createPackage = async (packageData: any) => {
+export const createPackage = async (packageData: {
+  name: string;
+  slug?: string;
+  description?: string;
+  basePrice: number;
+  durationMin: number;
+  capacity?: number;
+  difficulty: "Easy" | "Moderate" | "Advanced";
+  imageUrl?: string;
+}) => {
   const baseSlug =
     packageData.slug ||
     packageData.name
@@ -362,6 +380,7 @@ export async function deletePackage(id: number) {
 export async function createPaymentIntent(paymentData: {
   amount: number;
   currency: string;
+  bookingId?: number;
   customer: {
     name: string;
     email: string;
