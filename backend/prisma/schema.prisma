@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Guest {
@@ -128,18 +129,21 @@ model SafariSnowmobileAssignment {
 }
 
 model SnowmobileRental {
-  id           Int        @id @default(autoincrement())
-  snowmobileId Int
-  guestId      Int
-  startTime    DateTime
-  endTime      DateTime
-  totalPrice   Decimal    @db.Decimal(10, 2)
-  status       String     @default("pending")
-  notes        String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  guest        Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
-  snowmobile   Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+  id               Int        @id @default(autoincrement())
+  snowmobileId     Int
+  guestId          Int
+  startTime        DateTime
+  endTime          DateTime
+  totalPrice       Decimal    @db.Decimal(10, 2)
+  status           String     @default("pending")
+  notes            String?
+  approvalStatus   String     @default("pending")
+  adminMessage     String?
+  rejectionReason  String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  guest            Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  snowmobile       Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
 }
 
 model ContactMessage {

@@ -47,7 +47,6 @@ async function main() {
     { method: "GET", path: "/api/snowmobiles" },
     { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
-    { method: "GET", path: "/api/reservations/" }, // Get availability (public)
     { method: "GET", path: "/uploads/" }, // Static files (images) - public
   ];
 

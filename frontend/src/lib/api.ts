@@ -501,7 +501,9 @@ export async function createSnowmobile(data: {
 }
 
 export async function getSingleReservations() {
-  const response = await fetch(`${API_BASE_URL}/reservations`);
+  const response = await fetch(`${API_BASE_URL}/reservations`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw new Error("Failed to fetch single reservations");
   return response.json();
 }
@@ -519,6 +521,38 @@ export async function updateRentalStatus(
     }
   );
   if (!response.ok) throw new Error("Failed to update rental status");
+  return response.json();
+}
+
+export async function approveSnowmobileRental(
+  id: number,
+  adminMessage?: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/snowmobile-rentals/${id}/approve`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ adminMessage: adminMessage || null }),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to approve rental");
+  return response.json();
+}
+
+export async function rejectSnowmobileRental(
+  id: number,
+  rejectionReason: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/snowmobile-rentals/${id}/reject`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ rejectionReason }),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to reject rental");
   return response.json();
 }
 

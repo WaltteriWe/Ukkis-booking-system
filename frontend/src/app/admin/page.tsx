@@ -8,13 +8,12 @@ import {
   uploadImage,
   deletePackage as apiDeletePackage,
   getBookings,
-  updateBookingStatus,
   approveBooking,
   rejectBooking,
-  adminLogin,
   adminRegister,
   getSingleReservations,
-  updateRentalStatus, // Changed from updateSingleReservationStatus
+  approveSnowmobileRental,
+  rejectSnowmobileRental,
   getSnowmobiles,
   getDepartures,
   getContactMessages,
@@ -54,6 +53,35 @@ interface Tour {
   difficulty: "Easy" | "Moderate" | "Advanced";
   imageUrl?: string;
   active: boolean;
+}
+
+interface Snowmobile {
+  id: number;
+  name: string;
+  licensePlate?: string;
+  model?: string;
+  year?: number;
+}
+
+interface Departure {
+  id: number;
+  departureTime: string;
+  capacity: number;
+  reserved: number;
+  package?: {
+    id: number;
+    name: string;
+  };
+}
+
+interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+  repliedAt?: string;
 }
 
 interface Booking {
@@ -109,8 +137,12 @@ interface singleReservations {
   participants: number;
   totalPrice: number | string; // Can be Decimal from Prisma
   status: string;
+  approvalStatus?: string; // pending, approved, rejected
+  rejectionReason?: string;
   notes?: string;
   createdAt: string;
+  startTime: string;
+  endTime: string;
   guest: {
     id: number;
     email: string;
@@ -126,6 +158,10 @@ interface singleReservations {
       name: string;
       slug: string;
     };
+  };
+  snowmobile?: {
+    id: number;
+    name: string;
   };
   participantGear?: {
     id: number;
@@ -180,9 +216,9 @@ export default function AdminPage() {
   // Snowmobile management state
   const [snowmobileAction, setSnowmobileAction] = useState<"" | "add" | "edit" | "view">("");
   const [selectedDeparture, setSelectedDeparture] = useState<number | null>(null);
-  const [snowmobiles, setSnowmobiles] = useState<any[]>([]);
-  const [departures, setDepartures] = useState<any[]>([]);
-  const [contactMessages, setContactMessages] = useState<any[]>([]);
+  const [snowmobiles, setSnowmobiles] = useState<Snowmobile[]>([]);
+  const [departures, setDepartures] = useState<Departure[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   // Reply state for contact messages
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyToEmail, setReplyToEmail] = useState<string>("");
@@ -206,7 +242,6 @@ export default function AdminPage() {
 
   // Date filter state
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [dateString, setDateString] = useState("");
 
   // Load data only when authenticated. Read token from localStorage on mount.
   useEffect(() => {
@@ -263,7 +298,7 @@ export default function AdminPage() {
   }
 
   // Open reply modal and prefill
-  function handleOpenReply(message: any) {
+  function handleOpenReply(message: ContactMessage) {
     setReplyingToId(message.id);
     setReplyToEmail(message.email || "");
     setReplyBody(`Hi ${message.name || ""},\n\n`);
@@ -284,7 +319,7 @@ export default function AdminPage() {
       setReplyBody('');
       // refresh messages
       loadContactMessages();
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Failed to send reply: ${msg}`);
     } finally {
@@ -306,8 +341,8 @@ export default function AdminPage() {
       let reservationsData = [];
       try {
         reservationsData = await getSingleReservations();
-      } catch (error) {
-        console.warn("Single reservations not available yet:", error);
+      } catch (error: unknown) {
+        console.error("Failed to load single reservations:", error);
         // Continue without single reservations
       }
 
@@ -359,43 +394,9 @@ export default function AdminPage() {
     }
   }
 
-  // Handle status update
-  async function handleStatusUpdate(
-    bookingId: number,
-    newStatus: "confirmed" | "pending" | "cancelled"
-  ) {
-    try {
-      await updateBookingStatus(bookingId, newStatus);
-      // Update local state
-      setBookings((prev) =>
-        prev.map((booking) =>
-          booking.id === bookingId ? { ...booking, status: newStatus } : booking
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update status:", error);
-      alert("Failed to update booking status");
-    }
-  }
+  // Note: handleStatusUpdate was removed as it is not used in the component
 
   // Handle reservation status update
-  async function handleReservationStatusUpdate(
-    reservationId: number,
-    newStatus: string
-  ) {
-    try {
-      await updateRentalStatus(reservationId, newStatus);
-      setSingleReservations((prev) =>
-        prev.map((res) =>
-          res.id === reservationId ? { ...res, status: newStatus } : res
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update status:", error);
-      alert("Failed to update reservation status");
-    }
-  }
-
   // Handle file upload
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -412,7 +413,7 @@ export default function AdminPage() {
       }));
 
       alert("Image uploaded successfully!");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Upload failed:", error);
       alert("Failed to upload image");
     }
@@ -431,8 +432,9 @@ export default function AdminPage() {
     setNewSnowmobile({ name: "", licensePlate: "", model: "", year: new Date().getFullYear() });
     setSnowmobileAction("");
     loadSnowmobilesAndDepartures();
-  } catch (error: any) {
-    alert(`Failed to create snowmobile: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    alert(`Failed to create snowmobile: ${msg}`);
   }
 }
 
@@ -440,8 +442,8 @@ async function handleDepartureSelect(departureId: number) {
   setSelectedDeparture(departureId);
   try {
     const assignments = await getSnowmobileAssignments(departureId);
-    setSelectedSnowmobileIds(assignments.map((a: any) => a.snowmobileId));
-  } catch (error) {
+    setSelectedSnowmobileIds(assignments.map((a: { snowmobileId: number }) => a.snowmobileId));
+  } catch (error: unknown) {
     console.error("Failed to load assignments:", error);
     setSelectedSnowmobileIds([]);
   }
@@ -463,8 +465,9 @@ async function handleAssignSnowmobiles() {
   try {
     await assignSnowmobilesToDeparture(selectedDeparture, selectedSnowmobileIds);
     alert("Snowmobiles assigned successfully!");
-  } catch (error: any) {
-    alert(`Failed to assign snowmobiles: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    alert(`Failed to assign snowmobiles: ${msg}`);
   }
 }
 async function handleCreateDeparture(e: React.FormEvent) {
@@ -487,9 +490,10 @@ async function handleCreateDeparture(e: React.FormEvent) {
     setShowDepartureForm(false);
     setSelectedPackageForDeparture(null);
     loadSnowmobilesAndDepartures();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Full error:", error); // Log the full error
-    alert(`Failed to create departure: ${error.message}`);
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    alert(`Failed to create departure: ${msg}`);
   }
 }
 
@@ -516,7 +520,7 @@ async function handleCreateDeparture(e: React.FormEvent) {
     } else {
       setError("No token received");
     }
-  } catch (err) {
+  } catch {
     setError("Login failed");
   }
 };
@@ -643,6 +647,14 @@ async function handleCreateDeparture(e: React.FormEvent) {
     message: string;
   }>({ open: false, bookingId: null, action: null, message: '' });
 
+  // Rental approval modal state
+  const [rentalApprovalModal, setRentalApprovalModal] = useState<{
+    open: boolean;
+    rentalId: number | null;
+    action: 'approve' | 'reject' | null;
+    message: string;
+  }>({ open: false, rentalId: null, action: null, message: '' });
+
   // Handle approve booking
   async function handleApprove(bookingId: number) {
     try {
@@ -650,8 +662,9 @@ async function handleCreateDeparture(e: React.FormEvent) {
       alert('Booking approved successfully! Confirmation email sent to customer.');
       setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
       loadData(); // Refresh bookings
-    } catch (error: any) {
-      alert(`Failed to approve booking: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to approve booking: ${msg}`);
     }
   }
 
@@ -666,8 +679,39 @@ async function handleCreateDeparture(e: React.FormEvent) {
       alert('Booking rejected. Notification email sent to customer.');
       setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
       loadData(); // Refresh bookings
-    } catch (error: any) {
-      alert(`Failed to reject booking: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to reject booking: ${msg}`);
+    }
+  }
+
+  // Handle approve rental
+  async function handleApproveRental(rentalId: number) {
+    try {
+      await approveSnowmobileRental(rentalId, rentalApprovalModal.message || undefined);
+      alert('Rental approved successfully! Confirmation email sent to customer.');
+      setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
+      loadData(); // Refresh rentals
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to approve rental: ${msg}`);
+    }
+  }
+
+  // Handle reject rental
+  async function handleRejectRental(rentalId: number) {
+    if (!rentalApprovalModal.message.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    try {
+      await rejectSnowmobileRental(rentalId, rentalApprovalModal.message);
+      alert('Rental rejected. Notification email sent to customer.');
+      setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
+      loadData(); // Refresh rentals
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to reject rental: ${msg}`);
     }
   }
 
@@ -1106,7 +1150,6 @@ async function handleCreateDeparture(e: React.FormEvent) {
           onSelect={(date) => {
             if (date) {
               setSelectedDate(date);
-              setDateString(format(date, "yyyy-MM-dd"));
               // Update departure time with selected date
               const timeStr = newDeparture.departureTime.split('T')[1] || '10:00';
               setNewDeparture({
@@ -1809,13 +1852,14 @@ async function handleCreateDeparture(e: React.FormEvent) {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approval</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {singleReservations.map((reservation) => (
-                    <tr key={reservation.id} className="hover:bg-gray-50">
+                  {singleReservations.map((reservation: singleReservations) => (
+                    <tr key={reservation.id} className={`hover:bg-gray-50 ${reservation.approvalStatus === 'pending' ? 'bg-yellow-50' : ''}`}>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         #{reservation.id}
                       </td>
@@ -1861,35 +1905,55 @@ async function handleCreateDeparture(e: React.FormEvent) {
                           : Number(reservation.totalPrice).toFixed(2)}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={reservation.status}
-                          onChange={(e) => handleReservationStatusUpdate(reservation.id, e.target.value)}
-                          className={`px-3 py-1 text-xs font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 ${
-                            reservation.status === 'confirmed'
-                              ? 'bg-green-100 text-green-800'
-                              : reservation.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : reservation.status === 'cancelled'
-                                  ? 'bg-red-100 text-red-800'
-                                  : reservation.status === 'completed'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          <option value="pending">pending</option>
-                          <option value="confirmed">confirmed</option>
-                          <option value="completed">completed</option>
-                          <option value="cancelled">cancelled</option>
-                        </select>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          reservation.approvalStatus === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : reservation.approvalStatus === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {reservation.approvalStatus || 'pending'}
+                        </span>
+                        {reservation.rejectionReason && (
+                          <div className="text-xs text-red-600 mt-1" title={reservation.rejectionReason}>
+                            {reservation.rejectionReason.substring(0, 30)}...
+                          </div>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(reservation.createdAt).toLocaleDateString('fi-FI', {
-                          year: 'numeric',
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+
+
+
+                      <td className="px-6 py-4 text-sm">
+                        {reservation.approvalStatus === 'pending' || !reservation.approvalStatus ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setRentalApprovalModal({
+                                open: true,
+                                rentalId: reservation.id,
+                                action: 'approve',
+                                message: ''
+                              })}
+                              className="px-3 py-1 text-xs font-semibold rounded bg-green-500 text-white hover:bg-green-600"
+                            >
+                              ✓ Approve
+                            </button>
+                            <button
+                              onClick={() => setRentalApprovalModal({
+                                open: true,
+                                rentalId: reservation.id,
+                                action: 'reject',
+                                message: ''
+                              })}
+                              className="px-3 py-1 text-xs font-semibold rounded bg-red-500 text-white hover:bg-red-600"
+                            >
+                              ✗ Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            {new Date(reservation.createdAt).toLocaleDateString("fi-FI")}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1953,6 +2017,60 @@ async function handleCreateDeparture(e: React.FormEvent) {
                 }`}
               >
                 {approvalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rental Approval/Rejection Modal */}
+      {rentalApprovalModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-xl font-bold mb-4">
+              {rentalApprovalModal.action === 'approve' ? '✅ Approve Rental' : '❌ Reject Rental'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {rentalApprovalModal.action === 'approve' 
+                ? 'You can optionally add a message to the customer with the approval confirmation.'
+                : 'Please provide a reason for rejecting this rental. This will be sent to the customer.'}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                {rentalApprovalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+              </label>
+              <textarea
+                value={rentalApprovalModal.message}
+                onChange={(e) => setRentalApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                rows={4}
+                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder={rentalApprovalModal.action === 'approve' 
+                  ? 'e.g., Looking forward to seeing you!' 
+                  : 'e.g., Sorry, this snowmobile is not available. Please choose another date.'}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' })}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (rentalApprovalModal.action === 'approve' && rentalApprovalModal.rentalId) {
+                    handleApproveRental(rentalApprovalModal.rentalId);
+                  } else if (rentalApprovalModal.action === 'reject' && rentalApprovalModal.rentalId) {
+                    handleRejectRental(rentalApprovalModal.rentalId);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  rentalApprovalModal.action === 'approve' 
+                    ? 'bg-green-500 hover:bg-green-600' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {rentalApprovalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
               </button>
             </div>
           </div>

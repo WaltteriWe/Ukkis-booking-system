@@ -8,6 +8,8 @@ import {
   updateRentalStatus,
   getSnowmobileAssignments,
   assignSnowmobilesToDeparture,
+  approveSnowmobileRental,
+  rejectSnowmobileRental,
 } from '../controllers/rentalController';
 
 export async function rentalRoutes(app: FastifyInstance) {
@@ -85,6 +87,32 @@ export async function rentalRoutes(app: FastifyInstance) {
     try {
       const { id } = req.params as { id: string };
       const rental = await updateRentalStatus(parseInt(id), req.body);
+      return reply.send(rental);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Approve a snowmobile rental
+  app.post('/snowmobile-rentals/:id/approve', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const rental = await approveSnowmobileRental(parseInt(id), req.body);
+      return reply.send(rental);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Reject a snowmobile rental
+  app.post('/snowmobile-rentals/:id/reject', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const rental = await rejectSnowmobileRental(parseInt(id), req.body);
       return reply.send(rental);
     } catch (e: any) {
       const c = e?.status ?? 500;

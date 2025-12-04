@@ -114,7 +114,7 @@ export default function SnowmobileRentalPage() {
         console.error("Failed to send confirmation email:", emailError);
       }
 
-      alert("Booking confirmed! Check your email for details.");
+      alert("Booking request submitted! Check your email for details.");
       setStep(1);
       setSelectedDate(undefined);
       setStartTime("10:00");

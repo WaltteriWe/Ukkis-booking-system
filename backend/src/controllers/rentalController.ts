@@ -1,5 +1,10 @@
 import { PrismaClient } from '../../generated/prisma';
 import { z } from 'zod';
+import { 
+  sendSnowmobileRentalRequestEmail,
+  sendSnowmobileRentalApprovalEmail,
+  sendSnowmobileRentalRejectionEmail 
+} from './emailController';
 
 const prisma = new PrismaClient();
 
@@ -158,6 +163,118 @@ export async function updateRentalStatus(id: number, body: unknown) {
       guest: true,
     },
   });
+}
+
+export async function approveSnowmobileRental(id: number, body: unknown) {
+  const schema = z.object({
+    adminMessage: z.string().optional().nullable(),
+  });
+
+  const data = schema.parse(body);
+
+  const rental = await prisma.snowmobileRental.update({
+    where: { id },
+    data: {
+      approvalStatus: 'approved',
+      adminMessage: data.adminMessage || null,
+    },
+    include: {
+      snowmobile: true,
+      guest: true,
+    },
+  });
+
+  // Send approval email
+  try {
+    const startTimeStr = rental.startTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const endTimeStr = rental.endTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const dateStr = rental.startTime.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    await sendSnowmobileRentalApprovalEmail({
+      email: rental.guest.email,
+      name: rental.guest.name,
+      snowmobileName: rental.snowmobile.name,
+      date: dateStr,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      total: Number(rental.totalPrice),
+      rentalId: rental.id.toString(),
+      adminMessage: data.adminMessage || undefined,
+    });
+  } catch (emailError) {
+    console.error('Failed to send approval email:', emailError);
+    // Don't throw error, just log it
+  }
+
+  return rental;
+}
+
+export async function rejectSnowmobileRental(id: number, body: unknown) {
+  const schema = z.object({
+    rejectionReason: z.string().min(1),
+  });
+
+  const data = schema.parse(body);
+
+  const rental = await prisma.snowmobileRental.update({
+    where: { id },
+    data: {
+      approvalStatus: 'rejected',
+      rejectionReason: data.rejectionReason,
+    },
+    include: {
+      snowmobile: true,
+      guest: true,
+    },
+  });
+
+  // Send rejection email
+  try {
+    const startTimeStr = rental.startTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const endTimeStr = rental.endTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const dateStr = rental.startTime.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    await sendSnowmobileRentalRejectionEmail({
+      email: rental.guest.email,
+      name: rental.guest.name,
+      snowmobileName: rental.snowmobile.name,
+      date: dateStr,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      total: Number(rental.totalPrice),
+      rentalId: rental.id.toString(),
+      rejectionReason: data.rejectionReason,
+    });
+  } catch (emailError) {
+    console.error('Failed to send rejection email:', emailError);
+    // Don't throw error, just log it
+  }
+
+  return rental;
 }
 
 // Add this function to your existing rentalController.ts
