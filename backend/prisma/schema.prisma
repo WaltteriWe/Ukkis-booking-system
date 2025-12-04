@@ -69,6 +69,9 @@ model Booking {
   phone                String?
   bookingDate          String?
   bookingTime          String?
+  paymentIntentId      String?           @unique
+  paymentStatus        String            @default("pending")
+  paymentMethod        String?
   departure            Departure?        @relation(fields: [departureId], references: [id])
   guest                Guest             @relation(fields: [guestId], references: [id])
   package              SafariPackage     @relation(fields: [packageId], references: [id], onDelete: Cascade)

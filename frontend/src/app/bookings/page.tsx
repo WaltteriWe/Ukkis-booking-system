@@ -14,6 +14,7 @@ import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
+import StripeCheckout from "@/components/StripeCheckout";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -175,6 +176,8 @@ export default function Bookings() {
     >
   >({});
   const [showPayment, setShowPayment] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [currentBookingId, setCurrentBookingId] = useState<number | null>(null);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -260,52 +263,77 @@ export default function Bookings() {
     return true;
   };
 
-  // Place this INSIDE the Bookings component, after validateGearSizes (around line 240):
-
-  const handlePaymentSuccess = async () => {
+  // Create payment intent and show Stripe form
+  const handleProceedToPayment = async () => {
     try {
-      // Convert gear sizes to API format
+      // First, create the booking
       const gearSizesForApi: Record<string, any> = {};
       Object.entries(participantGearSizes).forEach(([key, value]) => {
         gearSizesForApi[key] = value;
       });
 
-      console.log("Starting booking process...");
-      
-
-      // Generate booking ID
-      const bookingId = `UK${Date.now().toString().slice(-6)}`;
-
-      // Create booking WITHOUT departureId (it's optional now)
       const bookingRequest = {
         packageId: selectedTour!.id,
-        // No departureId - it's optional
         participants: participants,
-        totalPrice: total, // Include total price with add-ons
+        totalPrice: total,
         guestEmail: customerInfo.email,
         guestName: customerInfo.name,
         phone: customerInfo.phone,
-        notes: `Date: ${date}, Time: ${time}. Booking ID: ${bookingId}. Add-ons: ${selectedAddons.map((a) => a.title).join(", ")}`,
+        notes: `Date: ${date}, Time: ${time}. Add-ons: ${selectedAddons.map((a) => a.title).join(", ")}`,
         participantGearSizes: gearSizesForApi,
       };
 
       const createdBooking = await createBooking(
         bookingRequest as CreateBookingRequest
-        
       );
-     
-      // Email is sent automatically by the backend (pending booking notification)
-      console.log("✅ Booking created - email sent by backend");
 
+      // Now create payment intent with the booking ID
+      const paymentResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/create-payment-intent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Math.round(total * 100), // Convert to cents
+            currency: "eur",
+            bookingId: createdBooking.id,
+            customer: {
+              name: customerInfo.name,
+              email: customerInfo.email,
+              phone: customerInfo.phone,
+            },
+            booking: {
+              tour: selectedTour!.name,
+              date: date,
+              time: time,
+              participants: participants,
+            },
+          }),
+        }
+      );
+
+      if (!paymentResponse.ok) {
+        throw new Error("Failed to create payment intent");
+      }
+
+      const { client_secret } = await paymentResponse.json();
+      setClientSecret(client_secret);
+      setCurrentBookingId(createdBooking.id);
+      setShowPayment(true);
+    } catch (error) {
+      console.error("❌ Payment setup failed:", error);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      alert(`Payment setup failed: ${errorMsg}`);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      console.log("✅ Payment successful!");
       setShowPayment(false);
       setBookingComplete(true);
     } catch (error) {
-      console.error("❌ Booking process failed:", error);
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      alert(
-        `Booking failed: ${errorMsg}\n\nPlease check the console for details.`
-      );
-      setShowPayment(false);
+      console.error("❌ Post-payment process failed:", error);
     }
   };
 
@@ -1114,7 +1142,7 @@ export default function Bookings() {
                         "time:",
                         time
                       );
-                      setShowPayment(true);
+                      handleProceedToPayment();
                     }}
                     className="w-full rounded-lg bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-8 py-4 text-lg font-bold text-white transition-all hover:opacity-90"
                   >
@@ -1123,8 +1151,24 @@ export default function Bookings() {
                 </div>
 
                 {/* Payment Modal */}
-                {showPayment && (
-                  <DemoPayment total={total} onSuccess={handlePaymentSuccess} />
+                {showPayment && clientSecret && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+                      <h3 className="text-2xl font-bold text-[#101651] mb-6">
+                        Complete Your Payment
+                      </h3>
+                      <StripeCheckout
+                        clientSecret={clientSecret}
+                        onSuccess={handlePaymentSuccess}
+                        onError={(error) => {
+                          console.error("Payment error:", error);
+                          alert(`Payment failed: ${error}`);
+                          setShowPayment(false);
+                        }}
+                        onCancel={() => setShowPayment(false)}
+                      />
+                    </div>
+                  </div>
                 )}
               </section>
             )}
@@ -1320,184 +1364,3 @@ function Row({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function DemoPayment({
-  total,
-  onSuccess,
-}: {
-  total: number;
-  onSuccess: () => void;
-}) {
-  const [processing, setProcessing] = useState(false);
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
-  const [cardName, setCardName] = useState("");
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    if (parts.length) {
-      return parts.join(" ");
-    } else {
-      return value;
-    }
-  };
-
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    if (v.length >= 2) {
-      return v.slice(0, 2) + "/" + v.slice(2, 4);
-    }
-    return v;
-  };
-
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!cardNumber || !cardExpiry || !cardCvc || !cardName) {
-      alert("Please fill in all card details");
-      return;
-    }
-
-    setProcessing(true);
-
-    // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
-      onSuccess();
-    }, 2000);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-        <h3 className="text-2xl font-bold text-[#101651] mb-2">
-          Payment Details
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Complete your booking securely
-        </p>
-
-        <div className="bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] rounded-xl p-6 mb-6 text-white">
-          <div className="text-sm mb-1">Total Amount</div>
-          <div className="text-4xl font-bold">€{total}</div>
-        </div>
-
-        <form onSubmit={handlePayment} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Card Number
-            </label>
-            <input
-              type="text"
-              placeholder="1234 5678 9012 3456"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              maxLength={19}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ffb64d] focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cardholder Name
-            </label>
-            <input
-              type="text"
-              placeholder="John Doe"
-              value={cardName}
-              onChange={(e) => setCardName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ffb64d] focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Expiry Date
-              </label>
-              <input
-                type="text"
-                placeholder="MM/YY"
-                value={cardExpiry}
-                onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                maxLength={5}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ffb64d] focus:border-transparent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                CVC
-              </label>
-              <input
-                type="text"
-                placeholder="123"
-                value={cardCvc}
-                onChange={(e) =>
-                  setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 3))
-                }
-                maxLength={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ffb64d] focus:border-transparent"
-                required
-              />
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-500 text-center mt-4">
-            🔒 This is a demo payment. No real charges will be made.
-          </p>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="flex-1 px-6 py-3 rounded-lg border-2 border-gray-300 font-semibold hover:bg-gray-50 transition"
-              disabled={processing}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={processing}
-              className="flex-1 rounded-lg bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold transition-all hover:opacity-90 disabled:opacity-50"
-            >
-              {processing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Processing...
-                </span>
-              ) : (
-                `Pay €${total}`
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}

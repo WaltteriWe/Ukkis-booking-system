@@ -10,6 +10,7 @@ import { emailRoutes } from "./routes/emailRoutes";
 import { contactRoutes } from "./routes/contactRoutes";
 import { uploadRoutes } from "./routes/uploadRoutes";
 import { paymentRoutes } from "./routes/paymentRoutes";
+import { webhookRoutes } from "./routes/webhookRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
 import { requireAuth } from "../middleware/auth";
@@ -22,6 +23,9 @@ async function main() {
     origin: "*", // Allow all origins in development
     credentials: true,
   });
+
+  // Register webhook routes BEFORE body parsing and auth
+  await app.register(webhookRoutes, { prefix: `${API_PREFIX}/webhook` });
 
   // Serve static files from uploads directory (BEFORE auth hook)
   await app.register(import("@fastify/static"), {
@@ -39,6 +43,7 @@ async function main() {
     { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
     { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
     { method: "POST", path: "/api/create-payment-intent" }, // Payment (customer)
+    { method: "POST", path: "/api/webhook/stripe" }, // Stripe webhook (public)
     { method: "GET", path: "/api/snowmobiles" },
     { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
