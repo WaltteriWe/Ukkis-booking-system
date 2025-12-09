@@ -21,7 +21,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ukkis Safaris",
   description: "Explore the beauty of nature with Ukkis Safaris",
-  viewport: "width=device-width, initial-scale=1",
  
 };
 

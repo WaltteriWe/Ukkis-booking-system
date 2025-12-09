@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   createBooking,
   sendConfirmationEmail,
@@ -133,21 +132,17 @@ const ADDONS: Addon[] = [
 
 export default function Bookings() {
   const { t } = useLanguage();
-  // Add activeTab state at the top
   const [activeTab, setActiveTab] = useState<"safari" | "rental">("safari");
 
-  // Respect `?tab=` query param when present (client-side)
-  const searchParams = useSearchParams();
+  // Handle tab from URL on mount
   useEffect(() => {
-    try {
-      const tab = searchParams?.get?.("tab");
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
       if (tab === "rental") setActiveTab("rental");
       else if (tab === "safari") setActiveTab("safari");
-      // if missing or unknown, keep default
-    } catch (err) {
-      // ignore - fallback to default
     }
-  }, [searchParams]);
+  }, []);
 
   // stepper (1: select, 2: customize, 3: confirm)
   const [step, setStep] = useState<1 | 2 | 3>(1);
