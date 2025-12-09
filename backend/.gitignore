@@ -1,7 +1,30 @@
 node_modules
-# Keep environment variables out of version control
 .env
 
 /generated/prisma
+prisma/migrations
+
+/dist
+*.js
+*.js.map
+!src/**/*.js
+
 /uploads
-*/migrations
+
+/middleware/*.js
+/shared/*.js
+/src/**/*.js
+/src/**/*.js.map
+
+npm-debug.log
+npm-error.log
+.npm
+
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+.DS_Store
+Thumbs.db
