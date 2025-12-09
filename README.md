@@ -1,6 +1,6 @@
 ﻿# Ukkis Snowmobile Safari Reservation System
 
-A comprehensive digital booking platform for Ukkis Hotel, enabling guests to reserve snowmobile safaris and adventure excursions with a full admin management system.
+A comprehensive digital booking platform for Ukkohalla Safaris and adventures, enabling guests to reserve snowmobile safaris and adventure excursions with a full admin management system.
 
 ## Project features
 
@@ -89,5 +89,6 @@ Admin panel uses JWT token-based authentication. Users must login to access admi
 - Mobile app
 
 ## License
+
 
 Private project for Ukkis Hotel.
