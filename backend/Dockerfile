@@ -1,47 +1,41 @@
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# Dependencies for build (dev + prod)
 FROM base AS deps
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
-
-# Install dependencies
 RUN npm ci
 RUN npx prisma generate
 
-# Build the application
+# Build application
 FROM base AS builder
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/generated ./generated
 COPY . .
-
-# Ensure TypeScript is compiled
 RUN npm run build
+RUN npm run postbuild
 
-# Verify the build output exists
-RUN ls -la dist/
+# 🧹 Optional optimization:
+# Remove node_modules from builder — we don't need them anymore
+RUN rm -rf node_modules
 
-# Production image
+# Install prod-only dependencies
+FROM base AS prod-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+RUN npx prisma generate
+
+# Final runtime image
 FROM base AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
 
-# Copy built application
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/generated ./generated
+COPY prisma ./prisma
 
-# Create uploads directory
 RUN mkdir -p /app/uploads
-
 EXPOSE 3001
-
 CMD ["node", "dist/index.js"]
