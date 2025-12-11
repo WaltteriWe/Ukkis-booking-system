@@ -1,5 +1,5 @@
-import 'dotenv/config'
-import { PrismaClient } from "@generated/prisma";
+import "dotenv/config";
+import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 
 const prisma = new PrismaClient();
@@ -15,9 +15,16 @@ export async function listPackages(query: unknown) {
     where,
     orderBy: { name: "asc" },
     select: {
-      id: true, slug: true, name: true, description: true,
-      basePrice: true, durationMin: true, capacity: true,
-      difficulty: true, imageUrl: true, active: true,
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      durationMin: true,
+      capacity: true,
+      difficulty: true,
+      imageUrl: true,
+      active: true,
     },
   });
   return { items };
@@ -30,22 +37,27 @@ export async function getPackageBySlug(params: unknown) {
   const pkg = await prisma.safariPackage.findUnique({
     where: { slug: p.slug },
     select: {
-      id: true, slug: true, name: true, description: true,
-      basePrice: true, durationMin: true, active: true,
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      durationMin: true,
+      active: true,
       departures: {
         where: {
           departureTime: {
-            gte: new Date()
-          }
+            gte: new Date(),
+          },
         },
-        orderBy: { departureTime: 'asc' },
+        orderBy: { departureTime: "asc" },
         select: {
           id: true,
           departureTime: true,
           capacity: true,
-          reserved: true
-        }
-      }
+          reserved: true,
+        },
+      },
     },
   });
   if (!pkg) throw { status: 404, error: "PackageNotFound" };
@@ -56,23 +68,30 @@ export async function getPackageById(id: number) {
   const pkg = await prisma.safariPackage.findUnique({
     where: { id },
     select: {
-      id: true, slug: true, name: true, description: true,
-      basePrice: true, durationMin: true, capacity: true, 
-      difficulty: true, imageUrl: true, active: true,
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      durationMin: true,
+      capacity: true,
+      difficulty: true,
+      imageUrl: true,
+      active: true,
       departures: {
         where: {
           departureTime: {
-            gte: new Date()
-          }
+            gte: new Date(),
+          },
         },
-        orderBy: { departureTime: 'asc' },
+        orderBy: { departureTime: "asc" },
         select: {
           id: true,
           departureTime: true,
           capacity: true,
-          reserved: true
-        }
-      }
+          reserved: true,
+        },
+      },
     },
   });
   if (!pkg) throw { status: 404, error: "PackageNotFound" };

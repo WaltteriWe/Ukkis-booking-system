@@ -1,11 +1,11 @@
-import 'dotenv/config'
-import { PrismaClient } from '@generated/prisma';
-import { z } from 'zod';
-import { 
+import "dotenv/config";
+import { PrismaClient } from "../../generated/prisma";
+import { z } from "zod";
+import {
   sendSnowmobileRentalRequestEmail,
   sendSnowmobileRentalApprovalEmail,
-  sendSnowmobileRentalRejectionEmail 
-} from './emailController';
+  sendSnowmobileRentalRejectionEmail,
+} from "./emailController";
 
 const prisma = new PrismaClient();
 
@@ -23,7 +23,7 @@ const createRentalSchema = z.object({
 export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   // Get all active snowmobiles
   const allSnowmobiles = await prisma.snowmobile.findMany({
-    where: { status: 'available' },
+    where: { status: "available" },
   });
 
   // Get snowmobiles that are already rented during this time
@@ -32,7 +32,7 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
       AND: [
         { startTime: { lt: endTime } },
         { endTime: { gt: startTime } },
-        { status: { in: ['pending', 'confirmed'] } },
+        { status: { in: ["pending", "confirmed"] } },
       ],
     },
     select: { snowmobileId: true },
@@ -45,7 +45,11 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
         AND: [
           { departureTime: { lt: endTime } },
           // Assuming safaris last 2-4 hours, adjust as needed
-          { departureTime: { gt: new Date(startTime.getTime() - 4 * 60 * 60 * 1000) } },
+          {
+            departureTime: {
+              gt: new Date(startTime.getTime() - 4 * 60 * 60 * 1000),
+            },
+          },
         ],
       },
     },
@@ -53,11 +57,11 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   });
 
   const unavailableIds = new Set([
-    ...rentedSnowmobiles.map(r => r.snowmobileId),
-    ...safariAssignments.map(s => s.snowmobileId),
+    ...rentedSnowmobiles.map((r) => r.snowmobileId),
+    ...safariAssignments.map((s) => s.snowmobileId),
   ]);
 
-  return allSnowmobiles.filter(sm => !unavailableIds.has(sm.id));
+  return allSnowmobiles.filter((sm) => !unavailableIds.has(sm.id));
 }
 
 export async function createSnowmobileRental(body: unknown) {
@@ -79,7 +83,10 @@ export async function createSnowmobileRental(body: unknown) {
   const isAvailable = available.some((sm: any) => sm.id === data.snowmobileId);
 
   if (!isAvailable) {
-    throw { status: 400, error: 'Snowmobile not available for the selected time' };
+    throw {
+      status: 400,
+      error: "Snowmobile not available for the selected time",
+    };
   }
 
   // Find or create guest
@@ -106,7 +113,7 @@ export async function createSnowmobileRental(body: unknown) {
       endTime: data.endTime,
       totalPrice: data.totalPrice,
       notes: data.notes,
-      status: 'pending',
+      status: "pending",
     },
     include: {
       snowmobile: true,
@@ -119,7 +126,7 @@ export async function createSnowmobileRental(body: unknown) {
 
 export async function getSnowmobiles() {
   return await prisma.snowmobile.findMany({
-    orderBy: { name: 'asc' },
+    orderBy: { name: "asc" },
   });
 }
 
@@ -145,13 +152,13 @@ export async function getSingleReservations() {
       snowmobile: true,
       guest: true,
     },
-    orderBy: { startTime: 'desc' },
+    orderBy: { startTime: "desc" },
   });
 }
 
 export async function updateRentalStatus(id: number, body: unknown) {
   const schema = z.object({
-    status: z.enum(['pending', 'confirmed', 'completed', 'cancelled']),
+    status: z.enum(["pending", "confirmed", "completed", "cancelled"]),
   });
 
   const data = schema.parse(body);
@@ -176,7 +183,7 @@ export async function approveSnowmobileRental(id: number, body: unknown) {
   const rental = await prisma.snowmobileRental.update({
     where: { id },
     data: {
-      approvalStatus: 'approved',
+      approvalStatus: "approved",
       adminMessage: data.adminMessage || null,
     },
     include: {
@@ -187,20 +194,20 @@ export async function approveSnowmobileRental(id: number, body: unknown) {
 
   // Send approval email
   try {
-    const startTimeStr = rental.startTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    const startTimeStr = rental.startTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false,
     });
-    const endTimeStr = rental.endTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    const endTimeStr = rental.endTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false,
     });
-    const dateStr = rental.startTime.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const dateStr = rental.startTime.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
     await sendSnowmobileRentalApprovalEmail({
@@ -215,7 +222,7 @@ export async function approveSnowmobileRental(id: number, body: unknown) {
       adminMessage: data.adminMessage || undefined,
     });
   } catch (emailError) {
-    console.error('Failed to send approval email:', emailError);
+    console.error("Failed to send approval email:", emailError);
     // Don't throw error, just log it
   }
 
@@ -232,7 +239,7 @@ export async function rejectSnowmobileRental(id: number, body: unknown) {
   const rental = await prisma.snowmobileRental.update({
     where: { id },
     data: {
-      approvalStatus: 'rejected',
+      approvalStatus: "rejected",
       rejectionReason: data.rejectionReason,
     },
     include: {
@@ -243,20 +250,20 @@ export async function rejectSnowmobileRental(id: number, body: unknown) {
 
   // Send rejection email
   try {
-    const startTimeStr = rental.startTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    const startTimeStr = rental.startTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false,
     });
-    const endTimeStr = rental.endTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    const endTimeStr = rental.endTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false,
     });
-    const dateStr = rental.startTime.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const dateStr = rental.startTime.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
     await sendSnowmobileRentalRejectionEmail({
@@ -271,7 +278,7 @@ export async function rejectSnowmobileRental(id: number, body: unknown) {
       rejectionReason: data.rejectionReason,
     });
   } catch (emailError) {
-    console.error('Failed to send rejection email:', emailError);
+    console.error("Failed to send rejection email:", emailError);
     // Don't throw error, just log it
   }
 

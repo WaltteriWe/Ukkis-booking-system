@@ -1,6 +1,6 @@
-import 'dotenv/config'
+import "dotenv/config";
 import Stripe from "stripe";
-import { PrismaClient } from "@generated/prisma";
+import { PrismaClient } from "../../generated/prisma";
 import { sendConfirmationEmail } from "./emailController";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
@@ -112,11 +112,16 @@ async function handlePaymentIntentSucceeded(
 
   // Send confirmation email
   try {
-    console.log(`Sending confirmation email for booking ${booking.id} to ${booking.guest.email}`);
-    
+    console.log(
+      `Sending confirmation email for booking ${booking.id} to ${booking.guest.email}`
+    );
+
     // Extract date and time from notes or use booking created date
-    const noteMatch = booking.notes?.match(/Date: (\d{4}-\d{2}-\d{2}), Time: (\d{2}:\d{2})/);
-    const bookingDate = noteMatch?.[1] || new Date(booking.createdAt).toISOString().split('T')[0];
+    const noteMatch = booking.notes?.match(
+      /Date: (\d{4}-\d{2}-\d{2}), Time: (\d{2}:\d{2})/
+    );
+    const bookingDate =
+      noteMatch?.[1] || new Date(booking.createdAt).toISOString().split("T")[0];
     const bookingTime = noteMatch?.[2] || "09:00";
 
     // Convert participant gear to the format expected by email
@@ -150,7 +155,10 @@ async function handlePaymentIntentSucceeded(
     await sendConfirmationEmail(emailData);
     console.log(`✅ Confirmation email sent for booking ${booking.id}`);
   } catch (error) {
-    console.error(`❌ Failed to send confirmation email for booking ${booking.id}:`, error);
+    console.error(
+      `❌ Failed to send confirmation email for booking ${booking.id}:`,
+      error
+    );
     // Don't throw - we still want the payment to be marked as succeeded
   }
 }

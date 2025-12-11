@@ -1,7 +1,7 @@
-import 'dotenv/config'
+import "dotenv/config";
 import { z } from "zod";
 import nodemailer from "nodemailer";
-import { PrismaClient } from "@generated/prisma";
+import { PrismaClient } from "../../generated/prisma";
 
 const prisma = new PrismaClient();
 
@@ -42,7 +42,10 @@ export async function handleContact(body: unknown) {
       <p><strong>From:</strong> ${data.name} &lt;${data.email}&gt;</p>
       <p><strong>Phone:</strong> ${data.phone || "-"}</p>
       <p><strong>Subject:</strong> ${data.subject}</p>
-      <p><strong>Message:</strong><br/>${data.message.replace(/\n/g, "<br/>")}</p>
+      <p><strong>Message:</strong><br/>${data.message.replace(
+        /\n/g,
+        "<br/>"
+      )}</p>
     `;
 
     await transporter.sendMail({
@@ -54,14 +57,18 @@ export async function handleContact(body: unknown) {
     });
   } else {
     // demo fallback: log
-    console.warn("SMTP not configured - contact email not sent. Message saved.");
+    console.warn(
+      "SMTP not configured - contact email not sent. Message saved."
+    );
   }
 
   return { success: true, id: saved.id };
 }
 
 export async function listContactMessages() {
-  const messages = await prisma.contactMessage.findMany({ orderBy: { createdAt: 'desc' } });
+  const messages = await prisma.contactMessage.findMany({
+    orderBy: { createdAt: "desc" },
+  });
   return messages;
 }
 
@@ -70,13 +77,16 @@ export async function deleteContactMessage(id: number) {
   return deleted;
 }
 
-export async function sendContactReply(id: number, payload: { to?: string; subject?: string; body: string }) {
+export async function sendContactReply(
+  id: number,
+  payload: { to?: string; subject?: string; body: string }
+) {
   const msg = await prisma.contactMessage.findUnique({ where: { id } });
-  if (!msg) throw new Error('Message not found');
+  if (!msg) throw new Error("Message not found");
 
   const toAddress = payload.to || msg.email;
-  const subject = payload.subject || `Re: ${msg.subject || 'Your message'}`;
-  const body = payload.body || '';
+  const subject = payload.subject || `Re: ${msg.subject || "Your message"}`;
+  const body = payload.body || "";
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
   if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
@@ -91,12 +101,16 @@ export async function sendContactReply(id: number, payload: { to?: string; subje
       from: SMTP_FROM || SMTP_USER,
       to: toAddress,
       subject,
-      html: body.replace(/\n/g, '<br/>'),
+      html: body.replace(/\n/g, "<br/>"),
       replyTo: SMTP_FROM || SMTP_USER,
     });
   } else {
     // If SMTP not configured, log for debugging
-    console.warn('SMTP not configured - reply not sent. Reply payload:', { toAddress, subject, body });
+    console.warn("SMTP not configured - reply not sent. Reply payload:", {
+      toAddress,
+      subject,
+      body,
+    });
   }
 
   // Mark message as replied
@@ -108,7 +122,7 @@ export async function sendContactReply(id: number, payload: { to?: string; subje
     return { success: true, repliedAt: updated.repliedAt };
   } catch (err) {
     // if DB update fails, still return success for send, but report no timestamp
-    console.error('Failed to update repliedAt:', err);
+    console.error("Failed to update repliedAt:", err);
     return { success: true };
   }
 }

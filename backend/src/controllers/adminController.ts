@@ -1,5 +1,5 @@
-import 'dotenv/config'
-import { Prisma, PrismaClient } from "@generated/prisma";
+import "dotenv/config";
+import { Prisma, PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
@@ -26,11 +26,9 @@ function hashPassword(password: string, salt?: string) {
 }
 
 function signToken(adminId: number) {
-  const token = jwt.sign(
-    { id: adminId },
-    process.env.JWT_SECRET!,
-    { expiresIn: '7d' }
-  );
+  const token = jwt.sign({ id: adminId }, process.env.JWT_SECRET!, {
+    expiresIn: "7d",
+  });
   return token;
 }
 
@@ -39,7 +37,9 @@ export async function registerAdmin(body: unknown) {
     const data = registerSchema.parse(body);
 
     // ensure unique email
-    const existing = await prisma.admin.findUnique({ where: { email: data.email } });
+    const existing = await prisma.admin.findUnique({
+      where: { email: data.email },
+    });
     if (existing) throw { status: 409, error: "AdminExists" };
 
     const { salt, hash } = hashPassword(data.password);
@@ -65,15 +65,17 @@ export async function loginAdmin(body: any) {
   try {
     const data = loginSchema.parse(body);
 
-    const admin = await prisma.admin.findUnique({ where: { email: data.email } });
+    const admin = await prisma.admin.findUnique({
+      where: { email: data.email },
+    });
 
     if (!admin) throw { status: 401, error: "InvalidCredentials" };
-    const { hash } = hashPassword(data.password, admin.passwordSalt)
+    const { hash } = hashPassword(data.password, admin.passwordSalt);
     if (hash !== admin.passwordHash) {
       throw { status: 401, error: "InvalidCredentials" };
     }
 
-    const token = signToken(admin.id)
+    const token = signToken(admin.id);
 
     return {
       success: true,
@@ -86,5 +88,5 @@ export async function loginAdmin(body: any) {
   } catch (e: any) {
     if (e?.issues) throw { status: 400, error: e.issues };
     throw e;
-    }
+  }
 }
