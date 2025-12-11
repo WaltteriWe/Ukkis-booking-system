@@ -1,4 +1,5 @@
-import { PrismaClient } from "../../generated/prisma";
+import 'dotenv/config'
+import { PrismaClient } from "@generated/prisma";
 import { z } from "zod";
 import { BOOKING_STATUS } from "../../shared/constants";
 

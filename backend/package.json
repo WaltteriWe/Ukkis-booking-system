@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "description": "Backend for Ukkis Snowmobile Safari Reservation System",
   "main": "src/index.ts",
+  "_moduleAliases": {
+    "@generated": "dist/generated",
+    "@shared": "dist/shared",
+    "@middleware": "dist/middleware"
+  },
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "build": "tsc ",
+    "build": "tsc && npm run postbuild",
     "postbuild": "shx mv generated ./dist/",
     "start": "node ./dist/src/index.js",
     "prisma:migrate": "prisma migrate dev",
@@ -22,6 +27,7 @@
     "dotenv": "^17.2.2",
     "fastify": "^4.29.1",
     "jsonwebtoken": "^9.0.2",
+    "module-alias": "^2.2.3",
     "nodemailer": "^7.0.6",
     "nodemon": "^3.1.10",
     "prisma": "^7.1.0",

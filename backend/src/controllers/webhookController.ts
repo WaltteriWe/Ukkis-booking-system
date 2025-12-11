@@ -1,5 +1,6 @@
+import 'dotenv/config'
 import Stripe from "stripe";
-import { PrismaClient } from "../../generated/prisma";
+import { PrismaClient } from "@generated/prisma";
 import { sendConfirmationEmail } from "./emailController";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;

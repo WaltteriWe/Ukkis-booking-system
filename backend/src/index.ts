@@ -1,3 +1,4 @@
+import "module-alias/register";
 import "dotenv/config";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 import cors from "@fastify/cors";

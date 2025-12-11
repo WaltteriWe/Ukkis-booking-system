@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from "../../generated/prisma";
+import 'dotenv/config'
+import { Prisma, PrismaClient } from "@generated/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
