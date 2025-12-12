@@ -20,7 +20,7 @@
     "@fastify/cors": "^8.0.0",
     "@fastify/multipart": "^8.0.0",
     "@fastify/static": "^7.0.0",
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "6.1.0",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.2",
@@ -29,7 +29,7 @@
     "module-alias": "^2.2.3",
     "nodemailer": "^7.0.6",
     "nodemon": "^3.1.10",
-    "prisma": "^6.19.0",
+    "prisma": "6.1.0",
     "react-day-picker": "^9.11.1",
     "stripe": "^18.5.0",
     "zod": "^3.22.0"
