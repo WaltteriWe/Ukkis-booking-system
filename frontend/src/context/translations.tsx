@@ -131,8 +131,8 @@ export const translations: Record<Language, Record<string, string>> = {
     backToCustomization: "Back to Customization",
 
     // Snowmobile Rental
-    contactForRental:"Contact us to rent snowmobiles on our routes,",
-    rentSnowmobileTitle: "Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
+    contactForRental:"Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
+    rentSnowmobileTitle: "Rent a Snowmobile for Your Private Adventure by contacting us below",
     rentSnowmobileDescription:
       "Explore the Arctic wilderness at your own pace. Our snowmobiles are perfect for experienced riders who want the freedom to create their own adventure.",
     flexibleDuration: "Flexible Duration",
