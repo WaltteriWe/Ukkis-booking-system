@@ -54,13 +54,13 @@ export function Navigation() {
               {t("home")}
             </Link>
             <Link
-              href={routes.bookings + "routes.safari"}
+              href={routes.bookings}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
               {t("safariTours")}
             </Link>
             <Link
-              href={routes.bookings + "routes.rental"}
+              href={routes.rentals}
               {...getHoverColorProps(colors.navy, colors.pink)}
             >
               {t("snowmobileRental")}
