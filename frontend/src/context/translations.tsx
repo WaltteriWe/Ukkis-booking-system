@@ -131,6 +131,7 @@ export const translations: Record<Language, Record<string, string>> = {
     backToCustomization: "Back to Customization",
 
     // Snowmobile Rental
+    contactForRental:" Contact Us for Snowmobile Rental",
     rentSnowmobileTitle: "Rent a Snowmobile for Your Private Adventure",
     rentSnowmobileDescription:
       "Explore the Arctic wilderness at your own pace. Our snowmobiles are perfect for experienced riders who want the freedom to create their own adventure.",
@@ -154,6 +155,7 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Return to Home",
 
     // Tours Section
+    bookingsPageTitle: "Bookings",
     toursTitle: "Our Safari Tours",
     toursSubtitle: "Choose Your Adventure",
     viewDetails: "View Details",
@@ -186,6 +188,7 @@ export const translations: Record<Language, Record<string, string>> = {
     sendMessage: "Send Message",
 
     // Bookings
+    contactForBooking: "Contact Us for Booking",
     bookingTitle: "Book Your Adventure",
     selectTour: "Select Tour",
     selectDate: "Select Date",
@@ -392,6 +395,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // Snowmobile Rental
     rentSnowmobileTitle:
       "Vuokraa moottorikelkka omalle yksityiselle seikkailulle",
+    contactForRental:
+      "Ota meihin yhteyttä moottorikelkkavuokrausta varten",
     rentSnowmobileDescription:
       "Tutustu arktiseen erämaahan omassa tahdissasi. Moottorikelkkamme sopivat täydellisesti kokeneille kuljettajille, jotka haluavat vapauden luoda oman seikkailunsa.",
     flexibleDuration: "Joustava kesto",
@@ -414,6 +419,8 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Palaa etusivulle",
 
     // Tours Section
+    bookingsPageTitle: "Varaukset",
+    contactForBooking: "Ota yhteyttä alta varataksesi safari-retken",
     toursTitle: "Safari-retkemme",
     toursSubtitle: "Valitse seikkailusi",
     viewDetails: "Näytä tiedot",
