@@ -131,8 +131,8 @@ export const translations: Record<Language, Record<string, string>> = {
     backToCustomization: "Back to Customization",
 
     // Snowmobile Rental
-    contactForRental:" Contact Us for Snowmobile Rental",
-    rentSnowmobileTitle: "Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
+    contactForRental:" Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
+    rentSnowmobileTitle: "Contact below for Snowmobile Rental",
     rentSnowmobileDescription:
       "Explore the Arctic wilderness at your own pace. Our snowmobiles are perfect for experienced riders who want the freedom to create their own adventure.",
     flexibleDuration: "Flexible Duration",
@@ -419,7 +419,7 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Palaa etusivulle",
 
     // Tours Section
-    bookingsPageTitle: "Varaukset",
+    bookingsPageTitle: "Safari varaukset",
     contactForBooking: "Ota yhteyttä alta varataksesi safari-retken, varauskalenteri lisätään pian.",
     toursTitle: "Safari-retkemme",
     toursSubtitle: "Valitse seikkailusi",
