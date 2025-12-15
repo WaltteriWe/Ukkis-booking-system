@@ -12,15 +12,22 @@ import {
 import { cn } from "@/lib/utils";
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const Footer = ({ className }: { className?: string }) => {
   const { t } = useLanguage();
+  const { darkMode } = useTheme();
 
   return (
     <footer
       className={cn("text-white py-12 my-2 rounded-lg", className)}
       style={{
-        background: `linear-gradient(to bottom right, ${colors.teal}, ${colors.navy})`,
+        background: darkMode
+          ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+          : `linear-gradient(to bottom right, ${colors.teal}, ${colors.navy})`,
+        boxShadow: darkMode
+          ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1), inset 0 0 60px rgba(0, 255, 200, 0.05)"
+          : "none",
       }}
     >
       <div className="container mx-auto px-20 ">

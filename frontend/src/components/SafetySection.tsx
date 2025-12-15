@@ -3,9 +3,13 @@
 import { colors } from "@/lib/constants";
 import { Shield, Star, Wrench } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
+
 
 const SafetySection = () => {
   const { t } = useLanguage();
+  const { darkMode } = useTheme();
+ 
 
   const features = [
     {
@@ -27,21 +31,40 @@ const SafetySection = () => {
 
   return (
     <div
-      className=" py-16 my-8 rounded-lg shadow-md"
-      style={{ backgroundColor: colors.white }}
+      className="py-16 my-8 rounded-lg shadow-md transition-all duration-700 ease-in-out relative overflow-hidden"
+      style={{
+        background: darkMode
+          ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+          : colors.white,
+        boxShadow: darkMode
+          ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1), inset 0 0 60px rgba(0, 255, 200, 0.05)"
+          : "none",
+      }}
     >
-      <div className="container mx-auto px-6">
+      {darkMode && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.06) 50%, rgba(139, 92, 246, 0.05) 100%)",
+            animation: "aurora 10s ease-in-out infinite",
+            filter: "blur(60px)",
+            opacity: 0.6,
+          }}
+        />
+      )}
+      <div className="container mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2
               className="text-4xl font-bold mb-6"
-              style={{ color: colors.teal }}
+              style={{ color: darkMode ? "#10b981" : colors.teal }}
             >
               {t("safetyTitle")}
             </h2>
             <p
               className="text-lg mb-8 leading-relaxed"
-              style={{ color: colors.darkGray }}
+              style={{ color: darkMode ? "rgba(255, 255, 255, 0.85)" : colors.darkGray }}
             >
               {t("safetyText1")}
             </p>
@@ -60,11 +83,11 @@ const SafetySection = () => {
                     <div>
                       <h3
                         className="font-bold text-lg mb-1"
-                        style={{ color: colors.navy }}
+                        style={{ color: darkMode ? "#ffffff" : colors.navy }}
                       >
                         {feature.title}
                       </h3>
-                      <p style={{ color: colors.darkGray }}>
+                      <p style={{ color: darkMode ? "rgba(255, 255, 255, 0.75)" : colors.darkGray }}>
                         {feature.description}
                       </p>
                     </div>

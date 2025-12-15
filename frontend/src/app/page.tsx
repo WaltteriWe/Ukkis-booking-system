@@ -52,6 +52,13 @@ export default function Home() {
           />
           <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-black/20 to-black/40 dark:from-black/40 dark:to-black/60 transition-colors duration-700 ease-in-out" />
         </div>
+        <div className="absolute top-4 right-4 z-20">
+          <img
+            className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 object-contain"
+            src="/ukkohalla-safaris-logo-no-bg.png"
+            alt="Ukkohalla Safaris Logo"
+          />
+        </div>
 
         <div className="relative z-10 text-center px-4 rounded-xl">
           <h1
@@ -60,6 +67,7 @@ export default function Home() {
           >
             {t("heroTitle")}
           </h1>
+
           <p
             className="text-lg md:text-2xl mb-6 font-medium drop-shadow-md"
             style={{ color: colors.white }}
@@ -78,10 +86,12 @@ export default function Home() {
           dark:bg-white/45 dark:backdrop-blur-xl dark:border dark:border-white/30 dark:shadow-lg dark:bg-clip-padding
         "
         style={{
-          ...(darkMode ? {} : { backgroundColor: colors.white }),
-          ...(introView.isInView
-            ? animations.fadeInFloat(0)
-            : { opacity: 0, transform: "translateY(20px)" }),
+          background: darkMode
+            ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+            : colors.white,
+          boxShadow: darkMode
+            ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1), inset 0 0 60px rgba(0, 255, 200, 0.05)"
+            : "none",
         }}
       >
         <h1
@@ -113,8 +123,12 @@ export default function Home() {
           dark:bg-white/45 dark:backdrop-blur-xl dark:border dark:border-white/30 dark:shadow-lg dark:bg-clip-padding 
         "
         style={{
-          ...(darkMode ? {} : { backgroundColor: colors.white }),
-          ...(featuresView.isInView ? {} : { opacity: 0 }),
+          background: darkMode
+            ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+            : colors.white,
+          boxShadow: darkMode
+            ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1), inset 0 0 60px rgba(0, 255, 200, 0.05)"
+            : "none",
         }}
       >
         <div

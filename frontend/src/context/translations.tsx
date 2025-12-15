@@ -11,7 +11,7 @@ export const translations: Record<Language, Record<string, string>> = {
     contactUs: "Contact Us",
 
     // Home Page - Hero
-    heroTitle: "Arctic Adventure Awaits",
+    heroTitle: "Ukkohalla safaris and adventures",
     heroSubtitle:
       "Experience the magic of Lapland through premium snowmobile safaris or personal adventures with our wide range of vehicles and expert guides.",
 
@@ -273,7 +273,7 @@ export const translations: Record<Language, Record<string, string>> = {
     contactUs: "Ota yhteyttä",
 
     // Home Page - Hero
-    heroTitle: "Arktinen seikkailu odottaa",
+    heroTitle: "Ukkohalla safarit ja seikkailut",
     heroSubtitle:
       "Koe Lapin taika premium moottorikelkkasafareilla tai henkilökohtaisilla seikkailuilla laajan ajoneuvovalikoimamme ja asiantuntevan opastuksen avulla.",
 

@@ -9,10 +9,11 @@ import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useTheme } from "@/context/ThemeContext";
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
-  const [darkMode] = useState(false);
+  const { darkMode } = useTheme();
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -25,8 +26,15 @@ export function Navigation() {
 
   return (
     <nav
-      className={cn(" py-4 px-3 shadow-md")}
-      style={{ backgroundColor: colors.white }}
+      className={cn("py-4 px-3 shadow-md bg-white")}
+      style={{
+        background: darkMode
+          ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+          : colors.white,
+        boxShadow: darkMode
+          ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1), inset 0 0 60px rgba(0, 255, 200, 0.05)"
+          : "none",
+      }}
     >
       <div
         className={cn("container mx-auto flex items-center justify-between")}
@@ -49,25 +57,37 @@ export function Navigation() {
           <div className={cn("hidden md:flex items-center space-x-5 text-xl")}>
             <Link
               href={routes.home}
-              {...getHoverColorProps(colors.navy, colors.pink)}
+              className={cn(
+                "transition-colors duration-200",
+                darkMode ? "text-white hover:text-emerald-400" : "text-navy hover:text-pink-500"
+              )}
             >
               {t("home")}
             </Link>
             <Link
               href={routes.bookings}
-              {...getHoverColorProps(colors.navy, colors.pink)}
+              className={cn(
+                "transition-colors duration-200",
+                darkMode ? "text-white hover:text-emerald-400" : "text-navy hover:text-pink-500"
+              )}
             >
               {t("safariTours")}
             </Link>
             <Link
               href={routes.rentals}
-              {...getHoverColorProps(colors.navy, colors.pink)}
+              className={cn(
+                "transition-colors duration-200",
+                darkMode ? "text-white hover:text-emerald-400" : "text-navy hover:text-pink-500"
+              )}
             >
               {t("snowmobileRental")}
             </Link>
             <Link
               href={routes.contact}
-              {...getHoverColorProps(colors.navy, colors.pink)}
+              className={cn(
+                "transition-colors duration-200",
+                darkMode ? "text-white hover:text-emerald-400" : "text-navy hover:text-pink-500"
+              )}
             >
               {t("contactUs")}
             </Link>

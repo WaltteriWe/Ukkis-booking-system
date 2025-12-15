@@ -14,12 +14,12 @@ export default function LanguageToggle() {
         "relative w-16 h-8 rounded-full transition-colors duration-300 flex items-center justify-center font-semibold text-sm"
       )}
       style={{
-        backgroundColor: language === "en" ? colors.pink : colors.navy,
+        backgroundColor: "transparent",
         color: colors.white,
       }}
       aria-label={`Switch to ${language === "en" ? "Finnish" : "English"}`}
     >
-      <span className="uppercase">{language === "en" ? "EN" : "FI"}</span>
+      <span className="text-2xl">{language === "en" ? "🇬🇧" : "🇫🇮"}</span>
     </button>
   );
 }
