@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,6 +17,7 @@ import StripeCheckout from "@/components/StripeCheckout";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useDepartures } from "@/hooks/useDepartures";
 
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
@@ -49,7 +49,16 @@ type Tour = {
   isActive: boolean;
 };
 
-type Addon = { id: string; title: string; desc: string; price: number };
+type Addon = { id: string; title: string; desc: string; price: number }
+
+type Departure = {
+  id: number;
+  packageId: number;
+  departureTime: string;
+  reserved: number;
+  capacity: number;
+  isActive: boolean;
+};
 
 const GEAR_SIZES = {
   overalls: ["XS", "S", "M", "L", "XL", "XXL"],
@@ -97,7 +106,14 @@ const ADDONS: Addon[] = [
 export default function Bookings() {
   const { t } = useLanguage();
   const { darkMode } = useTheme();
-
+  const { 
+    packageDepartures, 
+    selectedDeparture, 
+    loading: departuresLoading,
+    error: departuresError,
+    handlePackageSelect, 
+    setSelectedDeparture 
+  } = useDepartures();
 
   // stepper (1: select, 2: customize, 3: confirm)
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -134,6 +150,13 @@ export default function Bookings() {
     email: "",
     phone: "",
   });
+  const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+
+  const handleSelectTour = (tour: Tour) => {
+    setSelectedTour(tour);
+    handlePackageSelect(tour.id);
+    setSelectedPackage(tour.id);
+  };
 
   const toggleAddon = (id: string) =>
     setAddons((a) => ({ ...a, [id]: !a[id] }));
@@ -535,7 +558,7 @@ export default function Bookings() {
                     <button
                       type="button"
                       key={tour.id}
-                      onClick={() => setSelectedTour(tour)}
+                      onClick={() => handleSelectTour(tour)}
                       className={
                         "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
                         (active
@@ -593,6 +616,52 @@ export default function Bookings() {
                   );
                 })}
               </div>
+
+              {/* Package selection UI - New Code */}
+              {selectedTour && (
+                <div className="mt-6 p-4 border rounded-lg bg-blue-50">
+                  <h3 className="font-semibold mb-3">
+                    {t("selectADeparture")}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {packageDepartures.length > 0 ? (
+                      packageDepartures.map((dep) => (
+                        <button
+                          key={dep.id}
+                          onClick={() => setSelectedDeparture(dep.id)}
+                          className={`p-3 rounded border-2 transition ${
+                            selectedDeparture === dep.id
+                              ? "border-blue-600 bg-blue-100"
+                              : "border-gray-300 hover:border-blue-400"
+                          }`}
+                        >
+                          <div className="font-medium">
+                            {new Date(dep.departureTime).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {new Date(dep.departureTime).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {dep.capacity - dep.reserved}{" "}
+                            {t("spotsLeft")}
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        {t("noDeparturesAvailable")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 flex justify-end">
                 <button

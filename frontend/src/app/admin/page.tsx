@@ -24,6 +24,7 @@ import {
   sendContactReply,
   createDeparture,
 } from "@/lib/api";
+import { useDepartureManagement } from "@/hooks/useDepartureManagement";
 
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
@@ -176,6 +177,23 @@ interface singleReservations {
 // Note: image listing is not used on this page currently
 
 export default function AdminPage() {
+  const {
+    departures,
+    showDepartureForm,
+    setShowDepartureForm,
+    selectedPackageForDeparture,
+    setSelectedPackageForDeparture,
+    newDeparture,
+    setNewDeparture,
+    selectedDate,
+    setSelectedDate,
+    loadDepartures,
+    handleCreateDeparture,
+    handleDeleteDeparture,
+    handleEditDeparture,
+    handleCancelEdit
+  } = useDepartureManagement();
+
   const [tours, setTours] = useState<Tour[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [singleReservations, setSingleReservations] = useState<
@@ -217,7 +235,6 @@ export default function AdminPage() {
   const [snowmobileAction, setSnowmobileAction] = useState<"" | "add" | "edit" | "view">("");
   const [selectedDeparture, setSelectedDeparture] = useState<number | null>(null);
   const [snowmobiles, setSnowmobiles] = useState<Snowmobile[]>([]);
-  const [departures, setDepartures] = useState<Departure[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   // Reply state for contact messages
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
@@ -232,16 +249,7 @@ export default function AdminPage() {
     year: new Date().getFullYear(),
   });
 
-  // Departure creation state
-  const [showDepartureForm, setShowDepartureForm] = useState(false);
-  const [selectedPackageForDeparture, setSelectedPackageForDeparture] = useState<number | null>(null);
-  const [newDeparture, setNewDeparture] = useState({
-    departureTime: "",
-    capacity: 10,
-  });
-
   // Date filter state
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Load data only when authenticated. Read token from localStorage on mount.
   useEffect(() => {
@@ -274,6 +282,11 @@ export default function AdminPage() {
       loadContactMessages();
     }
   }, [adminToken, activeTab]);
+
+  // Load departures on mount
+  useEffect(() => {
+    loadDepartures();
+  }, []);
 
   async function loadContactMessages() {
     try {
@@ -468,32 +481,6 @@ async function handleAssignSnowmobiles() {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     alert(`Failed to assign snowmobiles: ${msg}`);
-  }
-}
-async function handleCreateDeparture(e: React.FormEvent) {
-  e.preventDefault();
-  if (!selectedPackageForDeparture) {
-    alert("Please select a package first");
-    return;
-  }
-  try {
-    // Convert to ISO string format
-    const departureTimeISO = new Date(newDeparture.departureTime).toISOString();
-    
-    await createDeparture({
-      packageId: selectedPackageForDeparture,
-      departureTime: departureTimeISO, // Send as ISO string
-      capacity: newDeparture.capacity,
-    });
-    alert("Departure created successfully!");
-    setNewDeparture({ departureTime: "", capacity: 10 });
-    setShowDepartureForm(false);
-    setSelectedPackageForDeparture(null);
-    loadSnowmobilesAndDepartures();
-  } catch (error: unknown) {
-    console.error("Full error:", error); // Log the full error
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    alert(`Failed to create departure: ${msg}`);
   }
 }
 
@@ -1111,111 +1098,69 @@ async function handleCreateDeparture(e: React.FormEvent) {
           <>
             {/* ADD THIS DEPARTURE SECTION BEFORE "Existing Packages" */}
             {!showCreateForm && (
-              <div className="bg-white rounded-lg shadow p-6 mb-8">
-                <div className="flex justify-between items-center mb-4">
+              <div className="bg-white rounded-lg shadow mt-8 mb-8">
+                <div className="p-6 border-b">
                   <h2 className="text-xl font-bold">Safari Departures</h2>
-                  <button
-                    onClick={() => setShowDepartureForm(!showDepartureForm)}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                  >
-                    {showDepartureForm ? "Cancel" : "+ New Departure"}
-                  </button>
                 </div>
 
-                {showDepartureForm && (
-                  <form onSubmit={handleCreateDeparture} className="space-y-4 border-t pt-4">
-    <div>
-      <label className="block text-sm font-medium mb-2">Select Safari Package *</label>
-      <select
-        required
-        value={selectedPackageForDeparture || ""}
-        onChange={(e) => setSelectedPackageForDeparture(parseInt(e.target.value))}
-        className="w-full border rounded px-3 py-2"
-      >
-        <option value="">-- Select a package --</option>
-        {tours.map((tour) => (
-          <option key={tour.id} value={tour.id}>
-            {tour.name}
-          </option>
-        ))}
-      </select>
-    </div>
+                <div className="divide-y">
+                  {departures.map((departure) => {
+                    const pkg = tours.find((t) => t.id === departure.packageId);
+                    return (
+                      <div
+                        key={departure.id}
+                        className="p-6 flex items-center justify-between"
+                      >
+                        <div>
+                          <h3 className="font-bold">{pkg?.name || `Package ${departure.packageId}`}</h3>
+                          <p className="text-sm text-gray-600">
+                            {new Date(departure.departureTime).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            ID: {departure.id}
+                          </p>
+                        </div>
 
-    <div>
-      <label className="block text-sm font-medium mb-2">Select Departure Date & Time *</label>
-      <div className="border rounded-lg p-4 bg-white">
-        <DayPicker
-          mode="single"
-          selected={selectedDate || undefined}
-          onSelect={(date) => {
-            if (date) {
-              setSelectedDate(date);
-              // Update departure time with selected date
-              const timeStr = newDeparture.departureTime.split('T')[1] || '10:00';
-              setNewDeparture({
-                ...newDeparture,
-                departureTime: `${format(date, "yyyy-MM-dd")}T${timeStr}`
-              });
-            }
-          }}
-          disabled={(date) => date < new Date()}
-          className="mx-auto"
-        />
-      </div>
-      
-      {selectedDate && (
-        <div className="mt-3">
-          <label className="block text-sm font-medium mb-1">Select Time</label>
-          <select
-            value={newDeparture.departureTime.split('T')[1] || '10:00'}
-            onChange={(e) => {
-              const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
-              setNewDeparture({
-                ...newDeparture,
-                departureTime: `${dateStr}T${e.target.value}`
-              });
-            }}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="09:00">09:00</option>
-            <option value="10:00">10:00</option>
-            <option value="11:00">11:00</option>
-            <option value="12:00">12:00</option>
-            <option value="13:00">13:00</option>
-            <option value="14:00">14:00</option>
-            <option value="15:00">15:00</option>
-            <option value="16:00">16:00</option>
-            <option value="17:00">17:00</option>
-          </select>
-        </div>
-      )}
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-sm font-medium">
+                              Capacity: {departure.capacity}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Reserved: {departure.reserved || 0}
+                            </p>
+                            <p className="text-sm text-green-600 font-medium">
+                              Available: {departure.capacity - (departure.reserved || 0)}
+                            </p>
+                          </div>
 
-      {selectedDate && (
-        <p className="text-sm text-gray-600 mt-2">
-          Selected: {format(selectedDate, "MMMM d, yyyy")} at {newDeparture.departureTime.split('T')[1] || '10:00'}
-        </p>
-      )}
-    </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditDeparture(departure)}
+                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                            >
+                              Edit
+                            </button>
+                          </div>
 
-    <div>
-      <label className="block text-sm font-medium mb-2">Capacity (max participants)</label>
-      <input
-        type="number"
-        min="1"
-        value={newDeparture.capacity}
-        onChange={(e) => setNewDeparture({ ...newDeparture, capacity: parseInt(e.target.value) })}
-        className="w-full border rounded px-3 py-2"
-      />
-    </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDeleteDeparture(departure.id)}
+                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-    <button
-      type="submit"
-      disabled={!selectedDate}
-      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      Create Departure
-    </button>
-  </form>
+                {departures.length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    No departures created yet
+                  </div>
                 )}
               </div>
             )}

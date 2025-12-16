@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 
 import { StarryBackground } from "@/components/StarryBackground";
+import { DepartureProvider } from "@/context/DepartureContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,12 +44,14 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <ThemeProvider>
+            <DepartureProvider>
             <StarryBackground />
             <Navigation />
             <main className="container mx-auto px-6 py-8">
               {children}
               <Footer />
             </main>
+            </DepartureProvider>
           </ThemeProvider>
         </LanguageProvider>
       </body>

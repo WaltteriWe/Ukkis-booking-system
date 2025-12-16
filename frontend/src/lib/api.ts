@@ -1,3 +1,4 @@
+import { get } from "http";
 
 
 const API_BASE_URL =
@@ -5,7 +6,7 @@ const API_BASE_URL =
 
 export interface CreateBookingRequest {
   packageId: number;
-  departureId?: number; // Make optional
+  departureId: number; 
   participants: number;
   totalPrice?: number; // Total price including add-ons
   guestEmail: string;
@@ -251,15 +252,20 @@ export async function getDepartures(params?: {
   return response.json();
 }
 
-export async function createDeparture(departureData: {
+export async function createDeparture(data: {
   packageId: number;
   departureTime: string;
-  capacity?: number;
+  capacity: number;
 }) {
+  const token = localStorage.getItem("adminToken");
+  if (!token) {
+    throw new Error("Unauthorized: No admin token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/departures`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(departureData),
+    body: JSON.stringify(data),
   });
 
   if (!response.ok) {
@@ -615,6 +621,43 @@ export async function sendContactReply(
   if (!response.ok) {
     const err = await response.text().catch(() => "Failed to send reply");
     throw new Error(err || "Failed to send reply");
+  }
+
+  return response.json();
+}
+
+export async function deleteDeparture(departureId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/departures/${departureId}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to delete departure");
+  }
+
+  return response.json();
+}
+
+export async function updateDeparture(
+  departureId: number,
+  data: {
+    packageId: number;
+    departureTime: string;
+    capacity: number;
+  }
+) {
+  const response = await fetch(`${API_BASE_URL}/departures/${departureId}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update departure");
   }
 
   return response.json();

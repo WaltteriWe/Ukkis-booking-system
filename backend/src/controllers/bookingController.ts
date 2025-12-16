@@ -90,6 +90,7 @@ export async function createBooking(body: unknown) {
       }
 
       const bookingData: any = {
+        departureId: data.departureId,
         guestId: guest.id,
         packageId: data.packageId,
         participants: data.participants,
