@@ -11,9 +11,11 @@ import {
 } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function SnowmobileRentalPage() {
   const { t } = useLanguage();
+  const { darkMode } = useTheme();
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [startTime, setStartTime] = useState("10:00");
@@ -27,7 +29,7 @@ export default function SnowmobileRentalPage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const HOURLY_RATE = 50; // €50 per hour
+  const HOURLY_RATE = 50;
 
   async function checkAvailability() {
     if (!selectedDate || !startTime || !endTime) {
@@ -132,10 +134,25 @@ export default function SnowmobileRentalPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: colors.beige }}>
+    <div
+      style={{
+        backgroundColor: darkMode ? "transparent" : colors.beige,
+        background: darkMode
+          ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+          : colors.beige,
+      }}
+      className="min-h-screen"
+    >
       <header
-        className="text-white py-12"
-        style={{ backgroundColor: colors.navy }}
+        className={`text-white py-12 ${
+          darkMode ? "shadow-lg" : ""
+        }`}
+        style={{
+          backgroundColor: darkMode ? colors.navy : colors.navy,
+          boxShadow: darkMode
+            ? "0 0 40px rgba(16, 185, 129, 0.15), 0 0 60px rgba(139, 92, 246, 0.1)"
+            : "none",
+        }}
       >
         <div className="max-w-6xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">
@@ -151,11 +168,14 @@ export default function SnowmobileRentalPage() {
         {step === 1 && (
           <div
             className="rounded-lg shadow-md p-8"
-            style={{ backgroundColor: colors.white }}
+            style={{
+              backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+              color: darkMode ? "white" : colors.darkGray,
+            }}
           >
             <h2
               className="text-2xl font-bold mb-6"
-              style={{ color: colors.navy }}
+              style={{ color: darkMode ? "#10b981" : colors.navy }}
             >
               {t("checkAvailabilityButton")}
             </h2>
@@ -164,11 +184,17 @@ export default function SnowmobileRentalPage() {
               <div>
                 <label
                   className="block text-sm font-medium mb-2"
-                  style={{ color: colors.darkGray }}
+                  style={{ color: darkMode ? "white" : colors.darkGray }}
                 >
                   {t("selectDateLabel")}
                 </label>
-                <div className="border rounded-lg p-4 bg-white">
+                <div
+                  className="border rounded-lg p-4"
+                  style={{
+                    backgroundColor: darkMode ? "#16243a" : "white",
+                    borderColor: darkMode ? "#2d1a3a" : "#ddd",
+                  }}
+                >
                   <DayPicker
                     mode="single"
                     selected={selectedDate}
@@ -178,7 +204,10 @@ export default function SnowmobileRentalPage() {
                   />
                 </div>
                 {selectedDate && (
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p
+                    className="text-sm mt-2"
+                    style={{ color: darkMode ? "#a0a0a0" : "#666" }}
+                  >
                     {t("selectedDate")}: {format(selectedDate, "MMMM d, yyyy")}
                   </p>
                 )}
@@ -188,7 +217,7 @@ export default function SnowmobileRentalPage() {
                 <div>
                   <label
                     className="block text-sm font-medium mb-2"
-                    style={{ color: colors.darkGray }}
+                    style={{ color: darkMode ? "white" : colors.darkGray }}
                   >
                     {t("startTimeLabel")}
                   </label>
@@ -196,7 +225,11 @@ export default function SnowmobileRentalPage() {
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-md"
-                    style={{ color: colors.darkGray }}
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : "white",
+                      color: darkMode ? "white" : colors.darkGray,
+                      borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                    }}
                   >
                     {Array.from({ length: 12 }, (_, i) => i + 8).map((hour) => (
                       <option
@@ -212,7 +245,7 @@ export default function SnowmobileRentalPage() {
                 <div>
                   <label
                     className="block text-sm font-medium mb-2"
-                    style={{ color: colors.darkGray }}
+                    style={{ color: darkMode ? "white" : colors.darkGray }}
                   >
                     {t("endTimeLabel")}
                   </label>
@@ -220,7 +253,11 @@ export default function SnowmobileRentalPage() {
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-md"
-                    style={{ color: colors.darkGray }}
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : "white",
+                      color: darkMode ? "white" : colors.darkGray,
+                      borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                    }}
                   >
                     {Array.from({ length: 12 }, (_, i) => i + 8).map((hour) => (
                       <option
@@ -237,15 +274,22 @@ export default function SnowmobileRentalPage() {
               {selectedDate && startTime && endTime && (
                 <div
                   className="p-4 rounded-md"
-                  style={{ backgroundColor: `${colors.teal}20` }}
+                  style={{
+                    backgroundColor: darkMode ? "#2d1a3a" : `${colors.teal}20`,
+                  }}
                 >
-                  <p className="text-sm" style={{ color: colors.darkGray }}>
+                  <p
+                    className="text-sm"
+                    style={{ color: darkMode ? "white" : colors.darkGray }}
+                  >
                     {t("durationLabel")}:{" "}
                     {Math.ceil(calculateTotal() / HOURLY_RATE)} {t("hours")}
                   </p>
                   <p
                     className="text-lg font-bold mt-2"
-                    style={{ color: colors.navy }}
+                    style={{
+                      color: darkMode ? "#10b981" : colors.navy,
+                    }}
                   >
                     {t("estimatedTotal")}: €{calculateTotal()}
                   </p>
@@ -269,7 +313,7 @@ export default function SnowmobileRentalPage() {
             <button
               onClick={() => setStep(1)}
               className="mb-4 hover:underline"
-              style={{ color: colors.teal }}
+              style={{ color: darkMode ? "#10b981" : colors.teal }}
             >
               {t("backToTimeSelection")}
             </button>
@@ -277,14 +321,22 @@ export default function SnowmobileRentalPage() {
             {availableSnowmobiles.length === 0 ? (
               <div
                 className="rounded-lg shadow-md p-8 text-center"
-                style={{ backgroundColor: colors.white }}
+                style={{
+                  backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+                }}
               >
-                <p className="text-xl" style={{ color: colors.darkGray }}>
+                <p
+                  className="text-xl"
+                  style={{ color: darkMode ? "white" : colors.darkGray }}
+                >
                   {t("noSnowmobilesAvailable")}
                 </p>
                 <p
                   className="text-sm mt-2"
-                  style={{ color: colors.darkGray, opacity: 0.7 }}
+                  style={{
+                    color: darkMode ? "#a0a0a0" : colors.darkGray,
+                    opacity: 0.7,
+                  }}
                 >
                   {t("tryDifferentTime")}
                 </p>
@@ -293,7 +345,7 @@ export default function SnowmobileRentalPage() {
               <>
                 <h2
                   className="text-2xl font-bold mb-6"
-                  style={{ color: colors.navy }}
+                  style={{ color: darkMode ? "#10b981" : colors.navy }}
                 >
                   {t("selectASnowmobile")}
                 </h2>
@@ -308,7 +360,7 @@ export default function SnowmobileRentalPage() {
                           : "hover:shadow-lg"
                       }`}
                       style={{
-                        backgroundColor: colors.white,
+                        backgroundColor: darkMode ? "#16243a" : colors.white,
                         ringColor:
                           selectedSnowmobile === snowmobile.id
                             ? colors.teal
@@ -317,14 +369,18 @@ export default function SnowmobileRentalPage() {
                     >
                       <h3
                         className="text-lg font-bold"
-                        style={{ color: colors.navy }}
+                        style={{
+                          color: darkMode ? "#10b981" : colors.navy,
+                        }}
                       >
                         {snowmobile.name}
                       </h3>
                       {snowmobile.model && (
                         <p
                           className="text-sm"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            color: darkMode ? "#a0a0a0" : colors.darkGray,
+                          }}
                         >
                           {snowmobile.model}
                         </p>
@@ -332,7 +388,10 @@ export default function SnowmobileRentalPage() {
                       {snowmobile.year && (
                         <p
                           className="text-sm"
-                          style={{ color: colors.darkGray, opacity: 0.7 }}
+                          style={{
+                            color: darkMode ? "#a0a0a0" : colors.darkGray,
+                            opacity: 0.7,
+                          }}
                         >
                           {t("year")}: {snowmobile.year}
                         </p>
@@ -340,7 +399,10 @@ export default function SnowmobileRentalPage() {
                       {snowmobile.licensePlate && (
                         <p
                           className="text-xs mt-2"
-                          style={{ color: colors.darkGray, opacity: 0.5 }}
+                          style={{
+                            color: darkMode ? "#808080" : colors.darkGray,
+                            opacity: 0.5,
+                          }}
                         >
                           {t("plate")}: {snowmobile.licensePlate}
                         </p>
@@ -353,11 +415,15 @@ export default function SnowmobileRentalPage() {
                   <form
                     onSubmit={handleBooking}
                     className="rounded-lg shadow-md p-8"
-                    style={{ backgroundColor: colors.white }}
+                    style={{
+                      backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+                    }}
                   >
                     <h3
                       className="text-xl font-bold mb-6"
-                      style={{ color: colors.navy }}
+                      style={{
+                        color: darkMode ? "#10b981" : colors.navy,
+                      }}
                     >
                       {t("yourDetails")}
                     </h3>
@@ -366,7 +432,9 @@ export default function SnowmobileRentalPage() {
                       <div>
                         <label
                           className="block text-sm font-medium mb-2"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            color: darkMode ? "white" : colors.darkGray,
+                          }}
                         >
                           {t("name")} {t("required")}
                         </label>
@@ -376,14 +444,20 @@ export default function SnowmobileRentalPage() {
                           value={guestName}
                           onChange={(e) => setGuestName(e.target.value)}
                           className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            backgroundColor: darkMode ? "#16243a" : "white",
+                            color: darkMode ? "white" : colors.darkGray,
+                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                          }}
                         />
                       </div>
 
                       <div>
                         <label
                           className="block text-sm font-medium mb-2"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            color: darkMode ? "white" : colors.darkGray,
+                          }}
                         >
                           {t("email")} {t("required")}
                         </label>
@@ -393,14 +467,20 @@ export default function SnowmobileRentalPage() {
                           value={guestEmail}
                           onChange={(e) => setGuestEmail(e.target.value)}
                           className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            backgroundColor: darkMode ? "#16243a" : "white",
+                            color: darkMode ? "white" : colors.darkGray,
+                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                          }}
                         />
                       </div>
 
                       <div>
                         <label
                           className="block text-sm font-medium mb-2"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            color: darkMode ? "white" : colors.darkGray,
+                          }}
                         >
                           {t("phone")}
                         </label>
@@ -409,17 +489,25 @@ export default function SnowmobileRentalPage() {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{ color: colors.darkGray }}
+                          style={{
+                            backgroundColor: darkMode ? "#16243a" : "white",
+                            color: darkMode ? "white" : colors.darkGray,
+                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                          }}
                         />
                       </div>
 
                       <div
                         className="p-4 rounded-md"
-                        style={{ backgroundColor: `${colors.teal}20` }}
+                        style={{
+                          backgroundColor: darkMode ? "#2d1a3a" : `${colors.teal}20`,
+                        }}
                       >
                         <p
                           className="text-lg font-bold"
-                          style={{ color: colors.navy }}
+                          style={{
+                            color: darkMode ? "#10b981" : colors.navy,
+                          }}
                         >
                           {t("total")}: €{calculateTotal()}
                         </p>

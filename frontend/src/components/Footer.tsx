@@ -20,8 +20,9 @@ const Footer = ({ className }: { className?: string }) => {
 
   return (
     <footer
-      className={cn("text-white py-12 my-2 rounded-lg", className)}
+      className={cn(" text-white py-12 my-2 rounded-lg", className)}
       style={{
+        marginTop: "5rem",
         background: darkMode
           ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
           : `linear-gradient(to bottom right, ${colors.teal}, ${colors.navy})`,

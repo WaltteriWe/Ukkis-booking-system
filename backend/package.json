@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "build": "tsc && node scripts/copy-generated.js",
+    "build": "tsc && node scripts/copyGenerated.js",
     "start": "node dist/src/index.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
@@ -39,6 +39,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.25",
     "@types/nodemailer": "^7.0.2",
+    "fs-extra": "^11.3.2",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.2.2"

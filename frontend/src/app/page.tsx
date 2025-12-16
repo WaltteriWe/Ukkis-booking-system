@@ -8,6 +8,13 @@ import Image from "next/image";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useInView } from "@/hooks/useInView";
+import PreFooter from "@/components/PreFooter";
+
+
+
+
+
+
 
 export default function Home() {
   const { darkMode } = useTheme();
@@ -31,7 +38,7 @@ export default function Home() {
         id="hero-container"
         className="
           relative flex flex-col items-center justify-center h-96 w-full rounded-xl
-          sm:h-[500px] md:h-[600px] lg:h-[700px]
+          sm:h-[350px] md:h-[450px] lg:h-[550px]
           transition-all duration-700 ease-in-out
           dark:bg-white/5 dark:backdrop-blur-xl dark:border dark:border-white/30 dark:shadow-lg dark:bg-clip-padding 
         "
@@ -42,7 +49,7 @@ export default function Home() {
             : { opacity: 0, transform: "translateY(20px)" }),
         }}
       >
-        <div className="absolute inset-0 z-0 rounded-xl overflow-hidden">
+        <div className="absolute inset-0 z-0 rounded-xl overflow-hidden h-full w-full">
           <Image
             src="/images/hero-image.jpg"
             alt="Arctic landscape"
@@ -216,6 +223,9 @@ export default function Home() {
         }
       >
         <SafetySection />
+      </div>
+      <div>
+        <PreFooter />
       </div>
       <div
         ref={ctaView.ref}
