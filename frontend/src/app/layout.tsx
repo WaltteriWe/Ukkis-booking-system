@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { siteMetadata } from "@/lib/metadata";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
@@ -21,7 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ukkis Safaris",
   description: "Explore the beauty of nature with Ukkis Safaris",
- 
+  ...siteMetadata,
 };
 
 export default function RootLayout({

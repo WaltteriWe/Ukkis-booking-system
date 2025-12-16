@@ -10,12 +10,6 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useInView } from "@/hooks/useInView";
 import PreFooter from "@/components/PreFooter";
 
-
-
-
-
-
-
 export default function Home() {
   const { darkMode } = useTheme();
   const { t } = useLanguage();
@@ -34,7 +28,7 @@ export default function Home() {
     >
       {/* Hero Section */}
       <div
-        ref={heroView.ref}
+        ref={heroView.ref as React.RefObject<HTMLDivElement>}
         id="hero-container"
         className="
           relative flex flex-col items-center justify-center h-96 w-full rounded-xl
@@ -86,7 +80,7 @@ export default function Home() {
 
       {/* Intro Section */}
       <div
-        ref={introView.ref}
+        ref={introView.ref as React.RefObject<HTMLDivElement>}
         className="
           mx-auto w-full p-6 text-center mt-20 space-y-2 rounded-xl
           transition-all duration-700 ease-in-out
@@ -123,7 +117,7 @@ export default function Home() {
 
       {/* Features Section */}
       <div
-        ref={featuresView.ref}
+        ref={featuresView.ref as React.RefObject<HTMLDivElement>}
         className="
           container mx-auto px-6 py-8 mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 text-center rounded-xl
           transition-all duration-700 ease-in-out
@@ -214,7 +208,7 @@ export default function Home() {
 
       {/* Additional Sections */}
       <div
-        ref={safetyView.ref}
+        ref={safetyView.ref as React.RefObject<HTMLDivElement>}
         className="mt-20 transition-all duration-700 ease-in-out"
         style={
           safetyView.isInView
@@ -228,7 +222,7 @@ export default function Home() {
         <PreFooter />
       </div>
       <div
-        ref={ctaView.ref}
+        ref={ctaView.ref as React.RefObject<HTMLDivElement>}
         className="mt-20 transition-all duration-700 ease-in-out"
         style={
           ctaView.isInView
