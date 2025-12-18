@@ -1,5 +1,14 @@
 import fastify, { FastifyInstance } from "fastify";
-import { createBooking, getBookings, getBookingById, updateBookingStatus, getAvailability, approveBooking, rejectBooking } from "../controllers/bookingController";
+import {
+  createBooking,
+  getBookings,
+  getBookingById,
+  updateBookingStatus,
+  getAvailability,
+  approveBooking,
+  rejectBooking,
+  confirmPayment,
+} from "../controllers/bookingController";
 
 export async function bookingRoutes(app: FastifyInstance) {
   app.post("/bookings", async (req, reply) => {
@@ -48,16 +57,19 @@ export async function bookingRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/availability/:packageId/:month', async (request, reply) => {
+  app.get("/availability/:packageId/:month", async (request, reply) => {
     try {
-        const { packageId, month } = request.params as { packageId: string; month: string };
-        const availability = await getAvailability(parseInt(packageId), month);
-        reply.send(availability);
+      const { packageId, month } = request.params as {
+        packageId: string;
+        month: string;
+      };
+      const availability = await getAvailability(parseInt(packageId), month);
+      reply.send(availability);
     } catch (error) {
-        console.error("Error fetching availability:", error);
-        reply.status(500).send({ error: "Failed to fetch availability" });
+      console.error("Error fetching availability:", error);
+      reply.status(500).send({ error: "Failed to fetch availability" });
     }
-});
+  });
 
   app.put("/bookings/:id/approve", async (req, reply) => {
     try {
@@ -75,6 +87,22 @@ export async function bookingRoutes(app: FastifyInstance) {
     try {
       const { id } = req.params as { id: string };
       const data = await rejectBooking(Number(id), req.body);
+      return reply.send(data);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Confirm payment manually (for local dev without webhooks)
+  app.post("/bookings/confirm-payment", async (req, reply) => {
+    try {
+      const { paymentIntentId } = req.body as { paymentIntentId: string };
+      if (!paymentIntentId) {
+        return reply.code(400).send({ error: "paymentIntentId is required" });
+      }
+      const data = await confirmPayment(paymentIntentId);
       return reply.send(data);
     } catch (e: any) {
       const c = e?.status ?? 500;

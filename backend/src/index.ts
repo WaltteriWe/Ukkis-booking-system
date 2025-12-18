@@ -19,7 +19,7 @@ import { requireAuth } from "../middleware/auth";
 async function main() {
   const app = Fastify({ logger: true });
 
-    // Enable CORS
+  // Enable CORS
   await app.register(cors, {
     origin: "*", // Allow all origins in development
     credentials: true,
@@ -40,6 +40,7 @@ async function main() {
     { method: "GET", path: "/api/departures" }, // Get departures (public)
     { method: "GET", path: "/api/upload/images" }, // Get images (public)
     { method: "POST", path: "/api/bookings" }, // Create booking (customer)
+    { method: "POST", path: "/api/bookings/confirm-payment" }, // Confirm payment (customer)
     { method: "POST", path: "/api/contact" }, // Create contact message (customer)
     { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
     { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
@@ -51,7 +52,7 @@ async function main() {
     { method: "GET", path: "/uploads/" }, // Static files (images) - public
   ];
 
- app.addHook(
+  app.addHook(
     "preHandler",
     async (request: FastifyRequest, reply: FastifyReply) => {
       const urlPath = request.url.split("?")[0];
@@ -75,8 +76,6 @@ async function main() {
       await requireAuth(request, reply);
     }
   );
-
-
 
   await app.register(packageRoutes, { prefix: API_PREFIX });
   await app.register(departureRoutes, { prefix: API_PREFIX });
