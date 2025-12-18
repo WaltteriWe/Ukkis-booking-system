@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance } from "fastify";
 import {
   getAvailableSnowmobiles,
   createSnowmobileRental,
@@ -10,11 +10,14 @@ import {
   assignSnowmobilesToDeparture,
   approveSnowmobileRental,
   rejectSnowmobileRental,
-} from '../controllers/rentalController';
+} from "../controllers/rentalController";
+import { Prisma, PrismaClient } from "../../generated/prisma";
+
+const prisma = new PrismaClient();
 
 export async function rentalRoutes(app: FastifyInstance) {
   // Get all snowmobiles
-  app.get('/snowmobiles', async (req, reply) => {
+  app.get("/snowmobiles", async (req, reply) => {
     try {
       const snowmobiles = await getSnowmobiles();
       return reply.send(snowmobiles);
@@ -25,8 +28,24 @@ export async function rentalRoutes(app: FastifyInstance) {
     }
   });
 
+  // Get disabled snowmobiles
+  app.get("/snowmobiles/disabled", async (req, reply) => {
+    try {
+      const disabled = await prisma.snowmobile.findMany({
+        where: { disabled: true },
+        select: { id: true },
+      });
+
+      return reply.send(disabled.map((s: { id: number }) => s.id));
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
   // Create a new snowmobile (admin only)
-  app.post('/snowmobiles', async (req, reply) => {
+  app.post("/snowmobiles", async (req, reply) => {
     try {
       const snowmobile = await createSnowmobile(req.body);
       return reply.code(201).send(snowmobile);
@@ -38,12 +57,17 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Get available snowmobiles for a time range
-  app.get('/snowmobiles/available', async (req, reply) => {
+  app.get("/snowmobiles/available", async (req, reply) => {
     try {
-      const { startTime, endTime } = req.query as { startTime: string; endTime: string };
-      
+      const { startTime, endTime } = req.query as {
+        startTime: string;
+        endTime: string;
+      };
+
       if (!startTime || !endTime) {
-        return reply.code(400).send({ error: 'startTime and endTime are required' });
+        return reply
+          .code(400)
+          .send({ error: "startTime and endTime are required" });
       }
 
       const available = await getAvailableSnowmobiles(
@@ -59,7 +83,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Create a rental
-  app.post('/snowmobile-rentals', async (req, reply) => {
+  app.post("/snowmobile-rentals", async (req, reply) => {
     try {
       const rental = await createSnowmobileRental(req.body);
       return reply.code(201).send(rental);
@@ -71,7 +95,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Get all single reservations (for admin page)
-  app.get('/reservations', async (req, reply) => {
+  app.get("/reservations", async (req, reply) => {
     try {
       const reservations = await getSingleReservations();
       return reply.send(reservations);
@@ -83,7 +107,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Update rental status
-  app.put('/snowmobile-rentals/:id/status', async (req, reply) => {
+  app.put("/snowmobile-rentals/:id/status", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       const rental = await updateRentalStatus(parseInt(id), req.body);
@@ -96,7 +120,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Approve a snowmobile rental
-  app.post('/snowmobile-rentals/:id/approve', async (req, reply) => {
+  app.post("/snowmobile-rentals/:id/approve", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       const rental = await approveSnowmobileRental(parseInt(id), req.body);
@@ -109,7 +133,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Reject a snowmobile rental
-  app.post('/snowmobile-rentals/:id/reject', async (req, reply) => {
+  app.post("/snowmobile-rentals/:id/reject", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       const rental = await rejectSnowmobileRental(parseInt(id), req.body);
@@ -120,9 +144,56 @@ export async function rentalRoutes(app: FastifyInstance) {
       return reply.code(c).send(e);
     }
   });
+
+  // Update snowmobile (edit)
+  app.put("/snowmobiles/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { name, licensePlate, model, year, hourlyRate } = req.body as {
+        name?: string;
+        licensePlate?: string;
+        model?: string;
+        year?: number;
+        hourlyRate?: number;
+      };
+
+      const snowmobile = await prisma.snowmobile.update({
+        where: { id: parseInt(id) },
+        data: {
+          name: name || undefined,
+          licensePlate: licensePlate || null,
+          model: model || null,
+          year: year || null,
+          hourlyRate: hourlyRate !== undefined ? hourlyRate : null,
+        },
+      });
+
+      return reply.send(snowmobile);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Toggle maintenance status
+  app.patch("/snowmobiles/:id/maintenance", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { disabled } = req.body as { disabled: boolean };
+
+      const snowmobile = await prisma.snowmobile.update({
+        where: { id: parseInt(id) },
+        data: { disabled: Boolean(disabled) },
+      });
+
+      return reply.send(snowmobile);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
 }
-
-
-
 
 export default rentalRoutes;

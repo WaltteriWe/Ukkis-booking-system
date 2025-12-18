@@ -23,7 +23,7 @@ const createRentalSchema = z.object({
 export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   // Get all active snowmobiles
   const allSnowmobiles = await prisma.snowmobile.findMany({
-    where: { status: "available" },
+    where: { disabled: false },
   });
 
   // Get snowmobiles that are already rented during this time

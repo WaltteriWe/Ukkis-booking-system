@@ -29,15 +29,13 @@ import { useDepartureManagement } from "@/hooks/useDepartureManagement";
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
   if (!url) return undefined;
-  // If already absolute URL, return as is
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  // If relative URL starting with /uploads, prepend backend base URL
   if (url.startsWith('/uploads')) {
-    // Backend runs on port 3001
     return `http://localhost:3001${url}`;
   }
   return url;
 };
+
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
@@ -62,6 +60,7 @@ interface Snowmobile {
   licensePlate?: string;
   model?: string;
   year?: number;
+  hourlyRate?: number;
 }
 
 interface Departure {
@@ -69,6 +68,7 @@ interface Departure {
   departureTime: string;
   capacity: number;
   reserved: number;
+  packageId?: number;
   package?: {
     id: number;
     name: string;
@@ -90,9 +90,9 @@ interface Booking {
   guestId: number;
   departureId: number;
   participants: number;
-  totalPrice: number | string; // Can be Decimal from Prisma
+  totalPrice: number | string;
   status: string;
-  approvalStatus?: string; // pending, approved, rejected
+  approvalStatus?: string;
   adminMessage?: string;
   rejectionReason?: string;
   notes?: string;
@@ -136,9 +136,9 @@ interface singleReservations {
   guestId: number;
   departureId: number;
   participants: number;
-  totalPrice: number | string; // Can be Decimal from Prisma
+  totalPrice: number | string;
   status: string;
-  approvalStatus?: string; // pending, approved, rejected
+  approvalStatus?: string;
   rejectionReason?: string;
   notes?: string;
   createdAt: string;
@@ -174,9 +174,12 @@ interface singleReservations {
   }[];
 }
 
-// Note: image listing is not used on this page currently
-
 export default function AdminPage() {
+  // ========================================
+  // ALL HOOKS MUST BE AT THE TOP - NO EXCEPTIONS
+  // ========================================
+
+  // Custom hook
   const {
     departures,
     showDepartureForm,
@@ -194,11 +197,10 @@ export default function AdminPage() {
     handleCancelEdit
   } = useDepartureManagement();
 
+  // All useState hooks
   const [tours, setTours] = useState<Tour[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [singleReservations, setSingleReservations] = useState<
-    singleReservations[]
-  >([]);
+  const [singleReservations, setSingleReservations] = useState<singleReservations[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
@@ -212,7 +214,6 @@ export default function AdminPage() {
     | "messages"
   >("packages");
 
-  // Form state
   const [formData, setFormData] = useState({
     slug: "",
     name: "",
@@ -225,18 +226,15 @@ export default function AdminPage() {
     active: true,
   });
 
-  // Auth form state (client-side)
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  // Snowmobile management state
   const [snowmobileAction, setSnowmobileAction] = useState<"" | "add" | "edit" | "view">("");
   const [selectedDeparture, setSelectedDeparture] = useState<number | null>(null);
   const [snowmobiles, setSnowmobiles] = useState<Snowmobile[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  // Reply state for contact messages
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyToEmail, setReplyToEmail] = useState<string>("");
   const [replyBody, setReplyBody] = useState<string>("");
@@ -249,29 +247,38 @@ export default function AdminPage() {
     year: new Date().getFullYear(),
   });
 
-  // Date filter state
+  const [snowmobileTab, setSnowmobileTab] = useState<"add" | "view" | "maintenance">("view");
+  const [editingSnowmobileId, setEditingSnowmobileId] = useState<number | null>(null);
+  const [editingSnowmobileData, setEditingSnowmobileData] = useState<any>({});
+  const [disabledSnowmobiles, setDisabledSnowmobiles] = useState<number[]>([]);
 
-  // Load data only when authenticated. Read token from localStorage on mount.
-  useEffect(() => {
-    try {
-      const t = localStorage.getItem("adminToken");
-      if (t) {
-        setAdminToken(t);
-        // loadData will run in effect below when adminToken is set
-      } else {
-        setLoading(false);
-      }
-    } catch {
-      setLoading(false);
-    }
-  }, []);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [participantSearch, setParticipantSearch] = useState("");
 
-  // ✅ MOVE THESE CALLBACKS ABOVE THE useEffect HOOKS THAT USE THEM
-  // ✅ Memoize loadData to prevent infinite loops
+  const [approvalModal, setApprovalModal] = useState<{
+    open: boolean;
+    bookingId: number | null;
+    action: 'approve' | 'reject' | null;
+    message: string;
+  }>({ open: false, bookingId: null, action: null, message: '' });
+
+  const [rentalApprovalModal, setRentalApprovalModal] = useState<{
+    open: boolean;
+    rentalId: number | null;
+    action: 'approve' | 'reject' | null;
+    message: string;
+  }>({ open: false, rentalId: null, action: null, message: '' });
+
+  // useError hook
+  const { setError } = useError();
+
+  // ========================================
+  // ALL useCallback HOOKS
+  // ========================================
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-
       const [toursResponse, bookingsData] = await Promise.all([
         getPackages(false),
         getBookings(),
@@ -286,9 +293,7 @@ export default function AdminPage() {
 
       setTours(toursResponse.items);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
-      setSingleReservations(
-        Array.isArray(reservationsData) ? reservationsData : []
-      );
+      setSingleReservations(Array.isArray(reservationsData) ? reservationsData : []);
 
       console.log("Loaded data:", {
         tours: toursResponse.items.length,
@@ -303,12 +308,10 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ✅ Memoize other loader functions
   const loadSnowmobilesAndDepartures = useCallback(async () => {
     try {
       const snowmobilesData = await getSnowmobiles();
       setSnowmobiles(snowmobilesData);
-      // Call loadDepartures from the hook instead - it handles its own state
       await loadDepartures();
     } catch (error) {
       console.error("Failed to load snowmobile data:", error);
@@ -325,15 +328,67 @@ export default function AdminPage() {
     }
   }, []);
 
-  // NOW use them in useEffect
-  // When adminToken changes, load data if present
+  // ✅ MOVED: These were after early returns - now they're here with other useCallbacks
+  const handleEditSnowmobile = useCallback((snowmobileId: number) => {
+    const snowmobile = snowmobiles.find(s => s.id === snowmobileId);
+    if (!snowmobile) return;
+    
+    setEditingSnowmobileId(snowmobileId);
+    setEditingSnowmobileData({
+      name: snowmobile.name,
+      licensePlate: snowmobile.licensePlate || "",
+      model: snowmobile.model || "",
+      year: snowmobile.year || new Date().getFullYear(),
+      hourlyRate: snowmobile.hourlyRate || 0,
+    });
+  }, [snowmobiles]);
+
+  const handleSaveSnowmobile = useCallback(async () => {
+    if (!editingSnowmobileId) return;
+    
+    try {
+      const response = await fetch(`/api/snowmobiles/${editingSnowmobileId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingSnowmobileData),
+      });
+
+      if (response.ok) {
+        alert("Snowmobile updated successfully!");
+        setEditingSnowmobileId(null);
+        loadSnowmobilesAndDepartures();
+      } else {
+        alert("Failed to update snowmobile");
+      }
+    } catch (error) {
+      console.error("Failed to save snowmobile:", error);
+      alert("Failed to save snowmobile");
+    }
+  }, [editingSnowmobileId, editingSnowmobileData, loadSnowmobilesAndDepartures]);
+
+  // ========================================
+  // ALL useEffect HOOKS
+  // ========================================
+
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem("adminToken");
+      if (t) {
+        setAdminToken(t);
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (adminToken) {
       loadData();
     }
   }, [adminToken, loadData]);
 
-  // Load snowmobiles and departures when adminToken is set and activeTab is snowmobiles
   useEffect(() => {
     if (adminToken && activeTab === "snowmobiles") {
       loadSnowmobilesAndDepartures();
@@ -343,12 +398,29 @@ export default function AdminPage() {
     }
   }, [adminToken, activeTab, loadSnowmobilesAndDepartures, loadContactMessages]);
 
-  // Load departures on mount
   useEffect(() => {
     loadDepartures();
   }, [loadDepartures]);
 
-  // ✅ Memoize participant list to prevent recalculation on every render
+  useEffect(() => {
+    if (adminToken && activeTab === "snowmobiles") {
+      async function loadDisabled() {
+        try {
+          const response = await fetch("/api/snowmobiles/disabled");
+          const data = await response.json();
+          setDisabledSnowmobiles(Array.isArray(data) ? data : []);
+        } catch (error) {
+          console.error("Failed to load disabled snowmobiles:", error);
+        }
+      }
+      loadDisabled();
+    }
+  }, [adminToken, activeTab]);
+
+  // ========================================
+  // ALL useMemo HOOKS
+  // ========================================
+
   const participantsList = useMemo(
     () =>
       bookings.flatMap((b) =>
@@ -369,6 +441,10 @@ export default function AdminPage() {
     [bookings]
   );
 
+  // ========================================
+  // REGULAR FUNCTIONS (not hooks)
+  // ========================================
+
   async function handleDeleteMessage(id: number) {
     const confirmed = window.confirm("Delete this message? This cannot be undone.");
     if (!confirmed) return;
@@ -381,14 +457,12 @@ export default function AdminPage() {
     }
   }
 
-  // Open reply modal and prefill
   function handleOpenReply(message: ContactMessage) {
     setReplyingToId(message.id);
     setReplyToEmail(message.email || "");
     setReplyBody(`Hi ${message.name || ""},\n\n`);
   }
 
-  // Send reply to backend
   async function handleSendReply(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!replyingToId) return;
@@ -401,7 +475,6 @@ export default function AdminPage() {
       alert('Reply sent');
       setReplyingToId(null);
       setReplyBody('');
-      // refresh messages
       loadContactMessages();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -418,19 +491,13 @@ export default function AdminPage() {
     if (!confirmDelete) return;
     try {
       await apiDeletePackage(id);
-      // Optimistic update: remove from local state
       setTours((prev) => prev.filter((t) => t.id !== id));
     } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : "Failed to delete package";
+      const message = e instanceof Error ? e.message : "Failed to delete package";
       alert(message);
     }
   }
 
-  // Note: handleStatusUpdate was removed as it is not used in the component
-
-  // Handle reservation status update
-  // Handle file upload
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -438,13 +505,10 @@ export default function AdminPage() {
     try {
       const response = await uploadImage(file);
       console.log("Image uploaded:", response);
-
-      // Set uploaded image URL to form
       setFormData((prev) => ({
         ...prev,
         imageUrl: response.url,
       }));
-
       alert("Image uploaded successfully!");
     } catch (error: unknown) {
       console.error("Upload failed:", error);
@@ -453,84 +517,81 @@ export default function AdminPage() {
   }
 
   async function handleCreateSnowmobile(e: React.FormEvent) {
-  e.preventDefault();
-  try {
-    await createSnowmobile({
-      name: newSnowmobile.name,
-      licensePlate: newSnowmobile.licensePlate || undefined,
-      model: newSnowmobile.model || undefined,
-      year: newSnowmobile.year || undefined,
-    });
-    alert("Snowmobile created successfully!");
-    setNewSnowmobile({ name: "", licensePlate: "", model: "", year: new Date().getFullYear() });
-    setSnowmobileAction("");
-    loadSnowmobilesAndDepartures();
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    alert(`Failed to create snowmobile: ${msg}`);
-  }
-}
-
-async function handleDepartureSelect(departureId: number) {
-  setSelectedDeparture(departureId);
-  try {
-    const assignments = await getSnowmobileAssignments(departureId);
-    setSelectedSnowmobileIds(assignments.map((a: { snowmobileId: number }) => a.snowmobileId));
-  } catch (error: unknown) {
-    console.error("Failed to load assignments:", error);
-    setSelectedSnowmobileIds([]);
-  }
-}
-
-function toggleSnowmobileSelection(snowmobileId: number) {
-  setSelectedSnowmobileIds(prev =>
-    prev.includes(snowmobileId)
-      ? prev.filter(id => id !== snowmobileId)
-      : [...prev, snowmobileId]
-  );
-}
-
-async function handleAssignSnowmobiles() {
-  if (!selectedDeparture) {
-    alert("Please select a departure first");
-    return;
-  }
-  try {
-    await assignSnowmobilesToDeparture(selectedDeparture, selectedSnowmobileIds);
-    alert("Snowmobiles assigned successfully!");
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    alert(`Failed to assign snowmobiles: ${msg}`);
-  }
-}
-
-  // Admin auth handlers
-  const {setError} = useError();
-
- const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError("");
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: authEmail, password: authPassword }),
-    });
-
-    const data = await response.json();
-
-    if (data.token) {
-      localStorage.setItem("adminToken", data.token); 
-      setAdminToken(data.token); 
-      setAuthEmail("");
-      setAuthPassword("");
-    } else {
-      setError("No token received");
+    e.preventDefault();
+    try {
+      await createSnowmobile({
+        name: newSnowmobile.name,
+        licensePlate: newSnowmobile.licensePlate || undefined,
+        model: newSnowmobile.model || undefined,
+        year: newSnowmobile.year || undefined,
+      });
+      alert("Snowmobile created successfully!");
+      setNewSnowmobile({ name: "", licensePlate: "", model: "", year: new Date().getFullYear() });
+      setSnowmobileAction("");
+      loadSnowmobilesAndDepartures();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to create snowmobile: ${msg}`);
     }
-  } catch {
-    setError("Login failed");
   }
-};
+
+  async function handleDepartureSelect(departureId: number) {
+    setSelectedDeparture(departureId);
+    try {
+      const assignments = await getSnowmobileAssignments(departureId);
+      setSelectedSnowmobileIds(assignments.map((a: { snowmobileId: number }) => a.snowmobileId));
+    } catch (error: unknown) {
+      console.error("Failed to load assignments:", error);
+      setSelectedSnowmobileIds([]);
+    }
+  }
+
+  function toggleSnowmobileSelection(snowmobileId: number) {
+    setSelectedSnowmobileIds(prev =>
+      prev.includes(snowmobileId)
+        ? prev.filter(id => id !== snowmobileId)
+        : [...prev, snowmobileId]
+    );
+  }
+
+  async function handleAssignSnowmobiles() {
+    if (!selectedDeparture) {
+      alert("Please select a departure first");
+      return;
+    }
+    try {
+      await assignSnowmobilesToDeparture(selectedDeparture, selectedSnowmobileIds);
+      alert("Snowmobiles assigned successfully!");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to assign snowmobiles: ${msg}`);
+    }
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail, password: authPassword }),
+      });
+
+      const data = await response.json();
+
+      if (data.token) {
+        localStorage.setItem("adminToken", data.token);
+        setAdminToken(data.token);
+        setAuthEmail("");
+        setAuthPassword("");
+      } else {
+        setError("No token received");
+      }
+    } catch {
+      setError("Login failed");
+    }
+  };
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -558,7 +619,6 @@ async function handleAssignSnowmobiles() {
     setLoading(false);
   }
 
-  // Handle form submission
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -583,7 +643,6 @@ async function handleAssignSnowmobiles() {
         alert("Package created successfully!");
       }
 
-      // Reset form
       setFormData({
         slug: "",
         name: "",
@@ -597,8 +656,6 @@ async function handleAssignSnowmobiles() {
       });
       setEditingTour(null);
       setShowCreateForm(false);
-
-      // Reload data
       loadData();
     } catch (error) {
       console.error("Save failed:", error);
@@ -606,7 +663,6 @@ async function handleAssignSnowmobiles() {
     }
   }
 
-  // Start editing
   function startEdit(tour: Tour) {
     setEditingTour(tour);
     setFormData({
@@ -623,42 +679,18 @@ async function handleAssignSnowmobiles() {
     setShowCreateForm(true);
   }
 
-  // Participants view state: allow filtering by booking and searching by name
-  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
-    null
-  );
-  const [participantSearch, setParticipantSearch] = useState("");
-
-  // Approval modal state
-  const [approvalModal, setApprovalModal] = useState<{
-    open: boolean;
-    bookingId: number | null;
-    action: 'approve' | 'reject' | null;
-    message: string;
-  }>({ open: false, bookingId: null, action: null, message: '' });
-
-  // Rental approval modal state
-  const [rentalApprovalModal, setRentalApprovalModal] = useState<{
-    open: boolean;
-    rentalId: number | null;
-    action: 'approve' | 'reject' | null;
-    message: string;
-  }>({ open: false, rentalId: null, action: null, message: '' });
-
-  // Handle approve booking
   async function handleApprove(bookingId: number) {
     try {
       await approveBooking(bookingId, approvalModal.message || undefined);
       alert('Booking approved successfully! Confirmation email sent to customer.');
       setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
-      loadData(); // Refresh bookings
+      loadData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to approve booking: ${msg}`);
     }
   }
 
-  // Handle reject booking
   async function handleReject(bookingId: number) {
     if (!approvalModal.message.trim()) {
       alert('Please provide a rejection reason');
@@ -668,27 +700,25 @@ async function handleAssignSnowmobiles() {
       await rejectBooking(bookingId, approvalModal.message);
       alert('Booking rejected. Notification email sent to customer.');
       setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
-      loadData(); // Refresh bookings
+      loadData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to reject booking: ${msg}`);
     }
   }
 
-  // Handle approve rental
   async function handleApproveRental(rentalId: number) {
     try {
       await approveSnowmobileRental(rentalId, rentalApprovalModal.message || undefined);
       alert('Rental approved successfully! Confirmation email sent to customer.');
       setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
-      loadData(); // Refresh rentals
+      loadData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to approve rental: ${msg}`);
     }
   }
 
-  // Handle reject rental
   async function handleRejectRental(rentalId: number) {
     if (!rentalApprovalModal.message.trim()) {
       alert('Please provide a rejection reason');
@@ -698,14 +728,41 @@ async function handleAssignSnowmobiles() {
       await rejectSnowmobileRental(rentalId, rentalApprovalModal.message);
       alert('Rental rejected. Notification email sent to customer.');
       setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
-      loadData(); // Refresh rentals
+      loadData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to reject rental: ${msg}`);
     }
   }
 
-  // If not authenticated, show login/register form
+  async function handleToggleMaintenance(snowmobileId: number) {
+    try {
+      const isCurrentlyDisabled = disabledSnowmobiles.includes(snowmobileId);
+      
+      const response = await fetch(`/api/snowmobiles/${snowmobileId}/maintenance`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disabled: !isCurrentlyDisabled }),
+      });
+
+      if (response.ok) {
+        setDisabledSnowmobiles(prev =>
+          isCurrentlyDisabled
+            ? prev.filter(id => id !== snowmobileId)
+            : [...prev, snowmobileId]
+        );
+        alert(isCurrentlyDisabled ? "Snowmobile re-enabled" : "Snowmobile disabled for maintenance");
+      }
+    } catch (error) {
+      console.error("Failed to toggle maintenance:", error);
+      alert("Failed to update snowmobile status");
+    }
+  }
+
+  // ========================================
+  // EARLY RETURNS (after ALL hooks)
+  // ========================================
+
   if (!adminToken) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -780,6 +837,10 @@ async function handleAssignSnowmobiles() {
       </div>
     );
   }
+
+  // ========================================
+  // MAIN RENDER
+  // ========================================
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -1099,7 +1160,6 @@ async function handleAssignSnowmobiles() {
         {/* Packages List */}
         {activeTab === "packages" && (
           <>
-            {/* ADD THIS DEPARTURE SECTION BEFORE "Existing Packages" */}
             {!showCreateForm && (
               <div className="bg-white rounded-lg shadow mt-8 mb-8">
                 <div className="p-6 border-b">
@@ -1228,804 +1288,713 @@ async function handleAssignSnowmobiles() {
           </>
         )}
 
+        {/* Snowmobiles Tab */}
         {activeTab === "snowmobiles" && (
-  <div className="bg-white rounded-lg shadow p-6 mb-8">
-    <div className="grid grid-cols-2 gap-6">
-      {/* Left Side - Snowmobile Management */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Snowmobile Management</h2>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Select Action</label>
-          <select 
-            value={snowmobileAction}
-            onChange={(e) => setSnowmobileAction(e.target.value as "" | "add" | "edit" | "view")}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">-- Choose an action --</option>
-            <option value="add">Add New Snowmobile</option>
-            <option value="view">View All Snowmobiles</option>
-          </select>
-        </div>
-
-        <div className="border rounded p-4 bg-gray-50 min-h-[300px]">
-          {snowmobileAction === "" && (
-            <p className="text-sm text-gray-600">Select an action from the dropdown above</p>
-          )}
-
-          {snowmobileAction === "add" && (
-            <form onSubmit={handleCreateSnowmobile} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newSnowmobile.name}
-                  onChange={(e) => setNewSnowmobile({ ...newSnowmobile, name: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Snowmobile 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">License Plate</label>
-                <input
-                  type="text"
-                  value={newSnowmobile.licensePlate}
-                  onChange={(e) => setNewSnowmobile({ ...newSnowmobile, licensePlate: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="ABC-123"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Model</label>
-                <input
-                  type="text"
-                  value={newSnowmobile.model}
-                  onChange={(e) => setNewSnowmobile({ ...newSnowmobile, model: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Lynx Xtrim"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Year</label>
-                <input
-                  type="number"
-                  value={newSnowmobile.year}
-                  onChange={(e) => setNewSnowmobile({ ...newSnowmobile, year: parseInt(e.target.value) })}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex gap-2 mb-6 border-b">
               <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                onClick={() => {
+                  setSnowmobileTab("view");
+                  setEditingSnowmobileId(null);
+                }}
+                className={`px-4 py-2 font-medium border-b-2 ${
+                  snowmobileTab === "view"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
               >
-                Add Snowmobile
+                All Snowmobiles ({snowmobiles.length})
               </button>
-            </form>
-          )}
+              <button
+                onClick={() => {
+                  setSnowmobileTab("add");
+                  setEditingSnowmobileId(null);
+                }}
+                className={`px-4 py-2 font-medium border-b-2 ${
+                  snowmobileTab === "add"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Add New
+              </button>
+              <button
+                onClick={() => {
+                  setSnowmobileTab("maintenance");
+                  setEditingSnowmobileId(null);
+                }}
+                className={`px-4 py-2 font-medium border-b-2 ${
+                  snowmobileTab === "maintenance"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Maintenance ({disabledSnowmobiles.length})
+              </button>
+            </div>
 
-          {snowmobileAction === "view" && (
-            <div className="overflow-auto max-h-[400px]">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100 sticky top-0">
-                  <tr>
-                    <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">Plate</th>
-                    <th className="text-left p-2">Model</th>
-                    <th className="text-left p-2">Year</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {/* View Tab */}
+            {snowmobileTab === "view" && (
+              <div>
+                <div className="space-y-4">
                   {snowmobiles.map((sm) => (
-                    <tr key={sm.id} className="border-t">
-                      <td className="p-2 font-medium">{sm.name}</td>
-                      <td className="p-2">{sm.licensePlate || "-"}</td>
-                      <td className="p-2">{sm.model || "-"}</td>
-                      <td className="p-2">{sm.year || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {snowmobiles.length === 0 && (
-                <p className="text-center py-4 text-gray-500">No snowmobiles found</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Side - Safari Assignment */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Assign to Safari</h2>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Select Safari Departure</label>
-          <select 
-            value={selectedDeparture || ""}
-            onChange={(e) => handleDepartureSelect(parseInt(e.target.value))}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">-- Choose a departure --</option>
-            {departures.map((dep) => (
-              <option key={dep.id} value={dep.id}>
-                {dep.package?.name || "Unknown"} - {new Date(dep.departureTime).toLocaleString()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="border rounded p-4 bg-gray-50 min-h-[300px]">
-          {!selectedDeparture && (
-            <p className="text-sm text-gray-600">Select a departure to assign snowmobiles</p>
-          )}
-
-          {selectedDeparture && (
-            <div>
-              <p className="text-sm font-medium mb-3">Select Snowmobiles:</p>
-              <div className="space-y-2 mb-4 max-h-[250px] overflow-auto">
-                {snowmobiles.map((sm) => (
-                  <div
-                    key={sm.id}
-                    onClick={() => toggleSnowmobileSelection(sm.id)}
-                    className={`p-3 border rounded cursor-pointer transition ${
-                      selectedSnowmobileIds.includes(sm.id)
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-300 hover:border-blue-400"
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">{sm.name}</div>
-                    <div className="text-xs text-gray-600">
-                      {sm.licensePlate || "No plate"} • {sm.model || "No model"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={handleAssignSnowmobiles}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-              >
-                Save Assignment ({selectedSnowmobileIds.length} selected)
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-        {/* Participants List */}
-        {activeTab === "participants" && (
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6 border-b flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold">All Participants</h2>
-              <div className="flex items-center gap-3">
-                {selectedBookingId && (
-                  <button
-                    onClick={() => setSelectedBookingId(null)}
-                    className="text-sm px-3 py-1 border rounded bg-gray-50 hover:bg-gray-100"
-                  >
-                    Clear booking filter
-                  </button>
-                )}
-                <input
-                  type="text"
-                  placeholder="Search participants or guest..."
-                  value={participantSearch}
-                  onChange={(e) => setParticipantSearch(e.target.value)}
-                  className="border px-3 py-2 rounded w-64 text-sm"
-                />
-              </div>
-            </div>
-            <div className="divide-y">
-              {(() => {
-                // Apply filters: booking filter and search
-                const q = participantSearch.trim().toLowerCase();
-                let filtered = participantsList;
-                if (selectedBookingId)
-                  filtered = filtered.filter(
-                    (p) => p.bookingId === selectedBookingId
-                  );
-                if (q.length > 0) {
-                  filtered = filtered.filter(
-                    (p) =>
-                      (p.name || "").toLowerCase().includes(q) ||
-                      (p.guestName || "").toLowerCase().includes(q) ||
-                      (p.packageName || "").toLowerCase().includes(q)
-                  );
-                }
-
-                if (filtered.length === 0) {
-                  return (
-                    <div className="text-center py-12 text-gray-500">
-                      No participants found
-                    </div>
-                  );
-                }
-
-                // Group by booking
-                const groups = filtered.reduce(
-                  (acc: Record<number, typeof filtered>, p) => {
-                    acc[p.bookingId] = acc[p.bookingId] || [];
-                    acc[p.bookingId].push(p);
-                    return acc;
-                  },
-                  {} as Record<number, typeof filtered>
-                );
-
-                // Render groups sorted by booking id descending
-                return Object.keys(groups)
-                  .map(Number)
-                  .sort((a, b) => b - a)
-                  .map((bookingId) => {
-                    const items = groups[bookingId].sort((x, y) =>
-                      (x.name || "").localeCompare(y.name || "")
-                    );
-                    const sample = items[0];
-                    return (
-                      <div key={bookingId} className="p-4 md:p-6">
-                        <div className="mb-3">
-                          <div className="font-semibold">
-                            Booking #{bookingId} • {sample.packageName}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Departure:{" "}
-                            {new Date(sample.departureTime).toLocaleDateString(
-                              "fi-FI",
-                              {
-                                year: "numeric",
-                                month: "numeric",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {items.map((p) => (
-                            <div key={p.id} className="py-3">
-                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                {/* Left: gear items */}
-                                <div className="flex-1">
-                                  <div className="mt-1 text-sm text-gray-600 flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-4 md:text-base overflow-x-auto">
-                                    <span className="whitespace-nowrap">
-                                      Boots:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.boots}
-                                      </span>
-                                    </span>
-                                    <span className="hidden md:inline-block text-gray-300">
-                                      •
-                                    </span>
-                                    <span className="whitespace-nowrap">
-                                      Gloves:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.gloves}
-                                      </span>
-                                    </span>
-                                    <span className="hidden md:inline-block text-gray-300">
-                                      •
-                                    </span>
-                                    <span className="whitespace-nowrap">
-                                      Helmet:{" "}
-                                      <span className="font-medium text-gray-900">
-                                        {p.helmet}
-                                      </span>
-                                    </span>
-                                  </div>
-                                </div>
-                                {/* Right: participant name + email (no card) */}
-                                <div className="text-right md:w-56">
-                                  <div className="text-sm font-semibold text-gray-900">
-                                    {p.name || "Participant"}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {p.guestEmail}
-                                  </div>
-                                </div>
-                              </div>
+                    <div
+                      key={sm.id}
+                      className={`border rounded-lg p-4 ${
+                        disabledSnowmobiles.includes(sm.id)
+                          ? "bg-red-50 border-red-300"
+                          : "bg-white border-gray-300"
+                      }`}
+                    >
+                      {editingSnowmobileId === sm.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Name</label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.name}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    name: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  });
-              })()}
-            </div>
-          </div>
-        )}
-
-        {/* Contact Messages (Admin) */}
-        {activeTab === "messages" && (
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-xl font-bold">Contact Messages</h2>
-              <div>
-                <button
-                  onClick={loadContactMessages}
-                  className="px-3 py-1 border rounded bg-gray-50 hover:bg-gray-100"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
-            <div className="p-4 overflow-auto">
-              {contactMessages.length === 0 ? (
-                <p className="text-sm text-gray-600">No messages found.</p>
-              ) : (
-                <table className="w-full text-left table-auto">
-                  <thead>
-                    <tr className="text-sm text-gray-600">
-                      <th className="px-3 py-2">#</th>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Email</th>
-                      <th className="px-3 py-2">Subject</th>
-                      <th className="px-3 py-2">Message</th>
-                      <th className="px-3 py-2">Received</th>
-                      <th className="px-3 py-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contactMessages.map((m) => (
-                      <tr key={m.id} className="border-t">
-                        <td className="px-3 py-2 text-sm">{m.id}</td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <div>{m.name}</div>
-                            {m.repliedAt && (
-                              <span className="inline-block text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
-                                Replied
-                              </span>
-                            )}
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                License Plate
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.licensePlate}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    licensePlate: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Model</label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.model}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    model: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Year</label>
+                              <input
+                                type="number"
+                                value={editingSnowmobileData.year}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    year: parseInt(e.target.value),
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">{m.email}</td>
-                        <td className="px-3 py-2 text-sm">{m.subject}</td>
-                        <td className="px-3 py-2 text-sm max-w-xl">{m.message}</td>
-                        <td className="px-3 py-2 text-sm">{new Date(m.createdAt).toLocaleString()}</td>
-                        <td className="px-3 py-2 text-sm">
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Hourly Rate (€)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editingSnowmobileData.hourlyRate}
+                              onChange={(e) =>
+                                setEditingSnowmobileData({
+                                  ...editingSnowmobileData,
+                                  hourlyRate: parseFloat(e.target.value),
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              placeholder="e.g., 45.50"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Leave empty or 0 to use tier-based pricing
+                            </p>
+                          </div>
+
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleOpenReply(m)}
-                              className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                              onClick={handleSaveSnowmobile}
+                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                             >
-                              Reply
+                              Save Changes
                             </button>
                             <button
-                              onClick={() => handleDeleteMessage(m.id)}
-                              className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 text-sm"
+                              onClick={() => setEditingSnowmobileId(null)}
+                              className="px-4 py-2 border rounded hover:bg-gray-100"
                             >
-                              Delete
+                              Cancel
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Reply Modal */}
-            {replyingToId !== null && (
-              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-2xl p-6">
-                  <h3 className="text-lg font-semibold mb-3">Reply to message #{replyingToId}</h3>
-                  <form onSubmit={handleSendReply} className="space-y-3">
-                    <div>
-                      <label className="block text-sm">To</label>
-                      <input value={replyToEmail} onChange={(e) => setReplyToEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-bold text-lg">{sm.name}</h3>
+                            <p className="text-sm text-gray-600">
+                              {sm.licensePlate || "No plate"} • {sm.model || "No model"} •{" "}
+                              {sm.year || "N/A"}
+                            </p>
+                            <p className="text-sm font-medium mt-2">
+                              Hourly Rate:{" "}
+                              <span className="text-blue-600">
+                                €{sm.hourlyRate || "Not set"}
+                              </span>
+                            </p>
+                            {disabledSnowmobiles.includes(sm.id) && (
+                              <p className="text-sm text-red-600 font-semibold mt-1">
+                                🔧 In Maintenance
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditSnowmobile(sm.id)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleMaintenance(sm.id)}
+                              className={`px-4 py-2 rounded text-white ${
+                                disabledSnowmobiles.includes(sm.id)
+                                  ? "bg-gray-600 hover:bg-gray-700"
+                                  : "bg-orange-600 hover:bg-orange-700"
+                              }`}
+                            >
+                              {disabledSnowmobiles.includes(sm.id)
+                                ? "Enable"
+                                : "Disable"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-sm">Message</label>
-                      <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={8} className="w-full border rounded px-3 py-2" />
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                      <button type="button" onClick={() => setReplyingToId(null)} className="px-4 py-2 border rounded">Cancel</button>
-                      <button type="submit" disabled={sendingReply} className="px-4 py-2 bg-blue-600 text-white rounded">
-                        {sendingReply ? "Sending..." : "Send Reply"}
-                      </button>
-                    </div>
-                  </form>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {/* Add Tab */}
+            {snowmobileTab === "add" && (
+              <form onSubmit={handleCreateSnowmobile} className="space-y-4 max-w-md">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newSnowmobile.name}
+                    onChange={(e) =>
+                      setNewSnowmobile({ ...newSnowmobile, name: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Snowmobile 1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">License Plate</label>
+                  <input
+                    type="text"
+                    value={newSnowmobile.licensePlate}
+                    onChange={(e) =>
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        licensePlate: e.target.value,
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="ABC-123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Model</label>
+                  <input
+                    type="text"
+                    value={newSnowmobile.model}
+                    onChange={(e) =>
+                      setNewSnowmobile({ ...newSnowmobile, model: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Lynx Xtrim"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Year</label>
+                  <input
+                    type="number"
+                    value={newSnowmobile.year}
+                    onChange={(e) =>
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        year: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                >
+                  Add Snowmobile
+                </button>
+              </form>
+            )}
+
+            {/* Maintenance Tab */}
+            {snowmobileTab === "maintenance" && (
+              <div>
+                {disabledSnowmobiles.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">
+                    No snowmobiles in maintenance
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {snowmobiles
+                      .filter((sm) => disabledSnowmobiles.includes(sm.id))
+                      .map((sm) => (
+                        <div
+                          key={sm.id}
+                          className="border border-red-300 rounded-lg p-4 bg-red-50"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-bold text-lg">{sm.name}</h3>
+                              <p className="text-sm text-gray-600">
+                                {sm.licensePlate || "No plate"} • {sm.model || "No model"}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleToggleMaintenance(sm.id)}
+                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Re-enable
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* Bookings List */}
+        {/* Bookings Tab */}
         {activeTab === "bookings" && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">All Bookings</h2>
+              <h2 className="text-xl font-bold">Tour Bookings</h2>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Guest
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Package
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Date/Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Participants
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Total
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Approval
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {bookings.map((booking) => (
-                    <tr key={booking.id} className={`hover:bg-gray-50 ${booking.approvalStatus === 'pending' ? 'bg-yellow-50' : ''}`}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        #{booking.id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">
-                            {booking.guest.name}
-                          </div>
-                          <div className="text-gray-500">
-                            {booking.guest.email}
-                          </div>
-                          {booking.guest.phone && (
-                            <div className="text-gray-500">
-                              {booking.guest.phone}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {booking.departure?.package?.name || booking.package?.name || 'Safari Tour'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        <div>{booking.bookingDate || 'TBD'}</div>
-                        <div className="text-xs">{booking.bookingTime || ''}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="font-medium text-gray-900">
-                          {booking.participants} participant
-                          {booking.participants > 1 ? "s" : ""}
-                        </div>
-                        <div className="mt-2">
-                          <button
-                            onClick={() => {
-                              setActiveTab("participants");
-                              setSelectedBookingId(booking.id);
-                            }}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            View participants
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        €
-                        {typeof booking.totalPrice === "number"
-                          ? booking.totalPrice.toFixed(2)
-                          : Number(booking.totalPrice).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          booking.approvalStatus === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : booking.approvalStatus === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                          {booking.approvalStatus || 'pending'}
-                        </span>
-                        {booking.rejectionReason && (
-                          <div className="text-xs text-red-600 mt-1" title={booking.rejectionReason}>
-                            {booking.rejectionReason.substring(0, 30)}...
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {booking.approvalStatus === 'pending' || !booking.approvalStatus ? (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setApprovalModal({
-                                open: true,
-                                bookingId: booking.id,
-                                action: 'approve',
-                                message: ''
-                              })}
-                              className="px-3 py-1 text-xs font-semibold rounded bg-green-500 text-white hover:bg-green-600"
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              onClick={() => setApprovalModal({
-                                open: true,
-                                bookingId: booking.id,
-                                action: 'reject',
-                                message: ''
-                              })}
-                              className="px-3 py-1 text-xs font-semibold rounded bg-red-500 text-white hover:bg-red-600"
-                            >
-                              ✗ Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-500">
-                            {new Date(booking.createdAt).toLocaleDateString("fi-FI")}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {bookings.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  No bookings found
+            <div className="divide-y">
+              {bookings.map((booking) => (
+                <div key={booking.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold">{booking.guest.name}</h3>
+                      <p className="text-sm text-gray-600">{booking.guest.email}</p>
+                      <p className="text-sm">
+                        {booking.departure?.package?.name} • {booking.participants} participants
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(booking.departure?.departureTime).toLocaleString()}
+                      </p>
+                      <p className="font-medium mt-2">€{booking.totalPrice}</p>
+                      <span className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                        booking.approvalStatus === 'approved' 
+                          ? 'bg-green-100 text-green-800'
+                          : booking.approvalStatus === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {booking.approvalStatus || 'pending'}
+                      </span>
+                    </div>
+                    {booking.approvalStatus === 'pending' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setApprovalModal({ 
+                            open: true, 
+                            bookingId: booking.id, 
+                            action: 'approve', 
+                            message: '' 
+                          })}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setApprovalModal({ 
+                            open: true, 
+                            bookingId: booking.id, 
+                            action: 'reject', 
+                            message: '' 
+                          })}
+                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         )}
 
-        {/* Single Reservations List */}
+        {/* Single Reservations Tab */}
         {activeTab === "singleReservations" && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">Single Snowmobile Reservations</h2>
+              <h2 className="text-xl font-bold">Snowmobile Rentals</h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Snowmobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approval</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {singleReservations.map((reservation: singleReservations) => (
-                    <tr key={reservation.id} className={`hover:bg-gray-50 ${reservation.approvalStatus === 'pending' ? 'bg-yellow-50' : ''}`}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        #{reservation.id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">
-                            {reservation.guest?.name || 'N/A'}
-                          </div>
-                          <div className="text-gray-500">
-                            {reservation.guest?.email || 'N/A'}
-                          </div>
-                          {reservation.guest?.phone && (
-                            <div className="text-gray-500">
-                              {reservation.guest.phone}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {reservation.snowmobile?.name || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(reservation.startTime).toLocaleDateString('fi-FI', {
-                          year: 'numeric',
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(reservation.endTime).toLocaleDateString('fi-FI', {
-                          year: 'numeric',
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        €{typeof reservation.totalPrice === 'number'
-                          ? reservation.totalPrice.toFixed(2)
-                          : Number(reservation.totalPrice).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          reservation.approvalStatus === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : reservation.approvalStatus === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                          {reservation.approvalStatus || 'pending'}
-                        </span>
-                        {reservation.rejectionReason && (
-                          <div className="text-xs text-red-600 mt-1" title={reservation.rejectionReason}>
-                            {reservation.rejectionReason.substring(0, 30)}...
-                          </div>
-                        )}
-                      </td>
-
-
-
-                      <td className="px-6 py-4 text-sm">
-                        {reservation.approvalStatus === 'pending' || !reservation.approvalStatus ? (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setRentalApprovalModal({
-                                open: true,
-                                rentalId: reservation.id,
-                                action: 'approve',
-                                message: ''
-                              })}
-                              className="px-3 py-1 text-xs font-semibold rounded bg-green-500 text-white hover:bg-green-600"
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              onClick={() => setRentalApprovalModal({
-                                open: true,
-                                rentalId: reservation.id,
-                                action: 'reject',
-                                message: ''
-                              })}
-                              className="px-3 py-1 text-xs font-semibold rounded bg-red-500 text-white hover:bg-red-600"
-                            >
-                              ✗ Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-500">
-                            {new Date(reservation.createdAt).toLocaleDateString("fi-FI")}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {singleReservations.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  No snowmobile reservations yet
+            <div className="divide-y">
+              {singleReservations.map((rental) => (
+                <div key={rental.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold">{rental.guest.name}</h3>
+                      <p className="text-sm text-gray-600">{rental.guest.email}</p>
+                      <p className="text-sm">
+                        {rental.snowmobile?.name || 'Snowmobile'} • {rental.participants} participants
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(rental.startTime).toLocaleString()} - {new Date(rental.endTime).toLocaleString()}
+                      </p>
+                      <p className="font-medium mt-2">€{rental.totalPrice}</p>
+                      <span className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                        rental.approvalStatus === 'approved' 
+                          ? 'bg-green-100 text-green-800'
+                          : rental.approvalStatus === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {rental.approvalStatus || 'pending'}
+                      </span>
+                    </div>
+                    {rental.approvalStatus === 'pending' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setRentalApprovalModal({ 
+                            open: true, 
+                            rentalId: rental.id, 
+                            action: 'approve', 
+                            message: '' 
+                          })}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setRentalApprovalModal({ 
+                            open: true, 
+                            rentalId: rental.id, 
+                            action: 'reject', 
+                            message: '' 
+                          })}
+                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Participants Tab */}
+        {activeTab === "participants" && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">All Participants</h2>
+              <div className="mt-4 flex gap-4">
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  className="border rounded px-3 py-2 flex-1"
+                />
+                <select
+                  value={selectedBookingId || ''}
+                  onChange={(e) => setSelectedBookingId(e.target.value ? Number(e.target.value) : null)}
+                  className="border rounded px-3 py-2"
+                >
+                  <option value="">All Bookings</option>
+                  {bookings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      Booking #{b.id} - {b.departure?.package?.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="divide-y">
+              {participantsList
+                .filter((p) => {
+                  const matchesSearch = p.name.toLowerCase().includes(participantSearch.toLowerCase());
+                  const matchesBooking = selectedBookingId === null || p.bookingId === selectedBookingId;
+                  return matchesSearch && matchesBooking;
+                })
+                .map((participant) => (
+                  <div key={participant.id} className="p-6">
+                    <div>
+                      <h3 className="font-bold">{participant.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        Guest: {participant.guestName} ({participant.guestEmail})
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {participant.packageName} • {new Date(participant.departureTime).toLocaleString()}
+                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="font-medium">Overalls:</span> {participant.overalls}
+                        </div>
+                        <div>
+                          <span className="font-medium">Boots:</span> {participant.boots}
+                        </div>
+                        <div>
+                          <span className="font-medium">Gloves:</span> {participant.gloves}
+                        </div>
+                        <div>
+                          <span className="font-medium">Helmet:</span> {participant.helmet}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Messages Tab */}
+        {activeTab === "messages" && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">Contact Messages</h2>
+            </div>
+            <div className="divide-y">
+              {contactMessages.map((msg) => (
+                <div key={msg.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-bold">{msg.name}</h3>
+                      <p className="text-sm text-gray-600">{msg.email}</p>
+                      <p className="text-sm font-medium mt-2">{msg.subject}</p>
+                      <p className="text-sm text-gray-700 mt-1">{msg.message}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Received: {new Date(msg.createdAt).toLocaleString()}
+                      </p>
+                      {msg.repliedAt && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ Replied: {new Date(msg.repliedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenReply(msg)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                        disabled={!!msg.repliedAt}
+                      >
+                        Reply
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Reply Modal */}
+        {replyingToId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6">
+              <h3 className="text-xl font-bold mb-4">Reply to Message</h3>
+              <form onSubmit={handleSendReply}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">To:</label>
+                  <input
+                    type="email"
+                    value={replyToEmail}
+                    onChange={(e) => setReplyToEmail(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Message:</label>
+                  <textarea
+                    value={replyBody}
+                    onChange={(e) => setReplyBody(e.target.value)}
+                    rows={8}
+                    className="w-full border rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplyingToId(null);
+                      setReplyBody('');
+                    }}
+                    className="px-4 py-2 border rounded hover:bg-gray-100"
+                    disabled={sendingReply}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    disabled={sendingReply}
+                  >
+                    {sendingReply ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Approval/Rejection Modal */}
+        {approvalModal.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 className="text-xl font-bold mb-4">
+                {approvalModal.action === 'approve' ? '✅ Approve Booking' : '❌ Reject Booking'}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {approvalModal.action === 'approve' 
+                  ? 'You can optionally add a message to the customer with the approval confirmation.'
+                  : 'Please provide a reason for rejecting this booking. This will be sent to the customer.'}
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  {approvalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+                </label>
+                <textarea
+                  value={approvalModal.message}
+                  onChange={(e) => setApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                  rows={4}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={approvalModal.action === 'approve' 
+                    ? 'e.g., Looking forward to seeing you!' 
+                    : 'e.g., Sorry, this date is fully booked. Please choose another date.'}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setApprovalModal({ open: false, bookingId: null, action: null, message: '' })}
+                  className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (approvalModal.action === 'approve' && approvalModal.bookingId) {
+                      handleApprove(approvalModal.bookingId);
+                    } else if (approvalModal.action === 'reject' && approvalModal.bookingId) {
+                      handleReject(approvalModal.bookingId);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg text-white ${
+                    approvalModal.action === 'approve' 
+                      ? 'bg-green-500 hover:bg-green-600' 
+                      : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  {approvalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rental Approval/Rejection Modal */}
+        {rentalApprovalModal.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 className="text-xl font-bold mb-4">
+                {rentalApprovalModal.action === 'approve' ? '✅ Approve Rental' : '❌ Reject Rental'}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {rentalApprovalModal.action === 'approve' 
+                  ? 'You can optionally add a message to the customer with the approval confirmation.'
+                  : 'Please provide a reason for rejecting this rental. This will be sent to the customer.'}
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  {rentalApprovalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+                </label>
+                <textarea
+                  value={rentalApprovalModal.message}
+                  onChange={(e) => setRentalApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                  rows={4}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={rentalApprovalModal.action === 'approve' 
+                    ? 'e.g., Looking forward to seeing you!' 
+                    : 'e.g., Sorry, this snowmobile is not available. Please choose another date.'}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' })}
+                  className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (rentalApprovalModal.action === 'approve' && rentalApprovalModal.rentalId) {
+                      handleApproveRental(rentalApprovalModal.rentalId);
+                    } else if (rentalApprovalModal.action === 'reject' && rentalApprovalModal.rentalId) {
+                      handleRejectRental(rentalApprovalModal.rentalId);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg text-white ${
+                    rentalApprovalModal.action === 'approve' 
+                      ? 'bg-green-500 hover:bg-green-600' 
+                      : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  {rentalApprovalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* Approval/Rejection Modal */}
-      {approvalModal.open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-xl font-bold mb-4">
-              {approvalModal.action === 'approve' ? '✅ Approve Booking' : '❌ Reject Booking'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {approvalModal.action === 'approve' 
-                ? 'You can optionally add a message to the customer with the approval confirmation.'
-                : 'Please provide a reason for rejecting this booking. This will be sent to the customer.'}
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                {approvalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
-              </label>
-              <textarea
-                value={approvalModal.message}
-                onChange={(e) => setApprovalModal(prev => ({ ...prev, message: e.target.value }))}
-                rows={4}
-                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder={approvalModal.action === 'approve' 
-                  ? 'e.g., Looking forward to seeing you!' 
-                  : 'e.g., Sorry, this date is fully booked. Please choose another date.'}
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setApprovalModal({ open: false, bookingId: null, action: null, message: '' })}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (approvalModal.action === 'approve' && approvalModal.bookingId) {
-                    handleApprove(approvalModal.bookingId);
-                  } else if (approvalModal.action === 'reject' && approvalModal.bookingId) {
-                    handleReject(approvalModal.bookingId);
-                  }
-                }}
-                className={`px-4 py-2 rounded-lg text-white ${
-                  approvalModal.action === 'approve' 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : 'bg-red-500 hover:bg-red-600'
-                }`}
-              >
-                {approvalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rental Approval/Rejection Modal */}
-      {rentalApprovalModal.open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-xl font-bold mb-4">
-              {rentalApprovalModal.action === 'approve' ? '✅ Approve Rental' : '❌ Reject Rental'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {rentalApprovalModal.action === 'approve' 
-                ? 'You can optionally add a message to the customer with the approval confirmation.'
-                : 'Please provide a reason for rejecting this rental. This will be sent to the customer.'}
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                {rentalApprovalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
-              </label>
-              <textarea
-                value={rentalApprovalModal.message}
-                onChange={(e) => setRentalApprovalModal(prev => ({ ...prev, message: e.target.value }))}
-                rows={4}
-                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder={rentalApprovalModal.action === 'approve' 
-                  ? 'e.g., Looking forward to seeing you!' 
-                  : 'e.g., Sorry, this snowmobile is not available. Please choose another date.'}
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' })}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (rentalApprovalModal.action === 'approve' && rentalApprovalModal.rentalId) {
-                    handleApproveRental(rentalApprovalModal.rentalId);
-                  } else if (rentalApprovalModal.action === 'reject' && rentalApprovalModal.rentalId) {
-                    handleRejectRental(rentalApprovalModal.rentalId);
-                                   }
-                }}
-                className={`px-4 py-2 rounded-lg text-white ${
-                  rentalApprovalModal.action === 'approve' 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : 'bg-red-500 hover:bg-red-600'
-                }`}
-              >
-                {rentalApprovalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-

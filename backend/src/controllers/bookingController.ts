@@ -92,6 +92,44 @@ export async function createBooking(body: unknown) {
         );
       }
 
+      // Check departure capacity if departureId is provided
+      if (data.departureId) {
+        const departure = await tx.departure.findUnique({
+          where: { id: data.departureId },
+        });
+
+        if (!departure) {
+          throw { status: 400, error: "Invalid departure" };
+        }
+
+        // Calculate current reserved spots (only count approved bookings)
+        const existingBookings = await tx.booking.findMany({
+          where: {
+            departureId: data.departureId,
+            approvalStatus: "approved",
+          },
+        });
+
+        const totalReserved = existingBookings.reduce(
+          (sum, b) => sum + b.participants,
+          0
+        );
+
+        // Check if adding this booking would exceed capacity
+        if (totalReserved + data.participants > departure.capacity) {
+          throw {
+            status: 400,
+            error: `Not enough capacity. Available: ${
+              departure.capacity - totalReserved
+            }, Requested: ${data.participants}`,
+          };
+        }
+
+        console.log(
+          `Capacity check passed: ${totalReserved}/${departure.capacity} reserved, adding ${data.participants}`
+        );
+      }
+
       const bookingData: any = {
         departureId: data.departureId,
         guestId: guest.id,
@@ -353,6 +391,45 @@ export async function approveBooking(id: number, body: unknown) {
 
   if (!booking) {
     throw { status: 404, error: "Booking not found" };
+  }
+
+  // Check capacity if this booking has a departureId
+  if (booking.departureId) {
+    const departure = await prisma.departure.findUnique({
+      where: { id: booking.departureId },
+    });
+
+    if (!departure) {
+      throw { status: 400, error: "Invalid departure" };
+    }
+
+    // Calculate current approved bookings (excluding this one)
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        departureId: booking.departureId,
+        approvalStatus: "approved",
+        id: { not: id }, // Exclude current booking
+      },
+    });
+
+    const totalReserved = existingBookings.reduce(
+      (sum, b) => sum + b.participants,
+      0
+    );
+
+    // Check if approving this booking would exceed capacity
+    if (totalReserved + booking.participants > departure.capacity) {
+      throw {
+        status: 400,
+        error: `Cannot approve: Exceeds capacity. Available: ${
+          departure.capacity - totalReserved
+        }, Booking has: ${booking.participants}`,
+      };
+    }
+
+    console.log(
+      `Approval capacity check passed: ${totalReserved}/${departure.capacity} reserved, approving ${booking.participants}`
+    );
   }
 
   const updatedBooking = await prisma.booking.update({

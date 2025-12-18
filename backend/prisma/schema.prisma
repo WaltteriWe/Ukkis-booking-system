@@ -106,16 +106,19 @@ model Admin {
 }
 
 model Snowmobile {
-  id                Int                          @id @default(autoincrement())
-  licensePlate      String?                      @unique
-  name              String
-  model             String?
-  year              Int?
-  status            String                       @default("available")
-  createdAt         DateTime                     @default(now())
-  updatedAt         DateTime                     @updatedAt
-  safariAssignments SafariSnowmobileAssignment[]
-  rentals           SnowmobileRental[]
+  id                    Int                          @id @default(autoincrement())
+  name                  String
+  licensePlate          String?
+  model                 String?
+  year                  Int?
+  hourlyRate            Float?    
+  disabled              Boolean   @default(false) 
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // relationships
+  departureAssignments  SafariSnowmobileAssignment[]
+  rentalBookings        SnowmobileRental[]
 }
 
 model SafariSnowmobileAssignment {
