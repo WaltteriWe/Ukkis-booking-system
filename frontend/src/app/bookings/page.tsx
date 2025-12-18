@@ -775,7 +775,7 @@ export default function Bookings() {
                   {/* Gear Size Selection for Each Participant */}
                   <div className="mt-6">
                     <h4 className="text-lg font-semibold text-[#101651] mb-4">
-                      {t("gearSizes")}
+                      {t("sizeDisclaimer")}
                     </h4>
                     <div className="space-y-6">
                       {Array.from({ length: participants }, (_, i) => (

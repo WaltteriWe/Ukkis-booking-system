@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getPackages,
   createPackage,
@@ -266,12 +266,72 @@ export default function AdminPage() {
     }
   }, []);
 
+  // ✅ MOVE THESE CALLBACKS ABOVE THE useEffect HOOKS THAT USE THEM
+  // ✅ Memoize loadData to prevent infinite loops
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const [toursResponse, bookingsData] = await Promise.all([
+        getPackages(false),
+        getBookings(),
+      ]);
+
+      let reservationsData = [];
+      try {
+        reservationsData = await getSingleReservations();
+      } catch (error: unknown) {
+        console.error("Failed to load single reservations:", error);
+      }
+
+      setTours(toursResponse.items);
+      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      setSingleReservations(
+        Array.isArray(reservationsData) ? reservationsData : []
+      );
+
+      console.log("Loaded data:", {
+        tours: toursResponse.items.length,
+        bookings: bookingsData.length,
+        singleReservations: reservationsData.length,
+      });
+    } catch (error) {
+      console.error("Failed to load data:", error);
+      alert("Failed to load data. Check console for details.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ Memoize other loader functions
+  const loadSnowmobilesAndDepartures = useCallback(async () => {
+    try {
+      const snowmobilesData = await getSnowmobiles();
+      setSnowmobiles(snowmobilesData);
+      // Call loadDepartures from the hook instead - it handles its own state
+      await loadDepartures();
+    } catch (error) {
+      console.error("Failed to load snowmobile data:", error);
+    }
+  }, [loadDepartures]);
+
+  const loadContactMessages = useCallback(async () => {
+    try {
+      const msgs = await getContactMessages();
+      setContactMessages(Array.isArray(msgs) ? msgs : []);
+    } catch (error) {
+      console.error("Failed to load contact messages:", error);
+      setContactMessages([]);
+    }
+  }, []);
+
+  // NOW use them in useEffect
   // When adminToken changes, load data if present
   useEffect(() => {
     if (adminToken) {
       loadData();
     }
-  }, [adminToken]);
+  }, [adminToken, loadData]);
 
   // Load snowmobiles and departures when adminToken is set and activeTab is snowmobiles
   useEffect(() => {
@@ -281,22 +341,33 @@ export default function AdminPage() {
     if (adminToken && activeTab === "messages") {
       loadContactMessages();
     }
-  }, [adminToken, activeTab]);
+  }, [adminToken, activeTab, loadSnowmobilesAndDepartures, loadContactMessages]);
 
   // Load departures on mount
   useEffect(() => {
     loadDepartures();
-  }, []);
+  }, [loadDepartures]);
 
-  async function loadContactMessages() {
-    try {
-      const msgs = await getContactMessages();
-      setContactMessages(Array.isArray(msgs) ? msgs : []);
-    } catch (error) {
-      console.error("Failed to load contact messages:", error);
-      setContactMessages([]);
-    }
-  }
+  // ✅ Memoize participant list to prevent recalculation on every render
+  const participantsList = useMemo(
+    () =>
+      bookings.flatMap((b) =>
+        (b.participantGear || []).map((gear, i) => ({
+          id: gear.id,
+          bookingId: b.id,
+          name: gear.name || `Participant ${i + 1}`,
+          boots: gear.boots || "N/A",
+          gloves: gear.gloves || "N/A",
+          helmet: gear.helmet || "N/A",
+          overalls: gear.overalls || "N/A",
+          guestName: b.guest?.name || "Unknown",
+          guestEmail: b.guest?.email || "",
+          packageName: b.departure?.package?.name || "Safari Tour",
+          departureTime: b.departure?.departureTime || "",
+        }))
+      ),
+    [bookings]
+  );
 
   async function handleDeleteMessage(id: number) {
     const confirmed = window.confirm("Delete this message? This cannot be undone.");
@@ -337,57 +408,6 @@ export default function AdminPage() {
       alert(`Failed to send reply: ${msg}`);
     } finally {
       setSendingReply(false);
-    }
-  }
-
-  async function loadData() {
-    try {
-      setLoading(true);
-
-      // Load packages and bookings
-      const [toursResponse, bookingsData] = await Promise.all([
-        getPackages(false), // Get all packages including inactive
-        getBookings(),
-      ]);
-
-      // Try to load single reservations, but don't fail if it errors
-      let reservationsData = [];
-      try {
-        reservationsData = await getSingleReservations();
-      } catch (error: unknown) {
-        console.error("Failed to load single reservations:", error);
-        // Continue without single reservations
-      }
-
-      setTours(toursResponse.items);
-      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
-      setSingleReservations(
-        Array.isArray(reservationsData) ? reservationsData : []
-      );
-
-      console.log("Loaded data:", {
-        tours: toursResponse.items.length,
-        bookings: bookingsData.length,
-        singleReservations: reservationsData.length,
-      });
-    } catch (error) {
-      console.error("Failed to load data:", error);
-      alert("Failed to load data. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadSnowmobilesAndDepartures() {
-    try {
-      const [snowmobilesData, departuresData] = await Promise.all([
-        getSnowmobiles(),
-        getDepartures({ onlyAvailable: false }),
-      ]);
-      setSnowmobiles(snowmobilesData);
-      setDepartures(departuresData.items || departuresData);
-    } catch (error) {
-      console.error("Failed to load snowmobile data:", error);
     }
   }
 
@@ -602,23 +622,6 @@ async function handleAssignSnowmobiles() {
     });
     setShowCreateForm(true);
   }
-
-  // Flatten participants from participantGear for the Participants tab
-  const participantsList = bookings.flatMap((b) =>
-    (b.participantGear || []).map((gear, i) => ({
-      id: gear.id,
-      bookingId: b.id,
-      name: gear.name || `Participant ${i + 1}`,
-      boots: gear.boots || "N/A",
-      gloves: gear.gloves || "N/A",
-      helmet: gear.helmet || "N/A",
-      overalls: gear.overalls || "N/A",
-      guestName: b.guest?.name || "Unknown",
-      guestEmail: b.guest?.email || "",
-      packageName: b.departure?.package?.name || "Safari Tour",
-      departureTime: b.departure?.departureTime || "",
-    }))
-  );
 
   // Participants view state: allow filtering by booking and searching by name
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
@@ -1137,7 +1140,7 @@ async function handleAssignSnowmobiles() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEditDeparture(departure)}
-                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-purple-700"
                             >
                               Edit
                             </button>
@@ -2007,7 +2010,7 @@ async function handleAssignSnowmobiles() {
                     handleApproveRental(rentalApprovalModal.rentalId);
                   } else if (rentalApprovalModal.action === 'reject' && rentalApprovalModal.rentalId) {
                     handleRejectRental(rentalApprovalModal.rentalId);
-                  }
+                                   }
                 }}
                 className={`px-4 py-2 rounded-lg text-white ${
                   rentalApprovalModal.action === 'approve' 
