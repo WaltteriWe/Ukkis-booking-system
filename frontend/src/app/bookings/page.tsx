@@ -32,6 +32,16 @@ const getImageUrl = (url?: string) => {
   return url;
 };
 
+const darkModeStyles = {
+  bgPrimary: (isDark: boolean) => isDark ? "#0f172a" : colors.white,
+  bgSecondary: (isDark: boolean) => isDark ? "#1e293b" : "#f9fafb",
+  textPrimary: (isDark: boolean) => isDark ? "#f1f5f9" : "#101651",
+  textSecondary: (isDark: boolean) => isDark ? "#cbd5e1" : "#3b4463",
+  border: (isDark: boolean) => isDark ? "#334155" : "#e5e7eb",
+  accent: (isDark: boolean) => isDark ? "#10b981" : "#101651",
+  inputBg: (isDark: boolean) => isDark ? "#1e293b" : "#ffffff",
+  inputBorder: (isDark: boolean) => isDark ? "#475569" : "#d1d5db",
+};
 
 // (TabNavigation UI removed - using top navigation links instead)
 
@@ -375,9 +385,16 @@ export default function Bookings() {
     .map(([k]) => ADDONS.find((x) => x.id === k)!)
     .filter(Boolean);
 
+  // ✅ Calculate total with participant-scaled add-ons
+  const addonsCost = selectedAddons.reduce((sum, a) => sum + a.price * participants, 0);
   const total =
-    (selectedTour?.basePrice ?? 0) * participants +
-    selectedAddons.reduce((sum, a) => sum + a.price, 0);
+    (selectedTour?.basePrice ?? 0) * participants + addonsCost;
+
+  // ✅ Get max capacity from selected departure
+  const maxCapacity = selectedDeparture
+    ? packageDepartures.find((d) => d.id === selectedDeparture)?.capacity - 
+      (packageDepartures.find((d) => d.id === selectedDeparture)?.reserved || 0)
+    : selectedTour?.capacity || 8;
 
   // Success screen
   if (bookingComplete) {
@@ -524,17 +541,13 @@ export default function Bookings() {
             <section>
               <h1
                 className="text-4xl font-extrabold"
-                style={{
-                  color: darkMode ? "#10b981" : "#101651",
-                }}
+                style={{ color: darkModeStyles.accent(darkMode) }}
               >
                 {t("chooseYourAdventure")}
               </h1>
               <p
                 className="mt-2 text-lg"
-                style={{
-                  color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#3b4463",
-                }}
+                style={{ color: darkModeStyles.textSecondary(darkMode) }}
               >
                 {t("selectFromPremiumCollection")}
               </p>
@@ -543,12 +556,16 @@ export default function Bookings() {
                 {loading ? (
                   <div className="col-span-full text-center py-8">
                     <div className="animate-spin h-8 w-8 border-2 border-[#ffb64d] border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-gray-500">{t("loadingTours")}</p>
+                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                      {t("loadingTours")}
+                    </p>
                   </div>
                 ) : error ? (
                   <div className="col-span-full text-center py-8">
                     <p className="text-red-500 mb-2">⚠️ {error}</p>
-                    <p className="text-gray-500">{t("showingDemoTours")}</p>
+                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                      {t("showingDemoTours")}
+                    </p>
                   </div>
                 ) : null}
 
@@ -565,6 +582,10 @@ export default function Bookings() {
                           ? "border-[#ffb64d] ring-2 ring-[#ffb64d]/40"
                           : "border-gray-200")
                       }
+                      style={{
+                        backgroundColor: darkModeStyles.bgPrimary(darkMode),
+                        borderColor: darkModeStyles.border(darkMode),
+                      }}
                     >
                       <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
                         <img
@@ -574,21 +595,30 @@ export default function Bookings() {
                         />
                       </div>
                       <div className="p-6">
-                        <h3 className="text-xl font-bold text-[#101651] hover:underline">
+                        <h3
+                          className="text-xl font-bold hover:underline"
+                          style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                        >
                           {t(`tour_${tour.slug}_name`) !==
                           `tour_${tour.slug}_name`
                             ? t(`tour_${tour.slug}_name`)
                             : tour.name}
                         </h3>
                         {tour.description && (
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                          <p
+                            className="mt-2 text-sm line-clamp-2"
+                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                          >
                             {t(`tour_${tour.slug}_desc`) !==
                             `tour_${tour.slug}_desc`
                               ? t(`tour_${tour.slug}_desc`)
                               : tour.description}
                           </p>
                         )}
-                        <ul className="mt-3 space-y-1 text-[#3b4463]">
+                        <ul
+                          className="mt-3 space-y-1"
+                          style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                        >
                           <li>
                             🕒 {Math.floor(tour.durationMin / 60)}h{" "}
                             {tour.durationMin % 60}min
@@ -602,7 +632,10 @@ export default function Bookings() {
                         </ul>
                         <div className="mt-4 text-2xl font-extrabold text-[#ff8c3a]">
                           €{tour.basePrice}
-                          <span className="text-base font-semibold text-[#3b4463]">
+                          <span
+                            className="text-base font-semibold"
+                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                          >
                             /{t("person")}
                           </span>
                         </div>
@@ -617,10 +650,19 @@ export default function Bookings() {
                 })}
               </div>
 
-              {/* Package selection UI - New Code */}
+              {/* Package selection UI */}
               {selectedTour && (
-                <div className="mt-6 p-4 border rounded-lg bg-blue-50">
-                  <h3 className="font-semibold mb-3">
+                <div
+                  className="mt-6 p-4 border rounded-lg"
+                  style={{
+                    backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                    borderColor: darkModeStyles.border(darkMode),
+                  }}
+                >
+                  <h3
+                    className="font-semibold mb-3"
+                    style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                  >
                     {t("selectADeparture")}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -629,11 +671,20 @@ export default function Bookings() {
                         <button
                           key={dep.id}
                           onClick={() => setSelectedDeparture(dep.id)}
-                          className={`p-3 rounded border-2 transition ${
-                            selectedDeparture === dep.id
-                              ? "border-blue-600 bg-blue-100"
-                              : "border-gray-300 hover:border-blue-400"
-                          }`}
+                          className={`p-3 rounded border-2 transition`}
+                          style={{
+                            borderColor:
+                              selectedDeparture === dep.id
+                                ? "#0070f3"
+                                : darkModeStyles.border(darkMode),
+                            backgroundColor:
+                              selectedDeparture === dep.id
+                                ? darkMode
+                                  ? "#1e3a8a"
+                                  : "#e6f7ff"
+                                : darkModeStyles.inputBg(darkMode),
+                            color: darkModeStyles.textPrimary(darkMode),
+                          }}
                         >
                           <div className="font-medium">
                             {new Date(dep.departureTime).toLocaleDateString("en-US", {
@@ -642,20 +693,19 @@ export default function Bookings() {
                               day: "numeric",
                             })}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
                             {new Date(dep.departureTime).toLocaleTimeString("en-US", {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {dep.capacity - dep.reserved}{" "}
-                            {t("spotsLeft")}
+                          <div className="text-xs" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                            {dep.capacity - dep.reserved} {t("spotsLeft")}
                           </div>
                         </button>
                       ))
                     ) : (
-                      <p className="text-sm text-gray-600">
+                      <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
                         {t("noDeparturesAvailable")}
                       </p>
                     )}
@@ -680,112 +730,141 @@ export default function Bookings() {
               <div
                 className="rounded-lg p-8"
                 style={{
-                  backgroundColor: darkMode ? "#1a1a2e" : colors.white,
-                  color: darkMode ? "white" : colors.darkGray,
+                  backgroundColor: darkModeStyles.bgPrimary(darkMode),
+                  color: darkModeStyles.textPrimary(darkMode),
                 }}
               >
                 <h2
                   className="text-3xl font-extrabold"
-                  style={{
-                    color: darkMode ? "#10b981" : "#101651",
-                  }}
+                  style={{ color: darkModeStyles.accent(darkMode) }}
                 >
                   {t("customizeYourExperience")}
                 </h2>
                 <p
                   className="mt-1"
-                  style={{
-                    color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#3b4463",
-                  }}
+                  style={{ color: darkModeStyles.textSecondary(darkMode) }}
                 >
                   {t("personalizeYourAdventure")}
                 </p>
 
                 <div className="mt-6 space-y-6">
                   <div>
-                    <div className="mb-6">
-                      <label
-                        className="mb-2 block text-sm font-semibold"
-                        style={{ color: colors.navy }}
-                      >
-                        {t("chooseDate")}
-                      </label>
-                      <AvailabilityCalendar
-                        packageId={selectedTour!.id}
-                        selectedDate={date ? new Date(date) : undefined}
-                        onDateSelect={(newDate) => {
-                          if (newDate) {
-                            setDate(format(newDate, "yyyy-MM-dd"));
-                          }
-                        }}
-                      />
-                    </div>
+                    <label
+                      className="mb-2 block text-sm font-semibold"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
+                      {t("chooseDate")}
+                    </label>
+                    <AvailabilityCalendar
+                      packageId={selectedTour!.id}
+                      selectedDate={date ? new Date(date) : undefined}
+                      onDateSelect={(newDate) => {
+                        if (newDate) {
+                          setDate(format(newDate, "yyyy-MM-dd"));
+                        }
+                      }}
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-[#101651]">
+                    <label
+                      className="block text-sm font-semibold"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
                       {t("chooseTime")}
                     </label>
                     <select
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
+                      className="mt-2 w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
+                      style={{
+                        backgroundColor: darkModeStyles.inputBg(darkMode),
+                        borderColor: darkModeStyles.inputBorder(darkMode),
+                        color: darkModeStyles.textPrimary(darkMode),
+                      }}
                     >
-                      {[
-                        "09:00",
-                        "10:00",
-                        "12:00",
-                        "14:00",
-                        "15:00",
-                        "16:00",
-                      ].map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
+                      {["09:00", "10:00", "12:00", "14:00", "15:00", "16:00"].map(
+                        (t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-[#101651]">
+                    <label
+                      className="block text-sm font-semibold"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
                       {t("numberOfParticipants")}
                     </label>
 
                     <div className="mt-2 flex items-center gap-3">
                       <button
-                        onClick={() =>
-                          setParticipants((p) => Math.max(1, p - 1))
-                        }
-                        className="h-10 w-10 rounded-xl border border-gray-300 bg-white text-xl"
+                        onClick={() => setParticipants((p) => Math.max(1, p - 1))}
+                        className="h-10 w-10 rounded-xl border"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                       >
                         –
                       </button>
-                      <div className="w-10 text-center text-xl font-bold">
+                      <div
+                        className="w-10 text-center text-xl font-bold"
+                        style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                      >
                         {participants}
                       </div>
                       <button
-                        onClick={() => setParticipants((p) => p + 1)}
-                        className="h-10 w-10 rounded-xl border border-gray-300 bg-white text-xl"
+                        onClick={() =>
+                          setParticipants((p) => Math.min(maxCapacity, p + 1))
+                        }
+                        className="h-10 w-10 rounded-xl border disabled:opacity-50"
+                        disabled={participants >= maxCapacity}
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                       >
                         +
                       </button>
                     </div>
+
+                    {participants >= maxCapacity && (
+                      <p className="mt-2 text-sm text-orange-600">
+                        ⚠️ Maximum capacity ({maxCapacity}) reached for this departure
+                      </p>
+                    )}
                   </div>
 
-                  {/* Gear Size Selection for Each Participant */}
+                  {/* Gear Size Selection */}
                   <div className="mt-6">
-                    <h4 className="text-lg font-semibold text-[#101651] mb-4">
+                    <h4
+                      className="text-lg font-semibold mb-4"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
                       {t("sizeDisclaimer")}
                     </h4>
                     <div className="space-y-6">
                       {Array.from({ length: participants }, (_, i) => (
                         <div
                           key={i + 1}
-                          className="p-4 border border-gray-200 rounded-lg bg-gray-50"
+                          className="p-4 border rounded-lg"
+                          style={{
+                            backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                            borderColor: darkModeStyles.border(darkMode),
+                          }}
                         >
-                          {/* Participant Name Input */}
                           <div className="mb-4">
-                            <label className="block text-sm font-medium text-[#101651] mb-2">
+                            <label
+                              className="block text-sm font-medium mb-2"
+                              style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                            >
                               {t("participant")} {i + 1} {t("name")}:
                             </label>
                             <input
@@ -795,18 +874,29 @@ export default function Bookings() {
                                 updateParticipantName(i + 1, e.target.value)
                               }
                               placeholder={`${t("enterNameFor")} ${t("participant").toLowerCase()} ${i + 1}`}
-                              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+                              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+                              style={{
+                                backgroundColor: darkModeStyles.inputBg(darkMode),
+                                borderColor: darkModeStyles.inputBorder(darkMode),
+                                color: darkModeStyles.textPrimary(darkMode),
+                              }}
                               required
                             />
                           </div>
 
-                          <h6 className="text-sm font-medium text-gray-600 mb-3">
+                          <h6
+                            className="text-sm font-medium mb-3"
+                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                          >
                             {t("gearSizes")}:
                           </h6>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             {/* Overall Size */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label
+                                className="block text-sm font-medium mb-1"
+                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                              >
                                 {t("overalls")}
                               </label>
                               <select
@@ -820,7 +910,12 @@ export default function Bookings() {
                                     e.target.value
                                   )
                                 }
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                style={{
+                                  backgroundColor: darkModeStyles.inputBg(darkMode),
+                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  color: darkModeStyles.textPrimary(darkMode),
+                                }}
                                 required
                               >
                                 <option value="">Select size</option>
@@ -834,7 +929,10 @@ export default function Bookings() {
 
                             {/* Boots Size */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label
+                                className="block text-sm font-medium mb-1"
+                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                              >
                                 {t("boots")}
                               </label>
                               <select
@@ -848,7 +946,12 @@ export default function Bookings() {
                                     e.target.value
                                   )
                                 }
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                style={{
+                                  backgroundColor: darkModeStyles.inputBg(darkMode),
+                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  color: darkModeStyles.textPrimary(darkMode),
+                                }}
                                 required
                               >
                                 <option value="">Select size</option>
@@ -862,7 +965,10 @@ export default function Bookings() {
 
                             {/* Gloves Size */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label
+                                className="block text-sm font-medium mb-1"
+                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                              >
                                 {t("gloves")}
                               </label>
                               <select
@@ -876,7 +982,12 @@ export default function Bookings() {
                                     e.target.value
                                   )
                                 }
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                style={{
+                                  backgroundColor: darkModeStyles.inputBg(darkMode),
+                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  color: darkModeStyles.textPrimary(darkMode),
+                                }}
                                 required
                               >
                                 <option value="">Select size</option>
@@ -890,7 +1001,10 @@ export default function Bookings() {
 
                             {/* Helmet Size */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label
+                                className="block text-sm font-medium mb-1"
+                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                              >
                                 {t("helmet")}
                               </label>
                               <select
@@ -904,7 +1018,12 @@ export default function Bookings() {
                                     e.target.value
                                   )
                                 }
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                style={{
+                                  backgroundColor: darkModeStyles.inputBg(darkMode),
+                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  color: darkModeStyles.textPrimary(darkMode),
+                                }}
                                 required
                               >
                                 <option value="">Select size</option>
@@ -923,26 +1042,23 @@ export default function Bookings() {
                 </div>
               </div>
 
+              {/* Right Column - Add-ons & Summary */}
               <div
                 className="rounded-lg p-8"
                 style={{
-                  backgroundColor: darkMode ? "#1a1a2e" : colors.white,
-                  color: darkMode ? "white" : colors.darkGray,
+                  backgroundColor: darkModeStyles.bgPrimary(darkMode),
+                  color: darkModeStyles.textPrimary(darkMode),
                 }}
               >
                 <h2
                   className="text-3xl font-extrabold"
-                  style={{
-                    color: darkMode ? "#10b981" : "#101651",
-                  }}
+                  style={{ color: darkModeStyles.accent(darkMode) }}
                 >
                   {t("addonsAndSummary")}
                 </h2>
                 <p
                   className="mt-1"
-                  style={{
-                    color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#3b4463",
-                  }}
+                  style={{ color: darkModeStyles.textSecondary(darkMode) }}
                 >
                   {t("enhanceYourExperience")}
                 </p>
@@ -952,41 +1068,84 @@ export default function Bookings() {
                   {ADDONS.map((addon) => (
                     <div
                       key={addon.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        addons[addon.id]
-                          ? "bg-[#e6f7ff] border-[#0070f3]"
-                          : "bg-white border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all`}
+                      style={{
+                        backgroundColor: addons[addon.id]
+                          ? darkMode
+                            ? "#1e3a8a"
+                            : "#e6f7ff"
+                          : darkModeStyles.bgSecondary(darkMode),
+                        borderColor: addons[addon.id]
+                          ? "#0070f3"
+                          : darkModeStyles.border(darkMode),
+                      }}
                       onClick={() => toggleAddon(addon.id)}
                     >
-                      <h4 className="font-semibold">
+                      <h4
+                        className="font-semibold"
+                        style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                      >
                         {t(`addon_${addon.id}_title`)}
                       </h4>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p
+                        className="text-sm mb-2"
+                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                      >
                         {t(`addon_${addon.id}_desc`)}
                       </p>
-                      <div
-                        className="text-lg font-bold"
-                        style={{ color: "#0070f3" }}
-                      >
-                        +€{addon.price}
+                      <div className="text-lg font-bold" style={{ color: "#0070f3" }}>
+                        €{addon.price}
+                        {participants > 1 &&
+                          ` × ${participants} = €${addon.price * participants}`}
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Summary Section */}
-                <div className="bg-gray-50 rounded-lg p-6 mt-6">
-                  <div className="flex justify-between items-center text-xl font-bold">
-                    <span>{t("total")}:</span>
-                    <span style={{ color: "#0070f3" }}>€{total}</span>
+                <div
+                  className="rounded-lg p-6 mt-6"
+                  style={{ backgroundColor: darkModeStyles.bgSecondary(darkMode) }}
+                >
+                  <div className="space-y-2 text-sm mb-4">
+                    <div
+                      className="flex justify-between"
+                      style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                    >
+                      <span>Tour ({participants}×):</span>
+                      <span>€{(selectedTour?.basePrice ?? 0) * participants}</span>
+                    </div>
+                    {selectedAddons.length > 0 && (
+                      <div
+                        className="flex justify-between"
+                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                      >
+                        <span>Add-ons ({participants}×):</span>
+                        <span>€{addonsCost}</span>
+                      </div>
+                    )}
+                    <div
+                      className="border-t pt-2 flex justify-between text-xl font-bold"
+                      style={{
+                        borderColor: darkModeStyles.border(darkMode),
+                        color: darkModeStyles.textPrimary(darkMode),
+                      }}
+                    >
+                      <span>{t("total")}:</span>
+                      <span style={{ color: "#0070f3" }}>€{total}</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex gap-4 mt-6">
                   <button
                     onClick={() => setStep(1)}
-                    className="flex-1 py-3 rounded-md border border-gray-300 font-semibold hover:bg-gray-50"
+                    className="flex-1 py-3 rounded-md border font-semibold transition"
+                    style={{
+                      borderColor: darkModeStyles.border(darkMode),
+                      backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                      color: darkModeStyles.textPrimary(darkMode),
+                    }}
                   >
                     ← {t("back")}
                   </button>
@@ -1004,27 +1163,29 @@ export default function Bookings() {
 
           {/* STEP 3: CONFIRMATION */}
           {step === 3 && (
-            <section>
+            <section
+              className="max-w-4xl mx-auto px-4 pb-10"
+              style={{ color: darkModeStyles.textPrimary(darkMode) }}
+            >
               <h2
                 className="text-3xl font-extrabold"
-                style={{
-                  color: darkMode ? "#10b981" : "#101651",
-                }}
+                style={{ color: darkModeStyles.accent(darkMode) }}
               >
                 {t("confirmYourBooking")}
               </h2>
               <p
                 className="mt-1"
-                style={{
-                  color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#3b4463",
-                }}
+                style={{ color: darkModeStyles.textSecondary(darkMode) }}
               >
                 {t("reviewBookingDetails")}
               </p>
 
               {/* Contact Information */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">
+                <h3
+                  className="text-lg font-semibold mb-4"
+                  style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                >
                   {t("contactInformation")}
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1033,12 +1194,14 @@ export default function Bookings() {
                     placeholder={t("fullName")}
                     value={customerInfo.name}
                     onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        name: e.target.value,
-                      })
+                      setCustomerInfo({ ...customerInfo, name: e.target.value })
                     }
                     className="border rounded-lg px-4 py-2"
+                    style={{
+                      backgroundColor: darkModeStyles.inputBg(darkMode),
+                      borderColor: darkModeStyles.inputBorder(darkMode),
+                      color: darkModeStyles.textPrimary(darkMode),
+                    }}
                     required
                   />
                   <input
@@ -1046,12 +1209,14 @@ export default function Bookings() {
                     placeholder={t("emailAddress")}
                     value={customerInfo.email}
                     onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        email: e.target.value,
-                      })
+                      setCustomerInfo({ ...customerInfo, email: e.target.value })
                     }
                     className="border rounded-lg px-4 py-2"
+                    style={{
+                      backgroundColor: darkModeStyles.inputBg(darkMode),
+                      borderColor: darkModeStyles.inputBorder(darkMode),
+                      color: darkModeStyles.textPrimary(darkMode),
+                    }}
                     required
                   />
                   <input
@@ -1059,24 +1224,39 @@ export default function Bookings() {
                     placeholder={t("phoneNumber")}
                     value={customerInfo.phone}
                     onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        phone: e.target.value,
-                      })
+                      setCustomerInfo({ ...customerInfo, phone: e.target.value })
                     }
                     className="border rounded-lg px-4 py-2"
+                    style={{
+                      backgroundColor: darkModeStyles.inputBg(darkMode),
+                      borderColor: darkModeStyles.inputBorder(darkMode),
+                      color: darkModeStyles.textPrimary(darkMode),
+                    }}
                   />
                 </div>
               </div>
 
               {/* Participant Gear Sizes */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">
+                <h3
+                  className="text-lg font-semibold mb-4"
+                  style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                >
                   Participant Details
                 </h3>
                 {Array.from({ length: participants }).map((_, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h4 className="font-medium mb-3">
+                  <div
+                    key={index}
+                    className="rounded-lg p-4 mb-4 border"
+                    style={{
+                      backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                      borderColor: darkModeStyles.border(darkMode),
+                    }}
+                  >
+                    <h4
+                      className="font-medium mb-3"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
                       Participant {index + 1}
                     </h4>
                     <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1088,6 +1268,11 @@ export default function Bookings() {
                           updateParticipantName(index + 1, e.target.value)
                         }
                         className="border rounded px-3 py-2"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                         required
                       />
                       <select
@@ -1102,6 +1287,11 @@ export default function Bookings() {
                           )
                         }
                         className="border rounded px-3 py-2"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                         required
                       >
                         <option value="">Overalls Size</option>
@@ -1117,6 +1307,11 @@ export default function Bookings() {
                           updateGearSize(index + 1, "boots", e.target.value)
                         }
                         className="border rounded px-3 py-2"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                         required
                       >
                         <option value="">Boot Size</option>
@@ -1132,6 +1327,11 @@ export default function Bookings() {
                           updateGearSize(index + 1, "gloves", e.target.value)
                         }
                         className="border rounded px-3 py-2"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                         required
                       >
                         <option value="">Glove Size</option>
@@ -1147,6 +1347,11 @@ export default function Bookings() {
                           updateGearSize(index + 1, "helmet", e.target.value)
                         }
                         className="border rounded px-3 py-2"
+                        style={{
+                          backgroundColor: darkModeStyles.inputBg(darkMode),
+                          borderColor: darkModeStyles.inputBorder(darkMode),
+                          color: darkModeStyles.textPrimary(darkMode),
+                        }}
                         required
                       >
                         <option value="">Helmet Size</option>
@@ -1163,30 +1368,42 @@ export default function Bookings() {
 
               {/* Add-ons Summary */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">
+                <h3
+                  className="text-lg font-semibold mb-4"
+                  style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                >
                   {t("optionalAddons")}
                 </h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {ADDONS.map((addon) => (
                     <div
                       key={addon.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        addons[addon.id]
-                          ? "bg-[#e6f7ff] border-[#0070f3]"
-                          : "bg-white border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all`}
+                      style={{
+                        backgroundColor: addons[addon.id]
+                          ? darkMode
+                            ? "#1e3a8a"
+                            : "#e6f7ff"
+                          : darkModeStyles.bgSecondary(darkMode),
+                        borderColor: addons[addon.id]
+                          ? "#0070f3"
+                          : darkModeStyles.border(darkMode),
+                      }}
                       onClick={() => toggleAddon(addon.id)}
                     >
-                      <h4 className="font-semibold">
+                      <h4
+                        className="font-semibold"
+                        style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                      >
                         {t(`addon_${addon.id}_title`)}
                       </h4>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p
+                        className="text-sm mb-2"
+                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                      >
                         {t(`addon_${addon.id}_desc`)}
                       </p>
-                      <div
-                        className="text-lg font-bold"
-                        style={{ color: "#0070f3" }}
-                      >
+                      <div className="text-lg font-bold" style={{ color: "#0070f3" }}>
                         +€{addon.price}
                       </div>
                     </div>
@@ -1195,8 +1412,14 @@ export default function Bookings() {
               </div>
 
               {/* Summary & Submit */}
-              <div className="bg-gray-50 rounded-lg p-6 mt-6">
-                <div className="flex justify-between items-center text-xl font-bold">
+              <div
+                className="rounded-lg p-6 mt-6"
+                style={{ backgroundColor: darkModeStyles.bgSecondary(darkMode) }}
+              >
+                <div
+                  className="flex justify-between items-center text-xl font-bold"
+                  style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                >
                   <span>{t("total")}:</span>
                   <span style={{ color: "#0070f3" }}>€{total}</span>
                 </div>
@@ -1205,21 +1428,23 @@ export default function Bookings() {
               <div className="flex gap-4 mt-6">
                 <button
                   onClick={() => setStep(2)}
-                  className="flex-1 py-3 rounded-md border border-gray-300 font-semibold hover:bg-gray-50"
+                  className="flex-1 py-3 rounded-md border font-semibold transition"
+                  style={{
+                    borderColor: darkModeStyles.border(darkMode),
+                    backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                    color: darkModeStyles.textPrimary(darkMode),
+                  }}
                 >
                   ← {t("back")}
                 </button>
                 <button
                   onClick={() => {
-                    // Validate all required fields
                     if (!customerInfo.name || !customerInfo.email) {
                       alert("Please fill in your contact information");
                       return;
                     }
                     if (!date || !time) {
-                      alert(
-                        "Please select a date and time from the calendar"
-                      );
+                      alert("Please select a date and time from the calendar");
                       return;
                     }
                     if (!validateGearSizes()) {
@@ -1246,8 +1471,14 @@ export default function Bookings() {
               {/* Payment Modal */}
               {showPayment && clientSecret && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-                    <h3 className="text-2xl font-bold text-[#101651] mb-6">
+                  <div
+                    className="rounded-2xl p-8 max-w-md w-full shadow-2xl"
+                    style={{ backgroundColor: darkModeStyles.bgPrimary(darkMode) }}
+                  >
+                    <h3
+                      className="text-2xl font-bold mb-6"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
                       Complete Your Payment
                     </h3>
                     <StripeCheckout

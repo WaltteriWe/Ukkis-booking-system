@@ -11,6 +11,7 @@ import {
   approveSnowmobileRental,
   rejectSnowmobileRental,
 } from '../controllers/rentalController';
+import { Prisma } from '@prisma/client';
 
 export async function rentalRoutes(app: FastifyInstance) {
   // Get all snowmobiles
@@ -18,6 +19,22 @@ export async function rentalRoutes(app: FastifyInstance) {
     try {
       const snowmobiles = await getSnowmobiles();
       return reply.send(snowmobiles);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Get disabled snowmobiles
+  app.get('/snowmobiles/disabled', async (req, reply) => {
+    try {
+      const disabled = await prisma.snowmobile.findMany({
+        where: { disabled: true },
+        select: { id: true },
+      });
+
+      return reply.send(disabled.map((s) => s.id));
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);
@@ -120,9 +137,50 @@ export async function rentalRoutes(app: FastifyInstance) {
       return reply.code(c).send(e);
     }
   });
+
+  // Update snowmobile (edit)
+  app.put('/snowmobiles/:id', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { name, licensePlate, model, year, hourlyRate } = req.body;
+
+      const snowmobile = await prisma.snowmobile.update({
+        where: { id: parseInt(id) },
+        data: {
+          name: name || undefined,
+          licensePlate: licensePlate || null,
+          model: model || null,
+          year: year || null,
+          hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+        },
+      });
+
+      return reply.send(snowmobile);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Toggle maintenance status
+  app.patch('/snowmobiles/:id/maintenance', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { disabled } = req.body;
+
+      const snowmobile = await prisma.snowmobile.update({
+        where: { id: parseInt(id) },
+        data: { disabled: Boolean(disabled) },
+      });
+
+      return reply.send(snowmobile);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
 }
-
-
-
 
 export default rentalRoutes;

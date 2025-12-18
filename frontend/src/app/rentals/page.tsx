@@ -1,9 +1,6 @@
-
-
 "use client";
 
-
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
@@ -11,6 +8,7 @@ import {
   getAvailableSnowmobiles,
   createSnowmobileRental,
   sendConfirmationEmail,
+  getSnowmobiles,
 } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
@@ -21,119 +19,227 @@ export default function SnowmobileRentalPage() {
   const { darkMode } = useTheme();
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("12:00");
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("10:00");
+  const [snowmobileModels, setSnowmobileModels] = useState<any[]>([]);
   const [availableSnowmobiles, setAvailableSnowmobiles] = useState<any[]>([]);
-  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(
-    null
-  );
+  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  const HOURLY_RATE = 50;
-
-  async function checkAvailability() {
-    if (!selectedDate || !startTime || !endTime) {
-      alert("Please select date, start time and end time");
-      return;
+  // ✅ Load snowmobile models on mount (only once)
+  useEffect(() => {
+    async function loadSnowmobiles() {
+      try {
+        const models = await getSnowmobiles();
+        setSnowmobileModels(models);
+      } catch (error) {
+        console.error("Failed to load snowmobiles:", error);
+      } finally {
+        setPageLoading(false);
+      }
     }
 
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    const startDateTime = `${dateStr}T${startTime}:00`;
-    const endDateTime = `${dateStr}T${endTime}:00`;
+    loadSnowmobiles();
+  }, []);
 
-    const start = new Date(startDateTime);
-    const end = new Date(endDateTime);
+  // ✅ Check availability when snowmobile, date, or time changes
+  useEffect(() => {
+    async function checkSnowmobileAvailability() {
+      if (!selectedSnowmobile || !selectedDate || !startTime || !endTime) {
+        setAvailableSnowmobiles([]);
+        return;
+      }
 
-    if (end <= start) {
-      alert("End time must be after start time");
-      return;
+      setCheckingAvailability(true);
+      try {
+        const dateStr = format(selectedDate, "yyyy-MM-dd");
+        const startDateTime = `${dateStr}T${startTime}:00`;
+        const endDateTime = `${dateStr}T${endTime}:00`;
+
+        const start = new Date(startDateTime);
+        const end = new Date(endDateTime);
+
+        if (end <= start) {
+          setAvailableSnowmobiles([]);
+          return;
+        }
+
+        // ✅ Check BOTH rental bookings AND admin assignments
+        const [rentalBookings, adminAssignments] = await Promise.all([
+          fetch(
+            `/api/snowmobile-rentals?snowmobileId=${selectedSnowmobile}&startTime=${start.toISOString()}&endTime=${end.toISOString()}`
+          )
+            .then((r) => r.json())
+            .then((data) => data.rentals || [])
+            .catch(() => []),
+          fetch(
+            `/api/departures?startTime=${dateStr}T${startTime}:00&endTime=${dateStr}T${endTime}:00`
+          )
+            .then((r) => r.json())
+            .then(
+              (data) =>
+                data.departures?.flatMap((d: any) => d.assignedSnowmobiles || []) ||
+                []
+            )
+            .catch(() => []),
+        ]);
+
+        // ✅ Available if no rental bookings AND not assigned to admin departure
+        const isAvailable =
+          rentalBookings.length === 0 &&
+          !adminAssignments.includes(selectedSnowmobile);
+
+        if (isAvailable) {
+          setAvailableSnowmobiles([
+            snowmobileModels.find((sm) => sm.id === selectedSnowmobile),
+          ]);
+        } else {
+          setAvailableSnowmobiles([]);
+        }
+      } catch (error) {
+        console.error(error);
+        setAvailableSnowmobiles([]);
+      } finally {
+        setCheckingAvailability(false);
+      }
     }
 
-    setLoading(true);
-    try {
-      const available = await getAvailableSnowmobiles(
-        start.toISOString(),
-        end.toISOString()
-      );
-      setAvailableSnowmobiles(available);
-      setStep(2);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to check availability");
-    } finally {
-      setLoading(false);
-    }
-  }
+    checkSnowmobileAvailability();
+  }, [selectedSnowmobile, selectedDate, startTime, endTime, snowmobileModels]);
 
-  function calculateTotal() {
-    if (!startTime || !endTime) return 0;
+  // ✅ Memoize calculateTotal with hourly rate from admin panel
+  const calculateTotal = useCallback(() => {
+    if (!startTime || !endTime || !selectedSnowmobile) return 0;
+
+    const selectedModel = snowmobileModels.find(
+      (sm) => sm.id === selectedSnowmobile
+    );
+    if (!selectedModel) return 0;
+
     const [startHour, startMin] = startTime.split(":").map(Number);
     const [endHour, endMin] = endTime.split(":").map(Number);
     const hours = endHour + endMin / 60 - (startHour + startMin / 60);
-    return Math.ceil(hours) * HOURLY_RATE;
-  }
 
-  async function handleBooking(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!selectedSnowmobile || !selectedDate) {
-      alert("Please select a snowmobile and date");
-      return;
+    // ✅ Use hourly rate from admin panel, or fallback to pricing tiers
+    const hourlyRate = selectedModel.hourlyRate || 0;
+    if (hourlyRate > 0) {
+      return Math.ceil(hours) * hourlyRate;
     }
 
-    setLoading(true);
-    try {
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
-      const startDateTime = `${dateStr}T${startTime}:00`;
-      const endDateTime = `${dateStr}T${endTime}:00`;
+    // ✅ Fallback to tier-based pricing
+    const durationKey =
+      hours <= 2
+        ? "2h"
+        : hours <= 4
+          ? "4h"
+          : hours <= 6
+            ? "6h"
+            : hours <= 8
+              ? "8h"
+              : "vrk";
 
-      const startTimeISO = new Date(startDateTime).toISOString();
-      const endTimeISO = new Date(endDateTime).toISOString();
+    return selectedModel.pricing?.[durationKey] || 0;
+  }, [startTime, endTime, selectedSnowmobile, snowmobileModels]);
 
-      const rental = await createSnowmobileRental({
-        snowmobileId: selectedSnowmobile,
-        guestEmail,
-        guestName,
-        phone,
-        startTime: startTimeISO,
-        endTime: endTimeISO,
-        totalPrice: calculateTotal(),
-        notes: `Private snowmobile rental`,
-      });
+  // ✅ Memoize total so it doesn't recalculate unless dependencies change
+  const total = useMemo(() => calculateTotal(), [calculateTotal]);
 
-      try {
-        await sendConfirmationEmail({
-          email: guestEmail,
-          name: guestName,
-          tour: `Snowmobile Rental - ${availableSnowmobiles.find((sm) => sm.id === selectedSnowmobile)?.name || "Snowmobile"}`,
-          date: format(selectedDate, "MMMM d, yyyy"),
-          time: `${startTime} - ${endTime}`,
-          participants: 1,
-          total: calculateTotal(),
-          bookingId: rental.id.toString(),
-        });
-      } catch (emailError) {
-        console.error("Failed to send confirmation email:", emailError);
+  // ✅ Memoize time hours calculation with null check
+  const hours = useMemo(() => {
+    if (!startTime || !endTime) return 0;
+    
+    const [startHour, startMin] = startTime.split(":").map(Number);
+    const [endHour, endMin] = endTime.split(":").map(Number);
+    return endHour + endMin / 60 - (startHour + startMin / 60);
+  }, [startTime, endTime]);
+
+  // ✅ Memoize handleBooking function
+  const handleBooking = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (!selectedSnowmobile || !selectedDate) {
+        alert("Please select a snowmobile and date");
+        return;
       }
 
-      alert("Booking request submitted! Check your email for details.");
-      setStep(1);
-      setSelectedDate(undefined);
-      setStartTime("10:00");
-      setEndTime("12:00");
-      setSelectedSnowmobile(null);
-      setGuestName("");
-      setGuestEmail("");
-      setPhone("");
-    } catch (error) {
-      console.error(error);
-      alert("Booking failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+      setLoading(true);
+      try {
+        const dateStr = format(selectedDate, "yyyy-MM-dd");
+        const startDateTime = `${dateStr}T${startTime}:00`;
+        const endDateTime = `${dateStr}T${endTime}:00`;
+
+        const startTimeISO = new Date(startDateTime).toISOString();
+        const endTimeISO = new Date(endDateTime).toISOString();
+
+        const rental = await createSnowmobileRental({
+          snowmobileId: selectedSnowmobile,
+          guestEmail,
+          guestName,
+          phone,
+          startTime: startTimeISO,
+          endTime: endTimeISO,
+          totalPrice: total,
+          notes: `Private snowmobile rental`,
+        });
+
+        try {
+          const selectedModel = snowmobileModels.find(
+            (sm) => sm.id === selectedSnowmobile
+          );
+          await sendConfirmationEmail({
+            email: guestEmail,
+            name: guestName,
+            tour: `${t("snowmobileRental")} - ${selectedModel?.name || "Snowmobile"}`,
+            date: format(selectedDate, "MMMM d, yyyy"),
+            time: `${startTime} - ${endTime}`,
+            participants: 1,
+            total: total,
+            bookingId: rental.id.toString(),
+          });
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+        }
+
+        alert("Booking request submitted! Check your email for details.");
+        setStep(1);
+        setSelectedDate(undefined);
+        setStartTime("08:00");
+        setEndTime("10:00");
+        setSelectedSnowmobile(null);
+        setGuestName("");
+        setGuestEmail("");
+        setPhone("");
+      } catch (error) {
+        console.error(error);
+        alert("Booking failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedSnowmobile, selectedDate, startTime, endTime, guestEmail, guestName, phone, total, snowmobileModels, t]
+  );
+
+  if (pageLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: darkMode
+            ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+            : colors.beige,
+        }}
+      >
+        <p style={{ color: darkMode ? "white" : colors.darkGray }}>
+          {t("loading")}...
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -147,9 +253,7 @@ export default function SnowmobileRentalPage() {
       className="min-h-screen"
     >
       <header
-        className={`text-white py-12 ${
-          darkMode ? "shadow-lg" : ""
-        }`}
+        className={`text-white py-12 ${darkMode ? "shadow-lg" : ""}`}
         style={{
           backgroundColor: darkMode ? colors.navy : colors.navy,
           boxShadow: darkMode
@@ -180,8 +284,67 @@ export default function SnowmobileRentalPage() {
               className="text-2xl font-bold mb-6"
               style={{ color: darkMode ? "#10b981" : colors.navy }}
             >
-              {t("checkAvailabilityButton")}
+              {t("selectASnowmobile")}
             </h2>
+
+            {/* ✅ Snowmobile Selection with Availability Check */}
+            <div className="mb-8">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {snowmobileModels.map((snowmobile) => (
+                  <div
+                    key={snowmobile.id}
+                    onClick={() => setSelectedSnowmobile(snowmobile.id)}
+                    className={`rounded-lg p-4 cursor-pointer transition border-2 ${
+                      selectedSnowmobile === snowmobile.id
+                        ? "ring-2"
+                        : "hover:shadow-md"
+                    }`}
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : colors.white,
+                      borderColor:
+                        selectedSnowmobile === snowmobile.id
+                          ? colors.teal
+                          : darkMode
+                          ? "#2d1a3a"
+                          : "#ddd",
+                      ringColor:
+                        selectedSnowmobile === snowmobile.id
+                          ? `${colors.teal}40`
+                          : "transparent",
+                    }}
+                  >
+                    <h4
+                      className="font-semibold"
+                      style={{
+                        color: darkMode ? "#10b981" : colors.navy,
+                      }}
+                    >
+                      {snowmobile.name}
+                    </h4>
+                    <p
+                      className="text-sm mt-1"
+                      style={{
+                        color: darkMode ? "#a0a0a0" : colors.darkGray,
+                      }}
+                    >
+                      {snowmobile.model}
+                    </p>
+                    {snowmobile.featureKeys && snowmobile.featureKeys.length > 0 && (
+                      <ul
+                        className="text-xs mt-2 space-y-1"
+                        style={{
+                          color: darkMode ? "#cbd5e1" : colors.darkGray,
+                        }}
+                      >
+                        {snowmobile.featureKeys.slice(0, 2).map((key: string) => (
+                          <li key={key}>• {t(key)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div>
@@ -274,38 +437,85 @@ export default function SnowmobileRentalPage() {
                 </div>
               </div>
 
-              {selectedDate && startTime && endTime && (
+              {/* ✅ Availability Status */}
+              {selectedSnowmobile && selectedDate && (
                 <div
                   className="p-4 rounded-md"
                   style={{
-                    backgroundColor: darkMode ? "#2d1a3a" : `${colors.teal}20`,
+                    backgroundColor:
+                      availableSnowmobiles.length > 0
+                        ? darkMode
+                          ? "#2d1a3a"
+                          : `${colors.teal}20`
+                        : darkMode
+                        ? "#3a2d2d"
+                        : "#ff4d4d20",
                   }}
                 >
-                  <p
-                    className="text-sm"
-                    style={{ color: darkMode ? "white" : colors.darkGray }}
-                  >
-                    {t("durationLabel")}:{" "}
-                    {Math.ceil(calculateTotal() / HOURLY_RATE)} {t("hours")}
-                  </p>
-                  <p
-                    className="text-lg font-bold mt-2"
-                    style={{
-                      color: darkMode ? "#10b981" : colors.navy,
-                    }}
-                  >
-                    {t("estimatedTotal")}: €{calculateTotal()}
-                  </p>
+                  {checkingAvailability ? (
+                    <p
+                      style={{
+                        color: darkMode ? "#cbd5e1" : colors.darkGray,
+                      }}
+                    >
+                      {t("checkingAvailability")}...
+                    </p>
+                  ) : availableSnowmobiles.length > 0 ? (
+                    <>
+                      <p
+                        className="text-sm"
+                        style={{ color: darkMode ? "white" : colors.darkGray }}
+                      >
+                        {t("durationLabel")}: {Math.ceil(hours)} {t("hours")}
+                      </p>
+                      <p
+                        className="text-lg font-bold mt-2"
+                        style={{
+                          color: darkMode ? "#10b981" : colors.navy,
+                        }}
+                      >
+                        {t("estimatedTotal")}: €{total}
+                      </p>
+                      <p
+                        className="text-sm mt-2"
+                        style={{
+                          color: darkMode ? "#10b981" : colors.teal,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ✓ {t("availableNow")}
+                      </p>
+                    </>
+                  ) : (
+                    <p
+                      style={{
+                        color: darkMode ? "#ff6b6b" : "#d32f2f",
+                        fontWeight: "600",
+                      }}
+                    >
+                      ✗ {t("notAvailable")}
+                    </p>
+                  )}
                 </div>
               )}
 
               <button
-                onClick={checkAvailability}
-                disabled={loading || !selectedDate}
+                onClick={() => setStep(2)}
+                disabled={
+                  loading ||
+                  !selectedSnowmobile ||
+                  !selectedDate ||
+                  availableSnowmobiles.length === 0 ||
+                  checkingAvailability
+                }
                 className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: colors.navy }}
               >
-                {loading ? t("checking") : t("checkAvailabilityButton")}
+                {loading
+                  ? t("processing")
+                  : availableSnowmobiles.length === 0 && selectedSnowmobile && selectedDate
+                    ? t("notAvailable")
+                    : t("continueToBooking")}
               </button>
             </div>
           </div>
@@ -318,217 +528,120 @@ export default function SnowmobileRentalPage() {
               className="mb-4 hover:underline"
               style={{ color: darkMode ? "#10b981" : colors.teal }}
             >
-              {t("backToTimeSelection")}
+              ← {t("backToSelection")}
             </button>
 
-            {availableSnowmobiles.length === 0 ? (
-              <div
-                className="rounded-lg shadow-md p-8 text-center"
+            <form
+              onSubmit={handleBooking}
+              className="rounded-lg shadow-md p-8"
+              style={{
+                backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+              }}
+            >
+              <h3
+                className="text-xl font-bold mb-6"
                 style={{
-                  backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+                  color: darkMode ? "#10b981" : colors.navy,
                 }}
               >
-                <p
-                  className="text-xl"
-                  style={{ color: darkMode ? "white" : colors.darkGray }}
-                >
-                  {t("noSnowmobilesAvailable")}
-                </p>
-                <p
-                  className="text-sm mt-2"
-                  style={{
-                    color: darkMode ? "#a0a0a0" : colors.darkGray,
-                    opacity: 0.7,
-                  }}
-                >
-                  {t("tryDifferentTime")}
-                </p>
-              </div>
-            ) : (
-              <>
-                <h2
-                  className="text-2xl font-bold mb-6"
-                  style={{ color: darkMode ? "#10b981" : colors.navy }}
-                >
-                  {t("selectASnowmobile")}
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
-                  {availableSnowmobiles.map((snowmobile) => (
-                    <div
-                      key={snowmobile.id}
-                      onClick={() => setSelectedSnowmobile(snowmobile.id)}
-                      className={`rounded-lg shadow-md p-6 cursor-pointer transition ${
-                        selectedSnowmobile === snowmobile.id
-                          ? "ring-4"
-                          : "hover:shadow-lg"
-                      }`}
-                      style={{
-                        backgroundColor: darkMode ? "#16243a" : colors.white,
-                        ringColor:
-                          selectedSnowmobile === snowmobile.id
-                            ? colors.teal
-                            : "transparent",
-                      }}
-                    >
-                      <h3
-                        className="text-lg font-bold"
-                        style={{
-                          color: darkMode ? "#10b981" : colors.navy,
-                        }}
-                      >
-                        {snowmobile.name}
-                      </h3>
-                      {snowmobile.model && (
-                        <p
-                          className="text-sm"
-                          style={{
-                            color: darkMode ? "#a0a0a0" : colors.darkGray,
-                          }}
-                        >
-                          {snowmobile.model}
-                        </p>
-                      )}
-                      {snowmobile.year && (
-                        <p
-                          className="text-sm"
-                          style={{
-                            color: darkMode ? "#a0a0a0" : colors.darkGray,
-                            opacity: 0.7,
-                          }}
-                        >
-                          {t("year")}: {snowmobile.year}
-                        </p>
-                      )}
-                      {snowmobile.licensePlate && (
-                        <p
-                          className="text-xs mt-2"
-                          style={{
-                            color: darkMode ? "#808080" : colors.darkGray,
-                            opacity: 0.5,
-                          }}
-                        >
-                          {t("plate")}: {snowmobile.licensePlate}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                {t("yourDetails")}
+              </h3>
 
-                {selectedSnowmobile && (
-                  <form
-                    onSubmit={handleBooking}
-                    className="rounded-lg shadow-md p-8"
+              <div className="space-y-4">
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-2"
                     style={{
-                      backgroundColor: darkMode ? "#1a1a2e" : colors.white,
+                      color: darkMode ? "white" : colors.darkGray,
                     }}
                   >
-                    <h3
-                      className="text-xl font-bold mb-6"
-                      style={{
-                        color: darkMode ? "#10b981" : colors.navy,
-                      }}
-                    >
-                      {t("yourDetails")}
-                    </h3>
+                    {t("name")} {t("required")}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md"
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : "white",
+                      color: darkMode ? "white" : colors.darkGray,
+                      borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                    }}
+                  />
+                </div>
 
-                    <div className="space-y-4">
-                      <div>
-                        <label
-                          className="block text-sm font-medium mb-2"
-                          style={{
-                            color: darkMode ? "white" : colors.darkGray,
-                          }}
-                        >
-                          {t("name")} {t("required")}
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{
-                            backgroundColor: darkMode ? "#16243a" : "white",
-                            color: darkMode ? "white" : colors.darkGray,
-                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
-                          }}
-                        />
-                      </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-2"
+                    style={{
+                      color: darkMode ? "white" : colors.darkGray,
+                    }}
+                  >
+                    {t("email")} {t("required")}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md"
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : "white",
+                      color: darkMode ? "white" : colors.darkGray,
+                      borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                    }}
+                  />
+                </div>
 
-                      <div>
-                        <label
-                          className="block text-sm font-medium mb-2"
-                          style={{
-                            color: darkMode ? "white" : colors.darkGray,
-                          }}
-                        >
-                          {t("email")} {t("required")}
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={guestEmail}
-                          onChange={(e) => setGuestEmail(e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{
-                            backgroundColor: darkMode ? "#16243a" : "white",
-                            color: darkMode ? "white" : colors.darkGray,
-                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
-                          }}
-                        />
-                      </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-2"
+                    style={{
+                      color: darkMode ? "white" : colors.darkGray,
+                    }}
+                  >
+                    {t("phone")}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md"
+                    style={{
+                      backgroundColor: darkMode ? "#16243a" : "white",
+                      color: darkMode ? "white" : colors.darkGray,
+                      borderColor: darkMode ? "#2d1a3a" : "#ccc",
+                    }}
+                  />
+                </div>
 
-                      <div>
-                        <label
-                          className="block text-sm font-medium mb-2"
-                          style={{
-                            color: darkMode ? "white" : colors.darkGray,
-                          }}
-                        >
-                          {t("phone")}
-                        </label>
-                        <input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-md"
-                          style={{
-                            backgroundColor: darkMode ? "#16243a" : "white",
-                            color: darkMode ? "white" : colors.darkGray,
-                            borderColor: darkMode ? "#2d1a3a" : "#ccc",
-                          }}
-                        />
-                      </div>
+                <div
+                  className="p-4 rounded-md"
+                  style={{
+                    backgroundColor: darkMode ? "#2d1a3a" : `${colors.teal}20`,
+                  }}
+                >
+                  <p
+                    className="text-lg font-bold"
+                    style={{
+                      color: darkMode ? "#10b981" : colors.navy,
+                    }}
+                  >
+                    {t("total")}: €{total}
+                  </p>
+                </div>
 
-                      <div
-                        className="p-4 rounded-md"
-                        style={{
-                          backgroundColor: darkMode ? "#2d1a3a" : `${colors.teal}20`,
-                        }}
-                      >
-                        <p
-                          className="text-lg font-bold"
-                          style={{
-                            color: darkMode ? "#10b981" : colors.navy,
-                          }}
-                        >
-                          {t("total")}: €{calculateTotal()}
-                        </p>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style={{ backgroundColor: colors.navy }}
-                      >
-                        {loading ? t("processing") : t("confirmBooking")}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </>
-            )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: colors.navy }}
+                >
+                  {loading ? t("processing") : t("confirmBooking")}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </main>
