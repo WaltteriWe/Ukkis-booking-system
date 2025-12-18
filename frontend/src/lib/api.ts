@@ -1,12 +1,11 @@
 import { get } from "http";
 
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export interface CreateBookingRequest {
   packageId: number;
-  departureId: number; 
+  departureId: number;
   participants: number;
   totalPrice?: number; // Total price including add-ons
   guestEmail: string;
@@ -163,7 +162,9 @@ export async function approveBooking(id: number, adminMessage?: string) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Failed to approve booking" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to approve booking" }));
     throw new Error(error.error || "Failed to approve booking");
   }
 
@@ -179,7 +180,9 @@ export async function rejectBooking(id: number, rejectionReason: string) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Failed to reject booking" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Failed to reject booking" }));
     throw new Error(error.error || "Failed to reject booking");
   }
 
@@ -412,6 +415,21 @@ export async function createPaymentIntent(paymentData: {
   return response.json();
 }
 
+// Confirm payment (for local dev without webhooks)
+export async function confirmPayment(paymentIntentId: string) {
+  const response = await fetch(`${API_BASE_URL}/bookings/confirm-payment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentIntentId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to confirm payment");
+  }
+
+  return response.json();
+}
+
 // Admin authentication
 export interface AdminAuthResponse {
   token?: string;
@@ -627,13 +645,10 @@ export async function sendContactReply(
 }
 
 export async function deleteDeparture(departureId: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/departures/${departureId}`,
-    {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/departures/${departureId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to delete departure");

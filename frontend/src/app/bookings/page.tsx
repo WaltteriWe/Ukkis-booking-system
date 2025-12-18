@@ -8,6 +8,7 @@ import {
   getPackages,
   getDepartures,
   createDeparture,
+  confirmPayment,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
@@ -23,15 +24,14 @@ import { useDepartures } from "@/hooks/useDepartures";
 const getImageUrl = (url?: string) => {
   if (!url) return undefined;
   // If already absolute URL, return as is
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
   // If relative URL starting with /uploads, prepend backend base URL
-  if (url.startsWith('/uploads')) {
+  if (url.startsWith("/uploads")) {
     // Backend runs on port 3001
     return `http://localhost:3001${url}`;
   }
   return url;
 };
-
 
 // (TabNavigation UI removed - using top navigation links instead)
 
@@ -49,7 +49,7 @@ type Tour = {
   isActive: boolean;
 };
 
-type Addon = { id: string; title: string; desc: string; price: number }
+type Addon = { id: string; title: string; desc: string; price: number };
 
 type Departure = {
   id: number;
@@ -81,7 +81,6 @@ const GEAR_SIZES = {
   helmet: ["XS", "S", "M", "L", "XL"],
 };
 
-
 const ADDONS: Addon[] = [
   {
     id: "photo",
@@ -106,13 +105,13 @@ const ADDONS: Addon[] = [
 export default function Bookings() {
   const { t } = useLanguage();
   const { darkMode } = useTheme();
-  const { 
-    packageDepartures, 
-    selectedDeparture, 
+  const {
+    packageDepartures,
+    selectedDeparture,
     loading: departuresLoading,
     error: departuresError,
-    handlePackageSelect, 
-    setSelectedDeparture 
+    handlePackageSelect,
+    setSelectedDeparture,
   } = useDepartures();
 
   // stepper (1: select, 2: customize, 3: confirm)
@@ -300,9 +299,19 @@ export default function Bookings() {
     }
   };
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
-      console.log("✅ Payment successful!");
+      console.log("✅ Payment successful! Payment Intent:", paymentIntentId);
+
+      // Confirm the payment on the backend (fallback for when webhooks don't work locally)
+      try {
+        await confirmPayment(paymentIntentId);
+        console.log("✅ Payment confirmed on backend");
+      } catch (confirmError) {
+        console.error("Failed to confirm payment:", confirmError);
+        // Don't throw - payment still succeeded on Stripe
+      }
+
       setShowPayment(false);
       setBookingComplete(true);
     } catch (error) {
@@ -459,9 +468,7 @@ export default function Bookings() {
       className="min-h-screen rounded-lg"
     >
       <header
-        className={`text-white py-12 ${
-          darkMode ? "shadow-lg" : ""
-        }`}
+        className={`text-white py-12 ${darkMode ? "shadow-lg" : ""}`}
         style={{
           backgroundColor: "transparent",
           boxShadow: darkMode
@@ -508,8 +515,8 @@ export default function Bookings() {
                           (step > (s.n as 1 | 2 | 3)
                             ? "w-full bg-[#ffb64d]"
                             : step === s.n
-                            ? "w-1/3 bg-[#ffb64d]"
-                            : "w-0")
+                              ? "w-1/3 bg-[#ffb64d]"
+                              : "w-0")
                         }
                       />
                     </div>
@@ -636,21 +643,26 @@ export default function Bookings() {
                           }`}
                         >
                           <div className="font-medium">
-                            {new Date(dep.departureTime).toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {new Date(dep.departureTime).toLocaleDateString(
+                              "en-US",
+                              {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
                           </div>
                           <div className="text-sm text-gray-600">
-                            {new Date(dep.departureTime).toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(dep.departureTime).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {dep.capacity - dep.reserved}{" "}
-                            {t("spotsLeft")}
+                            {dep.capacity - dep.reserved} {t("spotsLeft")}
                           </div>
                         </button>
                       ))
@@ -838,15 +850,9 @@ export default function Bookings() {
                                 {t("boots")}
                               </label>
                               <select
-                                value={
-                                  participantGearSizes[i + 1]?.boots || ""
-                                }
+                                value={participantGearSizes[i + 1]?.boots || ""}
                                 onChange={(e) =>
-                                  updateGearSize(
-                                    i + 1,
-                                    "boots",
-                                    e.target.value
-                                  )
+                                  updateGearSize(i + 1, "boots", e.target.value)
                                 }
                                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 required
@@ -1091,15 +1097,9 @@ export default function Bookings() {
                         required
                       />
                       <select
-                        value={
-                          participantGearSizes[index + 1]?.overalls || ""
-                        }
+                        value={participantGearSizes[index + 1]?.overalls || ""}
                         onChange={(e) =>
-                          updateGearSize(
-                            index + 1,
-                            "overalls",
-                            e.target.value
-                          )
+                          updateGearSize(index + 1, "overalls", e.target.value)
                         }
                         className="border rounded px-3 py-2"
                         required
@@ -1217,9 +1217,7 @@ export default function Bookings() {
                       return;
                     }
                     if (!date || !time) {
-                      alert(
-                        "Please select a date and time from the calendar"
-                      );
+                      alert("Please select a date and time from the calendar");
                       return;
                     }
                     if (!validateGearSizes()) {
