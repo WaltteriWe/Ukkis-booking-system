@@ -23,7 +23,7 @@ const createRentalSchema = z.object({
 export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   // Get all active snowmobiles
   const allSnowmobiles = await prisma.snowmobile.findMany({
-    where: { status: "available" },
+    where: { disabled: false },
   });
 
   // Get snowmobiles that are already rented during this time
@@ -326,5 +326,49 @@ export async function getSnowmobileAssignments(departureId: number) {
     include: {
       snowmobile: true,
     },
+  });
+}
+
+export async function getDisabledSnowmobiles() {
+  const disabled = await prisma.snowmobile.findMany({
+    where: { disabled: true },
+    select: { id: true },
+  });
+  return disabled.map((s) => s.id);
+}
+
+export async function updateSnowmobile(id: number, body: unknown) {
+  const schema = z.object({
+    name: z.string().optional(),
+    licensePlate: z.string().optional().nullable(),
+    model: z.string().optional().nullable(),
+    year: z.number().int().optional().nullable(),
+    hourlyRate: z.number().optional().nullable(),
+  });
+
+  const data = schema.parse(body);
+
+  return await prisma.snowmobile.update({
+    where: { id },
+    data: {
+      name: data.name || undefined,
+      licensePlate: data.licensePlate !== undefined ? data.licensePlate : undefined,
+      model: data.model !== undefined ? data.model : undefined,
+      year: data.year !== undefined ? data.year : undefined,
+      hourlyRate: data.hourlyRate !== undefined ? data.hourlyRate : undefined,
+    },
+  });
+}
+
+export async function toggleSnowmobileMaintenance(id: number, body: unknown) {
+  const schema = z.object({
+    disabled: z.boolean(),
+  });
+
+  const data = schema.parse(body);
+
+  return await prisma.snowmobile.update({
+    where: { id },
+    data: { disabled: data.disabled },
   });
 }

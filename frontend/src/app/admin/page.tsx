@@ -316,7 +316,7 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Failed to load snowmobile data:", error);
     }
-  }, [loadDepartures]);
+  }, [adminToken]);
 
   const loadContactMessages = useCallback(async () => {
     try {
@@ -349,7 +349,10 @@ export default function AdminPage() {
     try {
       const response = await fetch(`/api/snowmobiles/${editingSnowmobileId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
         body: JSON.stringify(editingSnowmobileData),
       });
 
@@ -364,7 +367,7 @@ export default function AdminPage() {
       console.error("Failed to save snowmobile:", error);
       alert("Failed to save snowmobile");
     }
-  }, [editingSnowmobileId, editingSnowmobileData, loadSnowmobilesAndDepartures]);
+  }, [editingSnowmobileId, editingSnowmobileData, loadSnowmobilesAndDepartures, adminToken]);
 
   // ========================================
   // ALL useEffect HOOKS
@@ -399,8 +402,10 @@ export default function AdminPage() {
   }, [adminToken, activeTab, loadSnowmobilesAndDepartures, loadContactMessages]);
 
   useEffect(() => {
-    loadDepartures();
-  }, [loadDepartures]);
+    if (adminToken) {
+      loadDepartures();
+    }
+  }, [adminToken]); // REMOVE loadDepartures from dependencies
 
   useEffect(() => {
     if (adminToken && activeTab === "snowmobiles") {
@@ -741,7 +746,10 @@ export default function AdminPage() {
       
       const response = await fetch(`/api/snowmobiles/${snowmobileId}/maintenance`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
         body: JSON.stringify({ disabled: !isCurrentlyDisabled }),
       });
 

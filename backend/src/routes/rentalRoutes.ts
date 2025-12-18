@@ -10,8 +10,10 @@ import {
   assignSnowmobilesToDeparture,
   approveSnowmobileRental,
   rejectSnowmobileRental,
+  getDisabledSnowmobiles,
+  updateSnowmobile,
+  toggleSnowmobileMaintenance,
 } from '../controllers/rentalController';
-import { Prisma } from '@prisma/client';
 
 export async function rentalRoutes(app: FastifyInstance) {
   // Get all snowmobiles
@@ -29,12 +31,8 @@ export async function rentalRoutes(app: FastifyInstance) {
   // Get disabled snowmobiles
   app.get('/snowmobiles/disabled', async (req, reply) => {
     try {
-      const disabled = await prisma.snowmobile.findMany({
-        where: { disabled: true },
-        select: { id: true },
-      });
-
-      return reply.send(disabled.map((s) => s.id));
+      const disabled = await getDisabledSnowmobiles();
+      return reply.send(disabled);
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);
@@ -42,19 +40,7 @@ export async function rentalRoutes(app: FastifyInstance) {
     }
   });
 
-  // Create a new snowmobile (admin only)
-  app.post('/snowmobiles', async (req, reply) => {
-    try {
-      const snowmobile = await createSnowmobile(req.body);
-      return reply.code(201).send(snowmobile);
-    } catch (e: any) {
-      const c = e?.status ?? 500;
-      if (!e?.status) app.log.error(e);
-      return reply.code(c).send(e);
-    }
-  });
-
-  // Get available snowmobiles for a time range
+  // Get available snowmobiles
   app.get('/snowmobiles/available', async (req, reply) => {
     try {
       const { startTime, endTime } = req.query as { startTime: string; endTime: string };
@@ -68,6 +54,18 @@ export async function rentalRoutes(app: FastifyInstance) {
         new Date(endTime)
       );
       return reply.send(available);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Create a new snowmobile (admin only)
+  app.post('/snowmobiles', async (req, reply) => {
+    try {
+      const snowmobile = await createSnowmobile(req.body);
+      return reply.code(201).send(snowmobile);
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);
@@ -142,19 +140,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   app.put('/snowmobiles/:id', async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const { name, licensePlate, model, year, hourlyRate } = req.body;
-
-      const snowmobile = await prisma.snowmobile.update({
-        where: { id: parseInt(id) },
-        data: {
-          name: name || undefined,
-          licensePlate: licensePlate || null,
-          model: model || null,
-          year: year || null,
-          hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
-        },
-      });
-
+      const snowmobile = await updateSnowmobile(parseInt(id), req.body);
       return reply.send(snowmobile);
     } catch (e: any) {
       const c = e?.status ?? 500;
@@ -167,13 +153,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   app.patch('/snowmobiles/:id/maintenance', async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const { disabled } = req.body;
-
-      const snowmobile = await prisma.snowmobile.update({
-        where: { id: parseInt(id) },
-        data: { disabled: Boolean(disabled) },
-      });
-
+      const snowmobile = await toggleSnowmobileMaintenance(parseInt(id), req.body);
       return reply.send(snowmobile);
     } catch (e: any) {
       const c = e?.status ?? 500;

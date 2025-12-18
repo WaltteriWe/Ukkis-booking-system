@@ -117,7 +117,7 @@ model Snowmobile {
   updatedAt             DateTime  @updatedAt
 
   // relationships
-  departureAssignments  DepartureSnowmobileAssignment[]
+  departureAssignments  SafariSnowmobileAssignment[]
   rentalBookings        SnowmobileRental[]
 }
 

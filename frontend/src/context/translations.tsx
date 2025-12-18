@@ -154,6 +154,8 @@ export const translations: Record<Language, Record<string, string>> = {
     bookingSuccessMessage:
       "Your booking has been confirmed. Check your email for details.",
     returnHome: "Return to Home",
+    continueToBooking: "Continue to contact details and payment",
+    availableNow: "Available Now",
 
     // Tours Section
     bookingsPageTitle: "Bookings",
@@ -419,6 +421,8 @@ export const translations: Record<Language, Record<string, string>> = {
     bookingSuccessMessage:
       "Varauksesi on vahvistettu. Tarkista sähköpostisi saadaksesi lisätietoja.",
     returnHome: "Palaa etusivulle",
+    continueToBooking: "Jatka yhteystietoihin ja maksamiseen",
+    availableNow: "Saatavilla nyt",
 
     // Tours Section
     bookingsPageTitle: "Safari varaukset",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createDeparture, getDepartures, deleteDeparture, updateDeparture } from "@/lib/api";
 
 interface Departure {
@@ -20,7 +20,7 @@ export function useDepartureManagement() {
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const loadDepartures = async () => {
+  const loadDepartures = useCallback(async () => {
     try {
       const response = await getDepartures();
       const depsArray = Array.isArray(response) ? response : response.items || [];
@@ -29,7 +29,7 @@ export function useDepartureManagement() {
       console.error("Failed to load departures:", error);
       setDepartures([]);
     }
-  };
+  }, []);
 
   const handleCreateDeparture = async (e: React.FormEvent) => {
     e.preventDefault();
