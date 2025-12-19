@@ -29,8 +29,8 @@ import { useDepartureManagement } from "@/hooks/useDepartureManagement";
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
   if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/uploads')) {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("/uploads")) {
     return `http://localhost:3001${url}`;
   }
   return url;
@@ -194,13 +194,15 @@ export default function AdminPage() {
     handleCreateDeparture,
     handleDeleteDeparture,
     handleEditDeparture,
-    handleCancelEdit
+    handleCancelEdit,
   } = useDepartureManagement();
 
   // All useState hooks
   const [tours, setTours] = useState<Tour[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [singleReservations, setSingleReservations] = useState<singleReservations[]>([]);
+  const [singleReservations, setSingleReservations] = useState<
+    singleReservations[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
@@ -231,43 +233,63 @@ export default function AdminPage() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  const [snowmobileAction, setSnowmobileAction] = useState<"" | "add" | "edit" | "view">("");
-  const [selectedDeparture, setSelectedDeparture] = useState<number | null>(null);
+  const [snowmobileAction, setSnowmobileAction] = useState<
+    "" | "add" | "edit" | "view"
+  >("");
+  const [selectedDeparture, setSelectedDeparture] = useState<number | null>(
+    null
+  );
   const [snowmobiles, setSnowmobiles] = useState<Snowmobile[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyToEmail, setReplyToEmail] = useState<string>("");
   const [replyBody, setReplyBody] = useState<string>("");
   const [sendingReply, setSendingReply] = useState(false);
-  const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>([]);
+  const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>(
+    []
+  );
   const [newSnowmobile, setNewSnowmobile] = useState({
     name: "",
     licensePlate: "",
     model: "",
     year: new Date().getFullYear(),
+    hourlyRate: 0,
+    pricing: {
+      "2h": 0,
+      "4h": 0,
+      "6h": 0,
+      "8h": 0,
+      vrk: 0,
+    },
   });
 
-  const [snowmobileTab, setSnowmobileTab] = useState<"add" | "view" | "maintenance">("view");
-  const [editingSnowmobileId, setEditingSnowmobileId] = useState<number | null>(null);
+  const [snowmobileTab, setSnowmobileTab] = useState<
+    "add" | "view" | "maintenance"
+  >("view");
+  const [editingSnowmobileId, setEditingSnowmobileId] = useState<number | null>(
+    null
+  );
   const [editingSnowmobileData, setEditingSnowmobileData] = useState<any>({});
   const [disabledSnowmobiles, setDisabledSnowmobiles] = useState<number[]>([]);
 
-  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
+    null
+  );
   const [participantSearch, setParticipantSearch] = useState("");
 
   const [approvalModal, setApprovalModal] = useState<{
     open: boolean;
     bookingId: number | null;
-    action: 'approve' | 'reject' | null;
+    action: "approve" | "reject" | null;
     message: string;
-  }>({ open: false, bookingId: null, action: null, message: '' });
+  }>({ open: false, bookingId: null, action: null, message: "" });
 
   const [rentalApprovalModal, setRentalApprovalModal] = useState<{
     open: boolean;
     rentalId: number | null;
-    action: 'approve' | 'reject' | null;
+    action: "approve" | "reject" | null;
     message: string;
-  }>({ open: false, rentalId: null, action: null, message: '' });
+  }>({ open: false, rentalId: null, action: null, message: "" });
 
   // useError hook
   const { setError } = useError();
@@ -293,7 +315,9 @@ export default function AdminPage() {
 
       setTours(toursResponse.items);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
-      setSingleReservations(Array.isArray(reservationsData) ? reservationsData : []);
+      setSingleReservations(
+        Array.isArray(reservationsData) ? reservationsData : []
+      );
 
       console.log("Loaded data:", {
         tours: toursResponse.items.length,
@@ -329,23 +353,26 @@ export default function AdminPage() {
   }, []);
 
   // ✅ MOVED: These were after early returns - now they're here with other useCallbacks
-  const handleEditSnowmobile = useCallback((snowmobileId: number) => {
-    const snowmobile = snowmobiles.find(s => s.id === snowmobileId);
-    if (!snowmobile) return;
-    
-    setEditingSnowmobileId(snowmobileId);
-    setEditingSnowmobileData({
-      name: snowmobile.name,
-      licensePlate: snowmobile.licensePlate || "",
-      model: snowmobile.model || "",
-      year: snowmobile.year || new Date().getFullYear(),
-      hourlyRate: snowmobile.hourlyRate || 0,
-    });
-  }, [snowmobiles]);
+  const handleEditSnowmobile = useCallback(
+    (snowmobileId: number) => {
+      const snowmobile = snowmobiles.find((s) => s.id === snowmobileId);
+      if (!snowmobile) return;
+
+      setEditingSnowmobileId(snowmobileId);
+      setEditingSnowmobileData({
+        name: snowmobile.name,
+        licensePlate: snowmobile.licensePlate || "",
+        model: snowmobile.model || "",
+        year: snowmobile.year || new Date().getFullYear(),
+        hourlyRate: snowmobile.hourlyRate || 0,
+      });
+    },
+    [snowmobiles]
+  );
 
   const handleSaveSnowmobile = useCallback(async () => {
     if (!editingSnowmobileId) return;
-    
+
     try {
       const response = await fetch(`/api/snowmobiles/${editingSnowmobileId}`, {
         method: "PUT",
@@ -364,7 +391,11 @@ export default function AdminPage() {
       console.error("Failed to save snowmobile:", error);
       alert("Failed to save snowmobile");
     }
-  }, [editingSnowmobileId, editingSnowmobileData, loadSnowmobilesAndDepartures]);
+  }, [
+    editingSnowmobileId,
+    editingSnowmobileData,
+    loadSnowmobilesAndDepartures,
+  ]);
 
   // ========================================
   // ALL useEffect HOOKS
@@ -396,7 +427,12 @@ export default function AdminPage() {
     if (adminToken && activeTab === "messages") {
       loadContactMessages();
     }
-  }, [adminToken, activeTab, loadSnowmobilesAndDepartures, loadContactMessages]);
+  }, [
+    adminToken,
+    activeTab,
+    loadSnowmobilesAndDepartures,
+    loadContactMessages,
+  ]);
 
   useEffect(() => {
     loadDepartures();
@@ -446,7 +482,9 @@ export default function AdminPage() {
   // ========================================
 
   async function handleDeleteMessage(id: number) {
-    const confirmed = window.confirm("Delete this message? This cannot be undone.");
+    const confirmed = window.confirm(
+      "Delete this message? This cannot be undone."
+    );
     if (!confirmed) return;
     try {
       await deleteContactMessage(id);
@@ -472,9 +510,9 @@ export default function AdminPage() {
         to: replyToEmail,
         body: replyBody,
       });
-      alert('Reply sent');
+      alert("Reply sent");
       setReplyingToId(null);
-      setReplyBody('');
+      setReplyBody("");
       loadContactMessages();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -493,7 +531,8 @@ export default function AdminPage() {
       await apiDeletePackage(id);
       setTours((prev) => prev.filter((t) => t.id !== id));
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Failed to delete package";
+      const message =
+        e instanceof Error ? e.message : "Failed to delete package";
       alert(message);
     }
   }
@@ -524,13 +563,28 @@ export default function AdminPage() {
         licensePlate: newSnowmobile.licensePlate || undefined,
         model: newSnowmobile.model || undefined,
         year: newSnowmobile.year || undefined,
+        hourlyRate: newSnowmobile.hourlyRate || undefined,
+        pricing: newSnowmobile.pricing,
       });
       alert("Snowmobile created successfully!");
-      setNewSnowmobile({ name: "", licensePlate: "", model: "", year: new Date().getFullYear() });
+      setNewSnowmobile({
+        name: "",
+        licensePlate: "",
+        model: "",
+        year: new Date().getFullYear(),
+        hourlyRate: 0,
+        pricing: {
+          "2h": 0,
+          "4h": 0,
+          "6h": 0,
+          "8h": 0,
+          vrk: 0,
+        },
+      });
       setSnowmobileAction("");
       loadSnowmobilesAndDepartures();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to create snowmobile: ${msg}`);
     }
   }
@@ -539,7 +593,9 @@ export default function AdminPage() {
     setSelectedDeparture(departureId);
     try {
       const assignments = await getSnowmobileAssignments(departureId);
-      setSelectedSnowmobileIds(assignments.map((a: { snowmobileId: number }) => a.snowmobileId));
+      setSelectedSnowmobileIds(
+        assignments.map((a: { snowmobileId: number }) => a.snowmobileId)
+      );
     } catch (error: unknown) {
       console.error("Failed to load assignments:", error);
       setSelectedSnowmobileIds([]);
@@ -547,9 +603,9 @@ export default function AdminPage() {
   }
 
   function toggleSnowmobileSelection(snowmobileId: number) {
-    setSelectedSnowmobileIds(prev =>
+    setSelectedSnowmobileIds((prev) =>
       prev.includes(snowmobileId)
-        ? prev.filter(id => id !== snowmobileId)
+        ? prev.filter((id) => id !== snowmobileId)
         : [...prev, snowmobileId]
     );
   }
@@ -560,10 +616,13 @@ export default function AdminPage() {
       return;
     }
     try {
-      await assignSnowmobilesToDeparture(selectedDeparture, selectedSnowmobileIds);
+      await assignSnowmobilesToDeparture(
+        selectedDeparture,
+        selectedSnowmobileIds
+      );
       alert("Snowmobiles assigned successfully!");
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to assign snowmobiles: ${msg}`);
     }
   }
@@ -572,11 +631,14 @@ export default function AdminPage() {
     e.preventDefault();
     setError("");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail, password: authPassword }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: authEmail, password: authPassword }),
+        }
+      );
 
       const data = await response.json();
 
@@ -682,55 +744,82 @@ export default function AdminPage() {
   async function handleApprove(bookingId: number) {
     try {
       await approveBooking(bookingId, approvalModal.message || undefined);
-      alert('Booking approved successfully! Confirmation email sent to customer.');
-      setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
+      alert(
+        "Booking approved successfully! Confirmation email sent to customer."
+      );
+      setApprovalModal({
+        open: false,
+        bookingId: null,
+        action: null,
+        message: "",
+      });
       loadData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to approve booking: ${msg}`);
     }
   }
 
   async function handleReject(bookingId: number) {
     if (!approvalModal.message.trim()) {
-      alert('Please provide a rejection reason');
+      alert("Please provide a rejection reason");
       return;
     }
     try {
       await rejectBooking(bookingId, approvalModal.message);
-      alert('Booking rejected. Notification email sent to customer.');
-      setApprovalModal({ open: false, bookingId: null, action: null, message: '' });
+      alert("Booking rejected. Notification email sent to customer.");
+      setApprovalModal({
+        open: false,
+        bookingId: null,
+        action: null,
+        message: "",
+      });
       loadData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to reject booking: ${msg}`);
     }
   }
 
   async function handleApproveRental(rentalId: number) {
     try {
-      await approveSnowmobileRental(rentalId, rentalApprovalModal.message || undefined);
-      alert('Rental approved successfully! Confirmation email sent to customer.');
-      setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
+      await approveSnowmobileRental(
+        rentalId,
+        rentalApprovalModal.message || undefined
+      );
+      alert(
+        "Rental approved successfully! Confirmation email sent to customer."
+      );
+      setRentalApprovalModal({
+        open: false,
+        rentalId: null,
+        action: null,
+        message: "",
+      });
       loadData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to approve rental: ${msg}`);
     }
   }
 
   async function handleRejectRental(rentalId: number) {
     if (!rentalApprovalModal.message.trim()) {
-      alert('Please provide a rejection reason');
+      alert("Please provide a rejection reason");
       return;
     }
     try {
       await rejectSnowmobileRental(rentalId, rentalApprovalModal.message);
-      alert('Rental rejected. Notification email sent to customer.');
-      setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' });
+      alert("Rental rejected. Notification email sent to customer.");
+      setRentalApprovalModal({
+        open: false,
+        rentalId: null,
+        action: null,
+        message: "",
+      });
       loadData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to reject rental: ${msg}`);
     }
   }
@@ -738,20 +827,27 @@ export default function AdminPage() {
   async function handleToggleMaintenance(snowmobileId: number) {
     try {
       const isCurrentlyDisabled = disabledSnowmobiles.includes(snowmobileId);
-      
-      const response = await fetch(`/api/snowmobiles/${snowmobileId}/maintenance`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ disabled: !isCurrentlyDisabled }),
-      });
+
+      const response = await fetch(
+        `/api/snowmobiles/${snowmobileId}/maintenance`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ disabled: !isCurrentlyDisabled }),
+        }
+      );
 
       if (response.ok) {
-        setDisabledSnowmobiles(prev =>
+        setDisabledSnowmobiles((prev) =>
           isCurrentlyDisabled
-            ? prev.filter(id => id !== snowmobileId)
+            ? prev.filter((id) => id !== snowmobileId)
             : [...prev, snowmobileId]
         );
-        alert(isCurrentlyDisabled ? "Snowmobile re-enabled" : "Snowmobile disabled for maintenance");
+        alert(
+          isCurrentlyDisabled
+            ? "Snowmobile re-enabled"
+            : "Snowmobile disabled for maintenance"
+        );
       }
     } catch (error) {
       console.error("Failed to toggle maintenance:", error);
@@ -1175,7 +1271,9 @@ export default function AdminPage() {
                         className="p-6 flex items-center justify-between"
                       >
                         <div>
-                          <h3 className="font-bold">{pkg?.name || `Package ${departure.packageId}`}</h3>
+                          <h3 className="font-bold">
+                            {pkg?.name || `Package ${departure.packageId}`}
+                          </h3>
                           <p className="text-sm text-gray-600">
                             {new Date(departure.departureTime).toLocaleString()}
                           </p>
@@ -1193,7 +1291,8 @@ export default function AdminPage() {
                               Reserved: {departure.reserved || 0}
                             </p>
                             <p className="text-sm text-green-600 font-medium">
-                              Available: {departure.capacity - (departure.reserved || 0)}
+                              Available:{" "}
+                              {departure.capacity - (departure.reserved || 0)}
                             </p>
                           </div>
 
@@ -1208,7 +1307,9 @@ export default function AdminPage() {
 
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleDeleteDeparture(departure.id)}
+                              onClick={() =>
+                                handleDeleteDeparture(departure.id)
+                              }
                               className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                             >
                               Delete
@@ -1252,7 +1353,8 @@ export default function AdminPage() {
                         <h3 className="font-bold">{tour.name}</h3>
                         <p className="text-gray-600">{tour.slug}</p>
                         <p className="text-sm text-gray-500">
-                          €{tour.basePrice} • {Math.floor(tour.durationMin / 60)}h{" "}
+                          €{tour.basePrice} •{" "}
+                          {Math.floor(tour.durationMin / 60)}h{" "}
                           {tour.durationMin % 60}min • {tour.difficulty}
                         </p>
                         <span
@@ -1350,7 +1452,9 @@ export default function AdminPage() {
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium mb-1">Name</label>
+                              <label className="block text-sm font-medium mb-1">
+                                Name
+                              </label>
                               <input
                                 type="text"
                                 value={editingSnowmobileData.name}
@@ -1380,7 +1484,9 @@ export default function AdminPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium mb-1">Model</label>
+                              <label className="block text-sm font-medium mb-1">
+                                Model
+                              </label>
                               <input
                                 type="text"
                                 value={editingSnowmobileData.model}
@@ -1394,7 +1500,9 @@ export default function AdminPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium mb-1">Year</label>
+                              <label className="block text-sm font-medium mb-1">
+                                Year
+                              </label>
                               <input
                                 type="number"
                                 value={editingSnowmobileData.year}
@@ -1451,8 +1559,8 @@ export default function AdminPage() {
                           <div>
                             <h3 className="font-bold text-lg">{sm.name}</h3>
                             <p className="text-sm text-gray-600">
-                              {sm.licensePlate || "No plate"} • {sm.model || "No model"} •{" "}
-                              {sm.year || "N/A"}
+                              {sm.licensePlate || "No plate"} •{" "}
+                              {sm.model || "No model"} • {sm.year || "N/A"}
                             </p>
                             <p className="text-sm font-medium mt-2">
                               Hourly Rate:{" "}
@@ -1496,22 +1604,32 @@ export default function AdminPage() {
 
             {/* Add Tab */}
             {snowmobileTab === "add" && (
-              <form onSubmit={handleCreateSnowmobile} className="space-y-4 max-w-md">
+              <form
+                onSubmit={handleCreateSnowmobile}
+                className="space-y-4 max-w-md"
+              >
                 <div>
-                  <label className="block text-sm font-medium mb-1">Name *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={newSnowmobile.name}
                     onChange={(e) =>
-                      setNewSnowmobile({ ...newSnowmobile, name: e.target.value })
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        name: e.target.value,
+                      })
                     }
                     className="w-full border rounded px-3 py-2"
                     placeholder="Snowmobile 1"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">License Plate</label>
+                  <label className="block text-sm font-medium mb-1">
+                    License Plate
+                  </label>
                   <input
                     type="text"
                     value={newSnowmobile.licensePlate}
@@ -1526,12 +1644,17 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Model</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Model
+                  </label>
                   <input
                     type="text"
                     value={newSnowmobile.model}
                     onChange={(e) =>
-                      setNewSnowmobile({ ...newSnowmobile, model: e.target.value })
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        model: e.target.value,
+                      })
                     }
                     className="w-full border rounded px-3 py-2"
                     placeholder="Lynx Xtrim"
@@ -1551,6 +1674,137 @@ export default function AdminPage() {
                     className="w-full border rounded px-3 py-2"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Hourly Rate (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newSnowmobile.hourlyRate}
+                    onChange={(e) =>
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        hourlyRate: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="e.g., 50.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave empty or 0 to use tier-based pricing below
+                  </p>
+                </div>
+
+                <div className="border rounded p-4 space-y-3">
+                  <h3 className="text-sm font-medium mb-2">
+                    Tier-Based Pricing (€)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs mb-1">2 hours</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSnowmobile.pricing["2h"]}
+                        onChange={(e) =>
+                          setNewSnowmobile({
+                            ...newSnowmobile,
+                            pricing: {
+                              ...newSnowmobile.pricing,
+                              "2h": parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        placeholder="100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">4 hours</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSnowmobile.pricing["4h"]}
+                        onChange={(e) =>
+                          setNewSnowmobile({
+                            ...newSnowmobile,
+                            pricing: {
+                              ...newSnowmobile.pricing,
+                              "4h": parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        placeholder="180"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">6 hours</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSnowmobile.pricing["6h"]}
+                        onChange={(e) =>
+                          setNewSnowmobile({
+                            ...newSnowmobile,
+                            pricing: {
+                              ...newSnowmobile.pricing,
+                              "6h": parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        placeholder="250"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">8 hours</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSnowmobile.pricing["8h"]}
+                        onChange={(e) =>
+                          setNewSnowmobile({
+                            ...newSnowmobile,
+                            pricing: {
+                              ...newSnowmobile.pricing,
+                              "8h": parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        placeholder="320"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs mb-1">
+                        Full Day (vrk)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSnowmobile.pricing["vrk"]}
+                        onChange={(e) =>
+                          setNewSnowmobile({
+                            ...newSnowmobile,
+                            pricing: {
+                              ...newSnowmobile.pricing,
+                              vrk: parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        placeholder="400"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Pricing tiers are used when hourly rate is not set or is 0
+                  </p>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
@@ -1580,7 +1834,8 @@ export default function AdminPage() {
                             <div>
                               <h3 className="font-bold text-lg">{sm.name}</h3>
                               <p className="text-sm text-gray-600">
-                                {sm.licensePlate || "No plate"} • {sm.model || "No model"}
+                                {sm.licensePlate || "No plate"} •{" "}
+                                {sm.model || "No model"}
                               </p>
                             </div>
                             <button
@@ -1611,44 +1866,55 @@ export default function AdminPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-bold">{booking.guest.name}</h3>
-                      <p className="text-sm text-gray-600">{booking.guest.email}</p>
+                      <p className="text-sm text-gray-600">
+                        {booking.guest.email}
+                      </p>
                       <p className="text-sm">
-                        {booking.departure?.package?.name} • {booking.participants} participants
+                        {booking.departure?.package?.name} •{" "}
+                        {booking.participants} participants
                       </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(booking.departure?.departureTime).toLocaleString()}
+                        {new Date(
+                          booking.departure?.departureTime
+                        ).toLocaleString()}
                       </p>
                       <p className="font-medium mt-2">€{booking.totalPrice}</p>
-                      <span className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
-                        booking.approvalStatus === 'approved' 
-                          ? 'bg-green-100 text-green-800'
-                          : booking.approvalStatus === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {booking.approvalStatus || 'pending'}
+                      <span
+                        className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                          booking.approvalStatus === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : booking.approvalStatus === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {booking.approvalStatus || "pending"}
                       </span>
                     </div>
-                    {booking.approvalStatus === 'pending' && (
+                    {booking.approvalStatus === "pending" && (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setApprovalModal({ 
-                            open: true, 
-                            bookingId: booking.id, 
-                            action: 'approve', 
-                            message: '' 
-                          })}
+                          onClick={() =>
+                            setApprovalModal({
+                              open: true,
+                              bookingId: booking.id,
+                              action: "approve",
+                              message: "",
+                            })
+                          }
                           className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => setApprovalModal({ 
-                            open: true, 
-                            bookingId: booking.id, 
-                            action: 'reject', 
-                            message: '' 
-                          })}
+                          onClick={() =>
+                            setApprovalModal({
+                              open: true,
+                              bookingId: booking.id,
+                              action: "reject",
+                              message: "",
+                            })
+                          }
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                         >
                           Reject
@@ -1674,44 +1940,54 @@ export default function AdminPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-bold">{rental.guest.name}</h3>
-                      <p className="text-sm text-gray-600">{rental.guest.email}</p>
+                      <p className="text-sm text-gray-600">
+                        {rental.guest.email}
+                      </p>
                       <p className="text-sm">
-                        {rental.snowmobile?.name || 'Snowmobile'} • {rental.participants} participants
+                        {rental.snowmobile?.name || "Snowmobile"} •{" "}
+                        {rental.participants} participants
                       </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(rental.startTime).toLocaleString()} - {new Date(rental.endTime).toLocaleString()}
+                        {new Date(rental.startTime).toLocaleString()} -{" "}
+                        {new Date(rental.endTime).toLocaleString()}
                       </p>
                       <p className="font-medium mt-2">€{rental.totalPrice}</p>
-                      <span className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
-                        rental.approvalStatus === 'approved' 
-                          ? 'bg-green-100 text-green-800'
-                          : rental.approvalStatus === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {rental.approvalStatus || 'pending'}
+                      <span
+                        className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                          rental.approvalStatus === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : rental.approvalStatus === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {rental.approvalStatus || "pending"}
                       </span>
                     </div>
-                    {rental.approvalStatus === 'pending' && (
+                    {rental.approvalStatus === "pending" && (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setRentalApprovalModal({ 
-                            open: true, 
-                            rentalId: rental.id, 
-                            action: 'approve', 
-                            message: '' 
-                          })}
+                          onClick={() =>
+                            setRentalApprovalModal({
+                              open: true,
+                              rentalId: rental.id,
+                              action: "approve",
+                              message: "",
+                            })
+                          }
                           className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => setRentalApprovalModal({ 
-                            open: true, 
-                            rentalId: rental.id, 
-                            action: 'reject', 
-                            message: '' 
-                          })}
+                          onClick={() =>
+                            setRentalApprovalModal({
+                              open: true,
+                              rentalId: rental.id,
+                              action: "reject",
+                              message: "",
+                            })
+                          }
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                         >
                           Reject
@@ -1739,8 +2015,12 @@ export default function AdminPage() {
                   className="border rounded px-3 py-2 flex-1"
                 />
                 <select
-                  value={selectedBookingId || ''}
-                  onChange={(e) => setSelectedBookingId(e.target.value ? Number(e.target.value) : null)}
+                  value={selectedBookingId || ""}
+                  onChange={(e) =>
+                    setSelectedBookingId(
+                      e.target.value ? Number(e.target.value) : null
+                    )
+                  }
                   className="border rounded px-3 py-2"
                 >
                   <option value="">All Bookings</option>
@@ -1755,8 +2035,12 @@ export default function AdminPage() {
             <div className="divide-y">
               {participantsList
                 .filter((p) => {
-                  const matchesSearch = p.name.toLowerCase().includes(participantSearch.toLowerCase());
-                  const matchesBooking = selectedBookingId === null || p.bookingId === selectedBookingId;
+                  const matchesSearch = p.name
+                    .toLowerCase()
+                    .includes(participantSearch.toLowerCase());
+                  const matchesBooking =
+                    selectedBookingId === null ||
+                    p.bookingId === selectedBookingId;
                   return matchesSearch && matchesBooking;
                 })
                 .map((participant) => (
@@ -1764,23 +2048,29 @@ export default function AdminPage() {
                     <div>
                       <h3 className="font-bold">{participant.name}</h3>
                       <p className="text-sm text-gray-600">
-                        Guest: {participant.guestName} ({participant.guestEmail})
+                        Guest: {participant.guestName} ({participant.guestEmail}
+                        )
                       </p>
                       <p className="text-sm text-gray-500">
-                        {participant.packageName} • {new Date(participant.departureTime).toLocaleString()}
+                        {participant.packageName} •{" "}
+                        {new Date(participant.departureTime).toLocaleString()}
                       </p>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         <div>
-                          <span className="font-medium">Overalls:</span> {participant.overalls}
+                          <span className="font-medium">Overalls:</span>{" "}
+                          {participant.overalls}
                         </div>
                         <div>
-                          <span className="font-medium">Boots:</span> {participant.boots}
+                          <span className="font-medium">Boots:</span>{" "}
+                          {participant.boots}
                         </div>
                         <div>
-                          <span className="font-medium">Gloves:</span> {participant.gloves}
+                          <span className="font-medium">Gloves:</span>{" "}
+                          {participant.gloves}
                         </div>
                         <div>
-                          <span className="font-medium">Helmet:</span> {participant.helmet}
+                          <span className="font-medium">Helmet:</span>{" "}
+                          {participant.helmet}
                         </div>
                       </div>
                     </div>
@@ -1804,7 +2094,9 @@ export default function AdminPage() {
                       <h3 className="font-bold">{msg.name}</h3>
                       <p className="text-sm text-gray-600">{msg.email}</p>
                       <p className="text-sm font-medium mt-2">{msg.subject}</p>
-                      <p className="text-sm text-gray-700 mt-1">{msg.message}</p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        {msg.message}
+                      </p>
                       <p className="text-xs text-gray-500 mt-2">
                         Received: {new Date(msg.createdAt).toLocaleString()}
                       </p>
@@ -1853,7 +2145,9 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Message:</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Message:
+                  </label>
                   <textarea
                     value={replyBody}
                     onChange={(e) => setReplyBody(e.target.value)}
@@ -1867,7 +2161,7 @@ export default function AdminPage() {
                     type="button"
                     onClick={() => {
                       setReplyingToId(null);
-                      setReplyBody('');
+                      setReplyBody("");
                     }}
                     className="px-4 py-2 border rounded hover:bg-gray-100"
                     disabled={sendingReply}
@@ -1879,7 +2173,7 @@ export default function AdminPage() {
                     className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                     disabled={sendingReply}
                   >
-                    {sendingReply ? 'Sending...' : 'Send Reply'}
+                    {sendingReply ? "Sending..." : "Send Reply"}
                   </button>
                 </div>
               </form>
@@ -1892,49 +2186,75 @@ export default function AdminPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
               <h3 className="text-xl font-bold mb-4">
-                {approvalModal.action === 'approve' ? '✅ Approve Booking' : '❌ Reject Booking'}
+                {approvalModal.action === "approve"
+                  ? "✅ Approve Booking"
+                  : "❌ Reject Booking"}
               </h3>
               <p className="text-gray-600 mb-4">
-                {approvalModal.action === 'approve' 
-                  ? 'You can optionally add a message to the customer with the approval confirmation.'
-                  : 'Please provide a reason for rejecting this booking. This will be sent to the customer.'}
+                {approvalModal.action === "approve"
+                  ? "You can optionally add a message to the customer with the approval confirmation."
+                  : "Please provide a reason for rejecting this booking. This will be sent to the customer."}
               </p>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">
-                  {approvalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+                  {approvalModal.action === "approve"
+                    ? "Message (optional)"
+                    : "Rejection Reason (required)"}
                 </label>
                 <textarea
                   value={approvalModal.message}
-                  onChange={(e) => setApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                  onChange={(e) =>
+                    setApprovalModal((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={approvalModal.action === 'approve' 
-                    ? 'e.g., Looking forward to seeing you!' 
-                    : 'e.g., Sorry, this date is fully booked. Please choose another date.'}
+                  placeholder={
+                    approvalModal.action === "approve"
+                      ? "e.g., Looking forward to seeing you!"
+                      : "e.g., Sorry, this date is fully booked. Please choose another date."
+                  }
                 />
               </div>
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setApprovalModal({ open: false, bookingId: null, action: null, message: '' })}
+                  onClick={() =>
+                    setApprovalModal({
+                      open: false,
+                      bookingId: null,
+                      action: null,
+                      message: "",
+                    })
+                  }
                   className="px-4 py-2 border rounded-lg hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => {
-                    if (approvalModal.action === 'approve' && approvalModal.bookingId) {
+                    if (
+                      approvalModal.action === "approve" &&
+                      approvalModal.bookingId
+                    ) {
                       handleApprove(approvalModal.bookingId);
-                    } else if (approvalModal.action === 'reject' && approvalModal.bookingId) {
+                    } else if (
+                      approvalModal.action === "reject" &&
+                      approvalModal.bookingId
+                    ) {
                       handleReject(approvalModal.bookingId);
                     }
                   }}
                   className={`px-4 py-2 rounded-lg text-white ${
-                    approvalModal.action === 'approve' 
-                      ? 'bg-green-500 hover:bg-green-600' 
-                      : 'bg-red-500 hover:bg-red-600'
+                    approvalModal.action === "approve"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : "bg-red-500 hover:bg-red-600"
                   }`}
                 >
-                  {approvalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+                  {approvalModal.action === "approve"
+                    ? "Approve & Send Email"
+                    : "Reject & Notify"}
                 </button>
               </div>
             </div>
@@ -1946,49 +2266,75 @@ export default function AdminPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
               <h3 className="text-xl font-bold mb-4">
-                {rentalApprovalModal.action === 'approve' ? '✅ Approve Rental' : '❌ Reject Rental'}
+                {rentalApprovalModal.action === "approve"
+                  ? "✅ Approve Rental"
+                  : "❌ Reject Rental"}
               </h3>
               <p className="text-gray-600 mb-4">
-                {rentalApprovalModal.action === 'approve' 
-                  ? 'You can optionally add a message to the customer with the approval confirmation.'
-                  : 'Please provide a reason for rejecting this rental. This will be sent to the customer.'}
+                {rentalApprovalModal.action === "approve"
+                  ? "You can optionally add a message to the customer with the approval confirmation."
+                  : "Please provide a reason for rejecting this rental. This will be sent to the customer."}
               </p>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">
-                  {rentalApprovalModal.action === 'approve' ? 'Message (optional)' : 'Rejection Reason (required)'}
+                  {rentalApprovalModal.action === "approve"
+                    ? "Message (optional)"
+                    : "Rejection Reason (required)"}
                 </label>
                 <textarea
                   value={rentalApprovalModal.message}
-                  onChange={(e) => setRentalApprovalModal(prev => ({ ...prev, message: e.target.value }))}
+                  onChange={(e) =>
+                    setRentalApprovalModal((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={rentalApprovalModal.action === 'approve' 
-                    ? 'e.g., Looking forward to seeing you!' 
-                    : 'e.g., Sorry, this snowmobile is not available. Please choose another date.'}
+                  placeholder={
+                    rentalApprovalModal.action === "approve"
+                      ? "e.g., Looking forward to seeing you!"
+                      : "e.g., Sorry, this snowmobile is not available. Please choose another date."
+                  }
                 />
               </div>
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setRentalApprovalModal({ open: false, rentalId: null, action: null, message: '' })}
+                  onClick={() =>
+                    setRentalApprovalModal({
+                      open: false,
+                      rentalId: null,
+                      action: null,
+                      message: "",
+                    })
+                  }
                   className="px-4 py-2 border rounded-lg hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => {
-                    if (rentalApprovalModal.action === 'approve' && rentalApprovalModal.rentalId) {
+                    if (
+                      rentalApprovalModal.action === "approve" &&
+                      rentalApprovalModal.rentalId
+                    ) {
                       handleApproveRental(rentalApprovalModal.rentalId);
-                    } else if (rentalApprovalModal.action === 'reject' && rentalApprovalModal.rentalId) {
+                    } else if (
+                      rentalApprovalModal.action === "reject" &&
+                      rentalApprovalModal.rentalId
+                    ) {
                       handleRejectRental(rentalApprovalModal.rentalId);
                     }
                   }}
                   className={`px-4 py-2 rounded-lg text-white ${
-                    rentalApprovalModal.action === 'approve' 
-                      ? 'bg-green-500 hover:bg-green-600' 
-                      : 'bg-red-500 hover:bg-red-600'
+                    rentalApprovalModal.action === "approve"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : "bg-red-500 hover:bg-red-600"
                   }`}
                 >
-                  {rentalApprovalModal.action === 'approve' ? 'Approve & Send Email' : 'Reject & Notify'}
+                  {rentalApprovalModal.action === "approve"
+                    ? "Approve & Send Email"
+                    : "Reject & Notify"}
                 </button>
               </div>
             </div>

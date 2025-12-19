@@ -13,6 +13,7 @@ import {
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import StripeCheckout from "@/components/StripeCheckout";
 
 export default function SnowmobileRentalPage() {
   const { t } = useLanguage();
@@ -23,13 +24,18 @@ export default function SnowmobileRentalPage() {
   const [endTime, setEndTime] = useState("10:00");
   const [snowmobileModels, setSnowmobileModels] = useState<any[]>([]);
   const [availableSnowmobiles, setAvailableSnowmobiles] = useState<any[]>([]);
-  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(null);
+  const [selectedSnowmobile, setSelectedSnowmobile] = useState<number | null>(
+    null
+  );
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [rentalId, setRentalId] = useState<number | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
 
   // ✅ Load snowmobile models on mount (only once)
   useEffect(() => {
@@ -83,8 +89,9 @@ export default function SnowmobileRentalPage() {
             .then((r) => r.json())
             .then(
               (data) =>
-                data.departures?.flatMap((d: any) => d.assignedSnowmobiles || []) ||
-                []
+                data.departures?.flatMap(
+                  (d: any) => d.assignedSnowmobiles || []
+                ) || []
             )
             .catch(() => []),
         ]);
@@ -143,7 +150,13 @@ export default function SnowmobileRentalPage() {
               ? "8h"
               : "vrk";
 
-    return selectedModel.pricing?.[durationKey] || 0;
+    const tierPrice = selectedModel.pricing?.[durationKey];
+    if (tierPrice && tierPrice > 0) {
+      return tierPrice;
+    }
+
+    // ✅ Final fallback: default hourly rate of €50/hour
+    return Math.ceil(hours) * 50;
   }, [startTime, endTime, selectedSnowmobile, snowmobileModels]);
 
   // ✅ Memoize total so it doesn't recalculate unless dependencies change
@@ -152,7 +165,7 @@ export default function SnowmobileRentalPage() {
   // ✅ Memoize time hours calculation with null check
   const hours = useMemo(() => {
     if (!startTime || !endTime) return 0;
-    
+
     const [startHour, startMin] = startTime.split(":").map(Number);
     const [endHour, endMin] = endTime.split(":").map(Number);
     return endHour + endMin / 60 - (startHour + startMin / 60);
@@ -168,6 +181,13 @@ export default function SnowmobileRentalPage() {
         return;
       }
 
+      if (total <= 0) {
+        alert(
+          "Invalid price. Please check the snowmobile pricing configuration."
+        );
+        return;
+      }
+
       setLoading(true);
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -177,6 +197,7 @@ export default function SnowmobileRentalPage() {
         const startTimeISO = new Date(startDateTime).toISOString();
         const endTimeISO = new Date(endDateTime).toISOString();
 
+        // Create rental first
         const rental = await createSnowmobileRental({
           snowmobileId: selectedSnowmobile,
           guestEmail,
@@ -188,25 +209,87 @@ export default function SnowmobileRentalPage() {
           notes: `Private snowmobile rental`,
         });
 
-        try {
-          const selectedModel = snowmobileModels.find(
-            (sm) => sm.id === selectedSnowmobile
-          );
-          await sendConfirmationEmail({
-            email: guestEmail,
-            name: guestName,
-            tour: `${t("snowmobileRental")} - ${selectedModel?.name || "Snowmobile"}`,
-            date: format(selectedDate, "MMMM d, yyyy"),
-            time: `${startTime} - ${endTime}`,
-            participants: 1,
-            total: total,
-            bookingId: rental.id.toString(),
-          });
-        } catch (emailError) {
-          console.error("Failed to send confirmation email:", emailError);
+        setRentalId(rental.id);
+
+        // Create payment intent
+        const selectedModel = snowmobileModels.find(
+          (sm) => sm.id === selectedSnowmobile
+        );
+
+        const paymentResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/create-payment-intent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: Math.round(total * 100), // Convert to cents
+              currency: "eur",
+              bookingId: rental.id,
+              customer: {
+                name: guestName,
+                email: guestEmail,
+                phone: phone,
+              },
+              booking: {
+                tour: `${t("snowmobileRental")} - ${selectedModel?.name || "Snowmobile"}`,
+                date: format(selectedDate, "MMMM d, yyyy"),
+                time: `${startTime} - ${endTime}`,
+                participants: 1,
+              },
+            }),
+          }
+        );
+
+        if (!paymentResponse.ok) {
+          throw new Error("Failed to create payment intent");
         }
 
-        alert("Booking request submitted! Check your email for details.");
+        const { client_secret } = await paymentResponse.json();
+        setClientSecret(client_secret);
+        setShowPayment(true);
+      } catch (error) {
+        console.error("❌ Payment setup failed:", error);
+        alert("Payment setup failed. Please try again.");
+        setLoading(false);
+      }
+    },
+    [
+      selectedSnowmobile,
+      selectedDate,
+      startTime,
+      endTime,
+      guestEmail,
+      guestName,
+      phone,
+      total,
+      snowmobileModels,
+      t,
+    ]
+  );
+
+  const handlePaymentSuccess = useCallback(
+    async (paymentIntentId: string) => {
+      try {
+        const selectedModel = snowmobileModels.find(
+          (sm) => sm.id === selectedSnowmobile
+        );
+
+        // Send confirmation email
+        await sendConfirmationEmail({
+          email: guestEmail,
+          name: guestName,
+          tour: `${t("snowmobileRental")} - ${selectedModel?.name || "Snowmobile"}`,
+          date: selectedDate ? format(selectedDate, "MMMM d, yyyy") : "",
+          time: `${startTime} - ${endTime}`,
+          participants: 1,
+          total: total,
+          bookingId: rentalId?.toString() || "",
+        });
+
+        alert("✅ Payment successful! Check your email for confirmation.");
+
+        // Reset form
+        setShowPayment(false);
         setStep(1);
         setSelectedDate(undefined);
         setStartTime("08:00");
@@ -215,15 +298,40 @@ export default function SnowmobileRentalPage() {
         setGuestName("");
         setGuestEmail("");
         setPhone("");
+        setClientSecret(null);
+        setRentalId(null);
+        setLoading(false);
       } catch (error) {
-        console.error(error);
-        alert("Booking failed. Please try again.");
-      } finally {
+        console.error("Failed to send confirmation:", error);
+        alert("Payment successful but failed to send confirmation email.");
         setLoading(false);
       }
     },
-    [selectedSnowmobile, selectedDate, startTime, endTime, guestEmail, guestName, phone, total, snowmobileModels, t]
+    [
+      guestEmail,
+      guestName,
+      selectedDate,
+      startTime,
+      endTime,
+      total,
+      rentalId,
+      snowmobileModels,
+      selectedSnowmobile,
+      t,
+    ]
   );
+
+  const handlePaymentError = useCallback((error: string) => {
+    console.error("Payment error:", error);
+    alert(`Payment failed: ${error}`);
+    setLoading(false);
+  }, []);
+
+  const handlePaymentCancel = useCallback(() => {
+    setShowPayment(false);
+    setClientSecret(null);
+    setLoading(false);
+  }, []);
 
   if (pageLoading) {
     return (
@@ -305,8 +413,8 @@ export default function SnowmobileRentalPage() {
                         selectedSnowmobile === snowmobile.id
                           ? colors.teal
                           : darkMode
-                          ? "#2d1a3a"
-                          : "#ddd",
+                            ? "#2d1a3a"
+                            : "#ddd",
                       ringColor:
                         selectedSnowmobile === snowmobile.id
                           ? `${colors.teal}40`
@@ -329,18 +437,21 @@ export default function SnowmobileRentalPage() {
                     >
                       {snowmobile.model}
                     </p>
-                    {snowmobile.featureKeys && snowmobile.featureKeys.length > 0 && (
-                      <ul
-                        className="text-xs mt-2 space-y-1"
-                        style={{
-                          color: darkMode ? "#cbd5e1" : colors.darkGray,
-                        }}
-                      >
-                        {snowmobile.featureKeys.slice(0, 2).map((key: string) => (
-                          <li key={key}>• {t(key)}</li>
-                        ))}
-                      </ul>
-                    )}
+                    {snowmobile.featureKeys &&
+                      snowmobile.featureKeys.length > 0 && (
+                        <ul
+                          className="text-xs mt-2 space-y-1"
+                          style={{
+                            color: darkMode ? "#cbd5e1" : colors.darkGray,
+                          }}
+                        >
+                          {snowmobile.featureKeys
+                            .slice(0, 2)
+                            .map((key: string) => (
+                              <li key={key}>• {t(key)}</li>
+                            ))}
+                        </ul>
+                      )}
                   </div>
                 ))}
               </div>
@@ -448,8 +559,8 @@ export default function SnowmobileRentalPage() {
                           ? "#2d1a3a"
                           : `${colors.teal}20`
                         : darkMode
-                        ? "#3a2d2d"
-                        : "#ff4d4d20",
+                          ? "#3a2d2d"
+                          : "#ff4d4d20",
                   }}
                 >
                   {checkingAvailability ? (
@@ -513,7 +624,9 @@ export default function SnowmobileRentalPage() {
               >
                 {loading
                   ? t("processing")
-                  : availableSnowmobiles.length === 0 && selectedSnowmobile && selectedDate
+                  : availableSnowmobiles.length === 0 &&
+                      selectedSnowmobile &&
+                      selectedDate
                     ? t("notAvailable")
                     : t("continueToBooking")}
               </button>
@@ -645,6 +758,43 @@ export default function SnowmobileRentalPage() {
           </div>
         )}
       </main>
+
+      {/* Stripe Payment Modal */}
+      {showPayment && clientSecret && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handlePaymentCancel}
+        >
+          <div
+            className="rounded-lg p-6 max-w-md w-full"
+            style={{
+              backgroundColor: darkMode ? "#16243a" : "white",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2
+                className="text-2xl font-bold"
+                style={{ color: darkMode ? "white" : colors.navy }}
+              >
+                {t("payment")}
+              </h2>
+              <button
+                onClick={handlePaymentCancel}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <StripeCheckout
+              clientSecret={clientSecret}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onCancel={handlePaymentCancel}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -112,6 +112,7 @@ model Snowmobile {
   model                 String?
   year                  Int?
   hourlyRate            Float?
+  pricing               Json?
   status                String    @default("available")
   disabled              Boolean   @default(false) 
   createdAt             DateTime  @default(now())
