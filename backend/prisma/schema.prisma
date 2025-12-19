@@ -111,7 +111,8 @@ model Snowmobile {
   licensePlate          String?
   model                 String?
   year                  Int?
-  hourlyRate            Float?    
+  hourlyRate            Float?
+  status                String    @default("available")
   disabled              Boolean   @default(false) 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

@@ -57,19 +57,22 @@ export async function bookingRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get("/availability/:packageId/:month", async (request, reply) => {
-    try {
-      const { packageId, month } = request.params as {
-        packageId: string;
-        month: string;
-      };
-      const availability = await getAvailability(parseInt(packageId), month);
-      reply.send(availability);
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-      reply.status(500).send({ error: "Failed to fetch availability" });
+  app.get(
+    "/bookings/availability/:packageId/:month",
+    async (request, reply) => {
+      try {
+        const { packageId, month } = request.params as {
+          packageId: string;
+          month: string;
+        };
+        const availability = await getAvailability(parseInt(packageId), month);
+        reply.send(availability);
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+        reply.status(500).send({ error: "Failed to fetch availability" });
+      }
     }
-  });
+  );
 
   app.put("/bookings/:id/approve", async (req, reply) => {
     try {

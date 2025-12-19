@@ -39,6 +39,7 @@ async function main() {
     { method: "GET", path: "/api/packages/slug/" }, // Get by slug (public)
     { method: "GET", path: "/api/departures" }, // Get departures (public)
     { method: "GET", path: "/api/upload/images" }, // Get images (public)
+    { method: "GET", path: "/api/bookings/availability/" }, // Get availability (public)
     { method: "POST", path: "/api/bookings" }, // Create booking (customer)
     { method: "POST", path: "/api/bookings/confirm-payment" }, // Confirm payment (customer)
     { method: "POST", path: "/api/contact" }, // Create contact message (customer)
