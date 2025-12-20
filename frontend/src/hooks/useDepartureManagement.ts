@@ -34,12 +34,17 @@ export function useDepartureManagement() {
   const handleCreateDeparture = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const departureDateTime = new Date(newDeparture.departureTime).toISOString();
+      if (!selectedPackageForDeparture) {
+        throw new Error("Please select a package");
+      }
+      
+      // departureTime is already in ISO format from calendar/time picker
+      const departureDateTime = newDeparture.departureTime;
 
       if (editingDepartureId) {
         // Update existing departure
         const updatedDeparture = await updateDeparture(editingDepartureId, {
-          packageId: parseInt(selectedPackageForDeparture?.toString() || "0"),
+          packageId: selectedPackageForDeparture,
           departureTime: departureDateTime,
           capacity: newDeparture.capacity,
         });
@@ -50,12 +55,12 @@ export function useDepartureManagement() {
       } else {
         // Create new departure
         const createdDeparture = await createDeparture({
-          packageId: parseInt(selectedPackageForDeparture?.toString() || "0"),
+          packageId: selectedPackageForDeparture,
           departureTime: departureDateTime,
           capacity: newDeparture.capacity,
         });
 
-        setDepartures([...departures, createdDeparture]);
+        setDepartures((prev) => [...prev, createdDeparture]);
       }
 
       setNewDeparture({ departureTime: "", capacity: 10 });
@@ -65,7 +70,7 @@ export function useDepartureManagement() {
       setSelectedPackageForDeparture(null);
     } catch (error) {
       console.error("Failed to save departure:", error);
-      throw error;
+      alert(error instanceof Error ? error.message : "Failed to save departure");
     }
   };
 
@@ -78,15 +83,21 @@ export function useDepartureManagement() {
     try {
       await deleteDeparture(departureId);
       setDepartures((prev) => prev.filter((d) => d.id !== departureId));
+      alert("Departure deleted successfully");
     } catch (error) {
       console.error("Failed to delete departure:", error);
-      throw error;
+      alert(error instanceof Error ? error.message : "Failed to delete departure");
     }
   };
 
   const handleEditDeparture = (departure: Departure) => {
     setEditingDepartureId(departure.id);
     setSelectedPackageForDeparture(departure.packageId);
+    
+    // Parse the ISO datetime into date and time components
+    const departureDate = new Date(departure.departureTime);
+    setSelectedDate(departureDate);
+    
     setNewDeparture({
       departureTime: departure.departureTime,
       capacity: departure.capacity,
@@ -106,6 +117,7 @@ export function useDepartureManagement() {
     showDepartureForm,
     setShowDepartureForm,
     editingDepartureId,
+    setEditingDepartureId,
     selectedPackageForDeparture,
     setSelectedPackageForDeparture,
     newDeparture,
@@ -117,6 +129,5 @@ export function useDepartureManagement() {
     handleDeleteDeparture,
     handleEditDeparture,
     handleCancelEdit,
-    
   };
 }

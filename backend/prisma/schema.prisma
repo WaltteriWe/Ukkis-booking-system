@@ -111,7 +111,9 @@ model Snowmobile {
   licensePlate          String?
   model                 String?
   year                  Int?
-  hourlyRate            Float?    
+  hourlyRate            Float?
+  pricing               Json?
+  status                String    @default("available")
   disabled              Boolean   @default(false) 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -144,10 +146,14 @@ model SnowmobileRental {
   approvalStatus   String     @default("pending")
   adminMessage     String?
   rejectionReason  String?
+  paymentIntentId  String?    @unique
+  paymentStatus    String?    @default("pending")
+  paymentMethod    String?    
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   guest            Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
   snowmobile       Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+
 }
 
 model ContactMessage {

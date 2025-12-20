@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { listDepartures, createDeparture } from '../controllers/departureController';
+import { listDepartures, createDeparture, updateDeparture, deleteDeparture } from '../controllers/departureController';
 import { assignSnowmobilesToDeparture, getSnowmobileAssignments } from '../controllers/rentalController';
 
 export async function departureRoutes(app: FastifyInstance) {
@@ -67,6 +67,32 @@ export async function departureRoutes(app: FastifyInstance) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);
       return reply.code(c).send(e);
+    }
+  });
+
+  // Update departure
+  app.put('/departures/:id', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const departure = await updateDeparture(parseInt(id), req.body);
+      return reply.send(departure);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send({ error: e?.message || 'Failed to update departure' });
+    }
+  });
+
+  // Delete departure
+  app.delete('/departures/:id', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const departure = await deleteDeparture(parseInt(id));
+      return reply.send(departure);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send({ error: e?.message || 'Failed to delete departure' });
     }
   });
 }

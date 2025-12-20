@@ -136,6 +136,16 @@ export async function createSnowmobile(body: unknown) {
     licensePlate: z.string().optional(),
     model: z.string().optional(),
     year: z.number().int().optional(),
+    hourlyRate: z.number().optional(),
+    pricing: z
+      .object({
+        "2h": z.number().optional(),
+        "4h": z.number().optional(),
+        "6h": z.number().optional(),
+        "8h": z.number().optional(),
+        vrk: z.number().optional(),
+      })
+      .optional(),
   });
 
   const data = schema.parse(body);
@@ -285,7 +295,6 @@ export async function rejectSnowmobileRental(id: number, body: unknown) {
   return rental;
 }
 
-// Add this function to your existing rentalController.ts
 
 export async function assignSnowmobilesToDeparture(body: unknown) {
   const schema = z.object({

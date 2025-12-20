@@ -17,7 +17,7 @@ const stripePromise = loadStripe(
 
 interface CheckoutFormProps {
   clientSecret: string;
-  onSuccess?: () => void;
+  onSuccess?: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
 }
 
@@ -49,7 +49,7 @@ function CheckoutForm({ onSuccess, onError }: CheckoutFormProps) {
         onError?.(error.message || "An error occurred");
       } else if (paymentIntent?.status === "succeeded") {
         console.log("✅ Payment successful!");
-        onSuccess?.();
+        onSuccess?.(paymentIntent.id);
       } else {
         setErrorMessage("Payment processing. Please wait...");
       }
@@ -85,7 +85,7 @@ function CheckoutForm({ onSuccess, onError }: CheckoutFormProps) {
 
 interface StripeCheckoutProps {
   clientSecret: string;
-  onSuccess?: () => void;
+  onSuccess?: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
   onCancel?: () => void;
 }

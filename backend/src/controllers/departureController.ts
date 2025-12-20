@@ -16,13 +16,13 @@ export async function listDepartures(query: unknown) {
   const schema = z.object({
     packageId: z.number().int().positive().optional(),
     from: z
-      .string()
+      .union([z.string(), z.date()])
       .optional()
-      .transform((val) => (val ? new Date(val) : undefined)),
+      .transform((val) => (val ? (typeof val === 'string' ? new Date(val) : val) : undefined)),
     to: z
-      .string()
+      .union([z.string(), z.date()])
       .optional()
-      .transform((val) => (val ? new Date(val) : undefined)),
+      .transform((val) => (val ? (typeof val === 'string' ? new Date(val) : val) : undefined)),
     onlyAvailable: z.boolean().optional(),
   });
 
@@ -43,27 +43,34 @@ export async function listDepartures(query: unknown) {
   const departures = await prisma.departure.findMany({
     where,
     include: {
-      package: true, // ADD THIS - Include the package relation
-      bookings: params.onlyAvailable ? true : false,
+      package: true,
+      bookings: true,
     },
     orderBy: {
       departureTime: "asc",
     },
   });
 
+  // Calculate reserved count from bookings and add to response
+  const departuresWithReserved = departures.map((dep: any) => {
+    const bookedSeats = dep.bookings.reduce(
+      (sum: number, b: any) => sum + b.participants,
+      0
+    );
+    return {
+      ...dep,
+      reserved: bookedSeats,
+    };
+  });
+
   if (params.onlyAvailable) {
-    const filtered = departures.filter((dep: any) => {
-      const bookedSeats = dep.bookings.reduce(
-        (sum: number, b: any) => sum + b.participants,
-        0
-      );
-      const capacity = dep.capacity || dep.package?.capacity || 10;
-      return bookedSeats < capacity;
+    const filtered = departuresWithReserved.filter((dep: any) => {
+      return dep.reserved < dep.capacity;
     });
     return { items: filtered };
   }
 
-  return { items: departures };
+  return { items: departuresWithReserved };
 }
 
 const createDepartureSchema = z.object({
@@ -94,4 +101,69 @@ export async function createDeparture(body: unknown) {
   });
 
   return departure;
+}
+
+export async function updateDeparture(departureId: number, body: unknown) {
+  const schema = z.object({
+    packageId: z.number().int().positive().optional(),
+    departureTime: z.string().datetime().optional(),
+    capacity: z.number().int().positive().optional(),
+  });
+
+  const data = schema.parse(body);
+
+  // Check if departure exists
+  const departure = await prisma.departure.findUnique({
+    where: { id: departureId },
+  });
+
+  if (!departure) {
+    throw { status: 404, error: "Departure not found" };
+  }
+
+  // Check if package exists if packageId is being updated
+  if (data.packageId) {
+    const packageExists = await prisma.safariPackage.findUnique({
+      where: { id: data.packageId },
+    });
+
+    if (!packageExists) {
+      throw { status: 400, error: "Package not found" };
+    }
+  }
+
+  // Update the departure
+  const updatedDeparture = await prisma.departure.update({
+    where: { id: departureId },
+    data: {
+      ...(data.packageId && { packageId: data.packageId }),
+      ...(data.departureTime && { departureTime: new Date(data.departureTime) }),
+      ...(data.capacity && { capacity: data.capacity }),
+    },
+  });
+
+  return updatedDeparture;
+}
+
+export async function deleteDeparture(departureId: number) {
+  // Check if departure exists
+  const departure = await prisma.departure.findUnique({
+    where: { id: departureId },
+  });
+
+  if (!departure) {
+    throw { status: 404, error: "Departure not found" };
+  }
+
+  // Delete associated bookings first (cascade)
+  await prisma.booking.deleteMany({
+    where: { departureId: departureId },
+  });
+
+  // Delete the departure
+  const deletedDeparture = await prisma.departure.delete({
+    where: { id: departureId },
+  });
+
+  return deletedDeparture;
 }

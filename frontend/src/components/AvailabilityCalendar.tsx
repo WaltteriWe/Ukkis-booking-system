@@ -235,31 +235,6 @@ export function AvailabilityCalendar({ packageId, selectedDate, onDateSelect }: 
         </div>
       </div>
 
-      {/* ✅ Availability details with dark mode support */}
-      {selectedDate && availability[format(selectedDate, 'yyyy-MM-dd')] && (
-        <div 
-          className="p-4 rounded-lg border"
-          style={{ 
-            backgroundColor: darkModeStyles.bgSecondary(darkMode),
-            borderColor: darkModeStyles.border(darkMode),
-          }}
-        >
-          <p 
-            className="font-semibold" 
-            style={{ color: darkModeStyles.textPrimary(darkMode) }}
-          >
-            {format(selectedDate, 'MMMM d, yyyy')}
-          </p>
-          <p 
-            className="text-sm" 
-            style={{ color: darkModeStyles.textSecondary(darkMode) }}
-          >
-            {availability[format(selectedDate, 'yyyy-MM-dd')].booked} / 
-            {availability[format(selectedDate, 'yyyy-MM-dd')].capacity} spots booked
-          </p>
-        </div>
-      )}
-
       {/* ✅ Loading state with dark mode support */}
       {loading && (
         <p 

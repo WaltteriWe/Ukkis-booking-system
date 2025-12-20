@@ -19,7 +19,7 @@ import { requireAuth } from "../middleware/auth";
 async function main() {
   const app = Fastify({ logger: true });
 
-    // Enable CORS
+  // Enable CORS
   await app.register(cors, {
     origin: "*", // Allow all origins in development
     credentials: true,
@@ -35,25 +35,25 @@ async function main() {
   });
 
   const publicEndpoints = [
-  { method: "GET", path: "/api/packages" },
-  { method: "GET", path: "/api/packages/slug/" },
-  { method: "GET", path: "/api/departures" },
-  { method: "GET", path: "/api/upload/images" },
-  { method: "GET", path: "/api/snowmobiles/disabled" },
-  { method: "GET", path: "/api/snowmobiles/available" },
-  { method: "GET", path: "/api/snowmobiles" },
-  { method: "POST", path: "/api/bookings" },
-  { method: "POST", path: "/api/contact" },
-  { method: "POST", path: "/api/send-confirmation" },
-  { method: "POST", path: "/api/snowmobile-rentals" },
-  { method: "POST", path: "/api/create-payment-intent" },
-  { method: "POST", path: "/api/webhook/stripe" },
-  { method: "POST", path: "/api/admin/register" },
-  { method: "POST", path: "/api/admin/login" },
-  { method: "GET", path: "/uploads/" },
-];
+    { method: "GET", path: "/api/packages" }, // Get packages (public)
+    { method: "GET", path: "/api/packages/slug/" }, // Get by slug (public)
+    { method: "GET", path: "/api/departures" }, // Get departures (public)
+    { method: "GET", path: "/api/upload/images" }, // Get images (public)
+    { method: "GET", path: "/api/bookings/availability/" }, // Get availability (public)
+    { method: "POST", path: "/api/bookings" }, // Create booking (customer)
+    { method: "POST", path: "/api/bookings/confirm-payment" }, // Confirm payment (customer)
+    { method: "POST", path: "/api/contact" }, // Create contact message (customer)
+    { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
+    { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
+    { method: "POST", path: "/api/create-payment-intent" }, // Payment (customer)
+    { method: "POST", path: "/api/webhook/stripe" }, // Stripe webhook (public)
+    { method: "GET", path: "/api/snowmobiles" },
+    { method: "POST", path: "/api/admin/register" },
+    { method: "POST", path: "/api/admin/login" },
+    { method: "GET", path: "/uploads/" }, // Static files (images) - public
+  ];
 
- app.addHook(
+  app.addHook(
     "preHandler",
     async (request: FastifyRequest, reply: FastifyReply) => {
       const urlPath = request.url.split("?")[0];
@@ -77,8 +77,6 @@ async function main() {
       await requireAuth(request, reply);
     }
   );
-
-
 
   await app.register(packageRoutes, { prefix: API_PREFIX });
   await app.register(departureRoutes, { prefix: API_PREFIX });

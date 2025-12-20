@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   createBooking,
@@ -8,11 +8,13 @@ import {
   getPackages,
   getDepartures,
   createDeparture,
+  confirmPayment,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
+import { DepartureSelector } from "@/components/DepartureSelector";
 import StripeCheckout from "@/components/StripeCheckout";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
@@ -23,9 +25,9 @@ import { useDepartures } from "@/hooks/useDepartures";
 const getImageUrl = (url?: string) => {
   if (!url) return undefined;
   // If already absolute URL, return as is
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
   // If relative URL starting with /uploads, prepend backend base URL
-  if (url.startsWith('/uploads')) {
+  if (url.startsWith("/uploads")) {
     // Backend runs on port 3001
     return `http://localhost:3001${url}`;
   }
@@ -33,19 +35,18 @@ const getImageUrl = (url?: string) => {
 };
 
 const darkModeStyles = {
-  bgPrimary: (isDark: boolean) => isDark ? "#0f172a" : colors.white,
-  bgSecondary: (isDark: boolean) => isDark ? "#1e293b" : "#f9fafb",
-  textPrimary: (isDark: boolean) => isDark ? "#f1f5f9" : "#101651",
-  textSecondary: (isDark: boolean) => isDark ? "#cbd5e1" : "#3b4463",
-  border: (isDark: boolean) => isDark ? "#334155" : "#e5e7eb",
-  accent: (isDark: boolean) => isDark ? "#10b981" : "#101651",
-  inputBg: (isDark: boolean) => isDark ? "#1e293b" : "#ffffff",
-  inputBorder: (isDark: boolean) => isDark ? "#475569" : "#d1d5db",
+  bgPrimary: (isDark: boolean) => (isDark ? "#0f172a" : colors.white),
+  bgSecondary: (isDark: boolean) => (isDark ? "#1e293b" : "#f9fafb"),
+  textPrimary: (isDark: boolean) => (isDark ? "#f1f5f9" : "#101651"),
+  textSecondary: (isDark: boolean) => (isDark ? "#cbd5e1" : "#3b4463"),
+  border: (isDark: boolean) => (isDark ? "#334155" : "#e5e7eb"),
+  accent: (isDark: boolean) => (isDark ? "#10b981" : "#101651"),
+  inputBg: (isDark: boolean) => (isDark ? "#1e293b" : "#ffffff"),
+  inputBorder: (isDark: boolean) => (isDark ? "#475569" : "#d1d5db"),
 };
 
 // (TabNavigation UI removed - using top navigation links instead)
 
-// YOUR EXACT ORIGINAL CODE BELOW
 type Tour = {
   id: number;
   slug: string;
@@ -59,7 +60,7 @@ type Tour = {
   isActive: boolean;
 };
 
-type Addon = { id: string; title: string; desc: string; price: number }
+type Addon = { id: string; title: string; desc: string; price: number };
 
 type Departure = {
   id: number;
@@ -91,7 +92,6 @@ const GEAR_SIZES = {
   helmet: ["XS", "S", "M", "L", "XL"],
 };
 
-
 const ADDONS: Addon[] = [
   {
     id: "photo",
@@ -116,13 +116,13 @@ const ADDONS: Addon[] = [
 export default function Bookings() {
   const { t } = useLanguage();
   const { darkMode } = useTheme();
-  const { 
-    packageDepartures, 
-    selectedDeparture, 
+  const {
+    packageDepartures,
+    selectedDeparture,
     loading: departuresLoading,
     error: departuresError,
-    handlePackageSelect, 
-    setSelectedDeparture 
+    handlePackageSelect,
+    setSelectedDeparture,
   } = useDepartures();
 
   // stepper (1: select, 2: customize, 3: confirm)
@@ -161,6 +161,7 @@ export default function Bookings() {
     phone: "",
   });
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [selectedDepartureData, setSelectedDepartureData] = useState<any>(null);
 
   const handleSelectTour = (tour: Tour) => {
     setSelectedTour(tour);
@@ -170,6 +171,14 @@ export default function Bookings() {
 
   const toggleAddon = (id: string) =>
     setAddons((a) => ({ ...a, [id]: !a[id] }));
+
+  const handleDepartureSelect = useCallback((departure: any) => {
+    if (departure) {
+      setSelectedDeparture(departure.id);
+      setSelectedDepartureData(departure);
+      setTime(format(new Date(departure.departureTime), "HH:mm"));
+    }
+  }, []);
 
   // Initialize gear sizes for new participants
   const initializeGearSizes = (numParticipants: number) => {
@@ -257,6 +266,7 @@ export default function Bookings() {
 
       const bookingRequest = {
         packageId: selectedTour!.id,
+        departureId: selectedDeparture || undefined,
         participants: participants,
         totalPrice: total,
         guestEmail: customerInfo.email,
@@ -310,9 +320,19 @@ export default function Bookings() {
     }
   };
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
-      console.log("✅ Payment successful!");
+      console.log("✅ Payment successful! Payment Intent:", paymentIntentId);
+
+      // Confirm the payment on the backend (fallback for when webhooks don't work locally)
+      try {
+        await confirmPayment(paymentIntentId);
+        console.log("✅ Payment confirmed on backend");
+      } catch (confirmError) {
+        console.error("Failed to confirm payment:", confirmError);
+        // Don't throw - payment still succeeded on Stripe
+      }
+
       setShowPayment(false);
       setBookingComplete(true);
     } catch (error) {
@@ -386,15 +406,16 @@ export default function Bookings() {
     .filter(Boolean);
 
   // ✅ Calculate total with participant-scaled add-ons
-  const addonsCost = selectedAddons.reduce((sum, a) => sum + a.price * participants, 0);
-  const total =
-    (selectedTour?.basePrice ?? 0) * participants + addonsCost;
+  const addonsCost = selectedAddons.reduce(
+    (sum, a) => sum + a.price * participants,
+    0
+  );
+  const total = (selectedTour?.basePrice ?? 0) * participants + addonsCost;
 
-  // ✅ Get max capacity from selected departure
-  const maxCapacity = selectedDeparture
-    ? packageDepartures.find((d) => d.id === selectedDeparture)?.capacity - 
-      (packageDepartures.find((d) => d.id === selectedDeparture)?.reserved || 0)
-    : selectedTour?.capacity || 8;
+  // ✅ Get max capacity from selected departure (departure capacity is the source of truth)
+  const maxCapacity = selectedDepartureData
+    ? selectedDepartureData.capacity - (selectedDepartureData.reserved || 0)
+    : 1;
 
   // Success screen
   if (bookingComplete) {
@@ -476,9 +497,7 @@ export default function Bookings() {
       className="min-h-screen rounded-lg"
     >
       <header
-        className={`text-white py-12 ${
-          darkMode ? "shadow-lg" : ""
-        }`}
+        className={`text-white py-12 ${darkMode ? "shadow-lg" : ""}`}
         style={{
           backgroundColor: "transparent",
           boxShadow: darkMode
@@ -525,8 +544,8 @@ export default function Bookings() {
                           (step > (s.n as 1 | 2 | 3)
                             ? "w-full bg-[#ffb64d]"
                             : step === s.n
-                            ? "w-1/3 bg-[#ffb64d]"
-                            : "w-0")
+                              ? "w-1/3 bg-[#ffb64d]"
+                              : "w-0")
                         }
                       />
                     </div>
@@ -556,14 +575,18 @@ export default function Bookings() {
                 {loading ? (
                   <div className="col-span-full text-center py-8">
                     <div className="animate-spin h-8 w-8 border-2 border-[#ffb64d] border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                    <p
+                      style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                    >
                       {t("loadingTours")}
                     </p>
                   </div>
                 ) : error ? (
                   <div className="col-span-full text-center py-8">
                     <p className="text-red-500 mb-2">⚠️ {error}</p>
-                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                    <p
+                      style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                    >
                       {t("showingDemoTours")}
                     </p>
                   </div>
@@ -597,7 +620,9 @@ export default function Bookings() {
                       <div className="p-6">
                         <h3
                           className="text-xl font-bold hover:underline"
-                          style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                          style={{
+                            color: darkModeStyles.textPrimary(darkMode),
+                          }}
                         >
                           {t(`tour_${tour.slug}_name`) !==
                           `tour_${tour.slug}_name`
@@ -607,7 +632,9 @@ export default function Bookings() {
                         {tour.description && (
                           <p
                             className="mt-2 text-sm line-clamp-2"
-                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                            style={{
+                              color: darkModeStyles.textSecondary(darkMode),
+                            }}
                           >
                             {t(`tour_${tour.slug}_desc`) !==
                             `tour_${tour.slug}_desc`
@@ -617,7 +644,9 @@ export default function Bookings() {
                         )}
                         <ul
                           className="mt-3 space-y-1"
-                          style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                          style={{
+                            color: darkModeStyles.textSecondary(darkMode),
+                          }}
                         >
                           <li>
                             🕒 {Math.floor(tour.durationMin / 60)}h{" "}
@@ -634,7 +663,9 @@ export default function Bookings() {
                           €{tour.basePrice}
                           <span
                             className="text-base font-semibold"
-                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                            style={{
+                              color: darkModeStyles.textSecondary(darkMode),
+                            }}
                           >
                             /{t("person")}
                           </span>
@@ -659,57 +690,11 @@ export default function Bookings() {
                     borderColor: darkModeStyles.border(darkMode),
                   }}
                 >
-                  <h3
-                    className="font-semibold mb-3"
-                    style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                  <p
+                    style={{ color: darkModeStyles.textSecondary(darkMode) }}
                   >
-                    {t("selectADeparture")}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {packageDepartures.length > 0 ? (
-                      packageDepartures.map((dep) => (
-                        <button
-                          key={dep.id}
-                          onClick={() => setSelectedDeparture(dep.id)}
-                          className={`p-3 rounded border-2 transition`}
-                          style={{
-                            borderColor:
-                              selectedDeparture === dep.id
-                                ? "#0070f3"
-                                : darkModeStyles.border(darkMode),
-                            backgroundColor:
-                              selectedDeparture === dep.id
-                                ? darkMode
-                                  ? "#1e3a8a"
-                                  : "#e6f7ff"
-                                : darkModeStyles.inputBg(darkMode),
-                            color: darkModeStyles.textPrimary(darkMode),
-                          }}
-                        >
-                          <div className="font-medium">
-                            {new Date(dep.departureTime).toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </div>
-                          <div className="text-sm" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
-                            {new Date(dep.departureTime).toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                          <div className="text-xs" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
-                            {dep.capacity - dep.reserved} {t("spotsLeft")}
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
-                        {t("noDeparturesAvailable")}
-                      </p>
-                    )}
-                  </div>
+                    {t("selectADeparture")} {t("inTheNextStep")}
+                  </p>
                 </div>
               )}
 
@@ -764,33 +749,22 @@ export default function Bookings() {
                         }
                       }}
                     />
-                  </div>
 
-                  <div>
-                    <label
-                      className="block text-sm font-semibold"
-                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
-                    >
-                      {t("chooseTime")}
-                    </label>
-                    <select
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="mt-2 w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ffb64d]"
-                      style={{
-                        backgroundColor: darkModeStyles.inputBg(darkMode),
-                        borderColor: darkModeStyles.inputBorder(darkMode),
-                        color: darkModeStyles.textPrimary(darkMode),
-                      }}
-                    >
-                      {["09:00", "10:00", "12:00", "14:00", "15:00", "16:00"].map(
-                        (t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        )
-                      )}
-                    </select>
+                    {/* ✅ New: Show departures for selected date */}
+                    {date && (
+                      <div className="mt-6">
+                        <DepartureSelector
+                          packageId={selectedTour!.id}
+                          selectedDate={date ? new Date(date) : undefined}
+                          onSelectDeparture={handleDepartureSelect}
+                          selectedDeparture={
+                            selectedDeparture
+                              ? packageDepartures.find((d) => d.id === selectedDeparture) || null
+                              : null
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -803,7 +777,9 @@ export default function Bookings() {
 
                     <div className="mt-2 flex items-center gap-3">
                       <button
-                        onClick={() => setParticipants((p) => Math.max(1, p - 1))}
+                        onClick={() =>
+                          setParticipants((p) => Math.max(1, p - 1))
+                        }
                         className="h-10 w-10 rounded-xl border"
                         style={{
                           backgroundColor: darkModeStyles.inputBg(darkMode),
@@ -837,7 +813,7 @@ export default function Bookings() {
 
                     {participants >= maxCapacity && (
                       <p className="mt-2 text-sm text-orange-600">
-                        ⚠️ Maximum capacity ({maxCapacity}) reached for this departure
+                        ⚠️ ({t("maxCapacityReached")} {t("participantsWarning")} {maxCapacity})
                       </p>
                     )}
                   </div>
@@ -856,14 +832,17 @@ export default function Bookings() {
                           key={i + 1}
                           className="p-4 border rounded-lg"
                           style={{
-                            backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                            backgroundColor:
+                              darkModeStyles.bgSecondary(darkMode),
                             borderColor: darkModeStyles.border(darkMode),
                           }}
                         >
                           <div className="mb-4">
                             <label
                               className="block text-sm font-medium mb-2"
-                              style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                              style={{
+                                color: darkModeStyles.textPrimary(darkMode),
+                              }}
                             >
                               {t("participant")} {i + 1} {t("name")}:
                             </label>
@@ -876,8 +855,10 @@ export default function Bookings() {
                               placeholder={`${t("enterNameFor")} ${t("participant").toLowerCase()} ${i + 1}`}
                               className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
                               style={{
-                                backgroundColor: darkModeStyles.inputBg(darkMode),
-                                borderColor: darkModeStyles.inputBorder(darkMode),
+                                backgroundColor:
+                                  darkModeStyles.inputBg(darkMode),
+                                borderColor:
+                                  darkModeStyles.inputBorder(darkMode),
                                 color: darkModeStyles.textPrimary(darkMode),
                               }}
                               required
@@ -886,7 +867,9 @@ export default function Bookings() {
 
                           <h6
                             className="text-sm font-medium mb-3"
-                            style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                            style={{
+                              color: darkModeStyles.textSecondary(darkMode),
+                            }}
                           >
                             {t("gearSizes")}:
                           </h6>
@@ -895,7 +878,9 @@ export default function Bookings() {
                             <div>
                               <label
                                 className="block text-sm font-medium mb-1"
-                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                                style={{
+                                  color: darkModeStyles.textSecondary(darkMode),
+                                }}
                               >
                                 {t("overalls")}
                               </label>
@@ -912,8 +897,10 @@ export default function Bookings() {
                                 }
                                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 style={{
-                                  backgroundColor: darkModeStyles.inputBg(darkMode),
-                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  backgroundColor:
+                                    darkModeStyles.inputBg(darkMode),
+                                  borderColor:
+                                    darkModeStyles.inputBorder(darkMode),
                                   color: darkModeStyles.textPrimary(darkMode),
                                 }}
                                 required
@@ -931,25 +918,23 @@ export default function Bookings() {
                             <div>
                               <label
                                 className="block text-sm font-medium mb-1"
-                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                                style={{
+                                  color: darkModeStyles.textSecondary(darkMode),
+                                }}
                               >
                                 {t("boots")}
                               </label>
                               <select
-                                value={
-                                  participantGearSizes[i + 1]?.boots || ""
-                                }
+                                value={participantGearSizes[i + 1]?.boots || ""}
                                 onChange={(e) =>
-                                  updateGearSize(
-                                    i + 1,
-                                    "boots",
-                                    e.target.value
-                                  )
+                                  updateGearSize(i + 1, "boots", e.target.value)
                                 }
                                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 style={{
-                                  backgroundColor: darkModeStyles.inputBg(darkMode),
-                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  backgroundColor:
+                                    darkModeStyles.inputBg(darkMode),
+                                  borderColor:
+                                    darkModeStyles.inputBorder(darkMode),
                                   color: darkModeStyles.textPrimary(darkMode),
                                 }}
                                 required
@@ -967,7 +952,9 @@ export default function Bookings() {
                             <div>
                               <label
                                 className="block text-sm font-medium mb-1"
-                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                                style={{
+                                  color: darkModeStyles.textSecondary(darkMode),
+                                }}
                               >
                                 {t("gloves")}
                               </label>
@@ -984,8 +971,10 @@ export default function Bookings() {
                                 }
                                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 style={{
-                                  backgroundColor: darkModeStyles.inputBg(darkMode),
-                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  backgroundColor:
+                                    darkModeStyles.inputBg(darkMode),
+                                  borderColor:
+                                    darkModeStyles.inputBorder(darkMode),
                                   color: darkModeStyles.textPrimary(darkMode),
                                 }}
                                 required
@@ -1003,7 +992,9 @@ export default function Bookings() {
                             <div>
                               <label
                                 className="block text-sm font-medium mb-1"
-                                style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                                style={{
+                                  color: darkModeStyles.textSecondary(darkMode),
+                                }}
                               >
                                 {t("helmet")}
                               </label>
@@ -1020,8 +1011,10 @@ export default function Bookings() {
                                 }
                                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 style={{
-                                  backgroundColor: darkModeStyles.inputBg(darkMode),
-                                  borderColor: darkModeStyles.inputBorder(darkMode),
+                                  backgroundColor:
+                                    darkModeStyles.inputBg(darkMode),
+                                  borderColor:
+                                    darkModeStyles.inputBorder(darkMode),
                                   color: darkModeStyles.textPrimary(darkMode),
                                 }}
                                 required
@@ -1089,11 +1082,16 @@ export default function Bookings() {
                       </h4>
                       <p
                         className="text-sm mb-2"
-                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                        style={{
+                          color: darkModeStyles.textSecondary(darkMode),
+                        }}
                       >
                         {t(`addon_${addon.id}_desc`)}
                       </p>
-                      <div className="text-lg font-bold" style={{ color: "#0070f3" }}>
+                      <div
+                        className="text-lg font-bold"
+                        style={{ color: "#0070f3" }}
+                      >
                         €{addon.price}
                         {participants > 1 &&
                           ` × ${participants} = €${addon.price * participants}`}
@@ -1105,7 +1103,9 @@ export default function Bookings() {
                 {/* Summary Section */}
                 <div
                   className="rounded-lg p-6 mt-6"
-                  style={{ backgroundColor: darkModeStyles.bgSecondary(darkMode) }}
+                  style={{
+                    backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                  }}
                 >
                   <div className="space-y-2 text-sm mb-4">
                     <div
@@ -1113,12 +1113,16 @@ export default function Bookings() {
                       style={{ color: darkModeStyles.textSecondary(darkMode) }}
                     >
                       <span>Tour ({participants}×):</span>
-                      <span>€{(selectedTour?.basePrice ?? 0) * participants}</span>
+                      <span>
+                        €{(selectedTour?.basePrice ?? 0) * participants}
+                      </span>
                     </div>
                     {selectedAddons.length > 0 && (
                       <div
                         className="flex justify-between"
-                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                        style={{
+                          color: darkModeStyles.textSecondary(darkMode),
+                        }}
                       >
                         <span>Add-ons ({participants}×):</span>
                         <span>€{addonsCost}</span>
@@ -1209,7 +1213,10 @@ export default function Bookings() {
                     placeholder={t("emailAddress")}
                     value={customerInfo.email}
                     onChange={(e) =>
-                      setCustomerInfo({ ...customerInfo, email: e.target.value })
+                      setCustomerInfo({
+                        ...customerInfo,
+                        email: e.target.value,
+                      })
                     }
                     className="border rounded-lg px-4 py-2"
                     style={{
@@ -1224,7 +1231,10 @@ export default function Bookings() {
                     placeholder={t("phoneNumber")}
                     value={customerInfo.phone}
                     onChange={(e) =>
-                      setCustomerInfo({ ...customerInfo, phone: e.target.value })
+                      setCustomerInfo({
+                        ...customerInfo,
+                        phone: e.target.value,
+                      })
                     }
                     className="border rounded-lg px-4 py-2"
                     style={{
@@ -1276,15 +1286,9 @@ export default function Bookings() {
                         required
                       />
                       <select
-                        value={
-                          participantGearSizes[index + 1]?.overalls || ""
-                        }
+                        value={participantGearSizes[index + 1]?.overalls || ""}
                         onChange={(e) =>
-                          updateGearSize(
-                            index + 1,
-                            "overalls",
-                            e.target.value
-                          )
+                          updateGearSize(index + 1, "overalls", e.target.value)
                         }
                         className="border rounded px-3 py-2"
                         style={{
@@ -1399,11 +1403,16 @@ export default function Bookings() {
                       </h4>
                       <p
                         className="text-sm mb-2"
-                        style={{ color: darkModeStyles.textSecondary(darkMode) }}
+                        style={{
+                          color: darkModeStyles.textSecondary(darkMode),
+                        }}
                       >
                         {t(`addon_${addon.id}_desc`)}
                       </p>
-                      <div className="text-lg font-bold" style={{ color: "#0070f3" }}>
+                      <div
+                        className="text-lg font-bold"
+                        style={{ color: "#0070f3" }}
+                      >
                         +€{addon.price}
                       </div>
                     </div>
@@ -1414,7 +1423,9 @@ export default function Bookings() {
               {/* Summary & Submit */}
               <div
                 className="rounded-lg p-6 mt-6"
-                style={{ backgroundColor: darkModeStyles.bgSecondary(darkMode) }}
+                style={{
+                  backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                }}
               >
                 <div
                   className="flex justify-between items-center text-xl font-bold"
@@ -1473,7 +1484,9 @@ export default function Bookings() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                   <div
                     className="rounded-2xl p-8 max-w-md w-full shadow-2xl"
-                    style={{ backgroundColor: darkModeStyles.bgPrimary(darkMode) }}
+                    style={{
+                      backgroundColor: darkModeStyles.bgPrimary(darkMode),
+                    }}
                   >
                     <h3
                       className="text-2xl font-bold mb-6"

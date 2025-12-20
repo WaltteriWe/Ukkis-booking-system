@@ -1,4 +1,5 @@
 "use client";
+import { max } from "date-fns";
 import { Language } from "./LanguageContext";
 
 // Translations
@@ -130,6 +131,10 @@ export const translations: Record<Language, Record<string, string>> = {
     confirmBooking: "Confirm Booking",
     backToSelection: "Back to Selection",
     backToCustomization: "Back to Customization",
+    selectADeparture: "Select a Departure",
+    noDeparturesAvailable: "Click a package to see available departures",
+    maxCapacityReached: "Maximum capacity reached",
+    participantsWarning: "for the selected departure",
 
     // Snowmobile Rental
     contactForRental:"Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
@@ -395,6 +400,10 @@ export const translations: Record<Language, Record<string, string>> = {
     confirmBooking: "Vahvista varaus",
     backToSelection: "Takaisin valintaan",
     backToCustomization: "Takaisin muokkaukseen",
+    selectADeparture: "Valitse lähtö",
+    noDeparturesAvailable: "Klikkaa pakettia nähdäksesi saatavilla olevat lähdöt",
+    maxCapacityReached: "Maksimikapasiteetti saavutettu",
+    participantsWarning: "valitulle lähdölle",
 
     // Snowmobile Rental
     rentSnowmobileTitle:

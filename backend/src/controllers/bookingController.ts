@@ -3,13 +3,16 @@ import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import { BOOKING_STATUS } from "../../shared/constants";
 import { format } from "date-fns";
+import Stripe from "stripe";
 import {
   sendApprovalEmail,
   sendRejectionEmail,
   sendPendingBookingEmail,
+  sendConfirmationEmail,
 } from "./emailController";
 
 const prisma = new PrismaClient();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
 // Update the gear sizes schema
 const gearSizesSchema = z.object({
@@ -86,6 +89,44 @@ export async function createBooking(body: unknown) {
           bookingDate,
           "Time:",
           bookingTime
+        );
+      }
+
+      // Check departure capacity if departureId is provided
+      if (data.departureId) {
+        const departure = await tx.departure.findUnique({
+          where: { id: data.departureId },
+        });
+
+        if (!departure) {
+          throw { status: 400, error: "Invalid departure" };
+        }
+
+        // Calculate current reserved spots (only count approved bookings)
+        const existingBookings = await tx.booking.findMany({
+          where: {
+            departureId: data.departureId,
+            approvalStatus: "approved",
+          },
+        });
+
+        const totalReserved = existingBookings.reduce(
+          (sum, b) => sum + b.participants,
+          0
+        );
+
+        // Check if adding this booking would exceed capacity
+        if (totalReserved + data.participants > departure.capacity) {
+          throw {
+            status: 400,
+            error: `Not enough capacity. Available: ${
+              departure.capacity - totalReserved
+            }, Requested: ${data.participants}`,
+          };
+        }
+
+        console.log(
+          `Capacity check passed: ${totalReserved}/${departure.capacity} reserved, adding ${data.participants}`
         );
       }
 
@@ -352,6 +393,45 @@ export async function approveBooking(id: number, body: unknown) {
     throw { status: 404, error: "Booking not found" };
   }
 
+  // Check capacity if this booking has a departureId
+  if (booking.departureId) {
+    const departure = await prisma.departure.findUnique({
+      where: { id: booking.departureId },
+    });
+
+    if (!departure) {
+      throw { status: 400, error: "Invalid departure" };
+    }
+
+    // Calculate current approved bookings (excluding this one)
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        departureId: booking.departureId,
+        approvalStatus: "approved",
+        id: { not: id }, // Exclude current booking
+      },
+    });
+
+    const totalReserved = existingBookings.reduce(
+      (sum, b) => sum + b.participants,
+      0
+    );
+
+    // Check if approving this booking would exceed capacity
+    if (totalReserved + booking.participants > departure.capacity) {
+      throw {
+        status: 400,
+        error: `Cannot approve: Exceeds capacity. Available: ${
+          departure.capacity - totalReserved
+        }, Booking has: ${booking.participants}`,
+      };
+    }
+
+    console.log(
+      `Approval capacity check passed: ${totalReserved}/${departure.capacity} reserved, approving ${booking.participants}`
+    );
+  }
+
   const updatedBooking = await prisma.booking.update({
     where: { id },
     data: { approvalStatus: "approved" },
@@ -436,4 +516,123 @@ export async function rejectBooking(id: number, body: unknown) {
   }
 
   return updatedBooking;
+}
+
+// Confirm payment manually (for local development without webhooks)
+export async function confirmPayment(paymentIntentId: string) {
+  // Find booking with this payment intent
+  const booking = await prisma.booking.findFirst({
+    where: { paymentIntentId },
+    include: {
+      guest: true,
+      package: true,
+      participantGear: true,
+    },
+  });
+
+  if (!booking) {
+    throw { status: 404, error: "Booking not found for this payment" };
+  }
+
+  // Check if already confirmed
+  if (booking.paymentStatus === "succeeded") {
+    return { message: "Payment already confirmed", booking };
+  }
+
+  // Verify payment with Stripe
+  let paymentIntent: Stripe.PaymentIntent;
+  try {
+    paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["charges.data.payment_method_details"],
+    });
+    console.log(
+      `✅ Retrieved payment intent from Stripe: ${paymentIntent.id}, status: ${paymentIntent.status}`
+    );
+  } catch (error) {
+    console.error("❌ Failed to retrieve payment intent from Stripe:", error);
+    throw { status: 400, error: "Failed to verify payment with Stripe" };
+  }
+
+  // Check if payment actually succeeded on Stripe's side
+  if (paymentIntent.status !== "succeeded") {
+    console.warn(
+      `⚠️ Payment intent ${paymentIntentId} has status: ${paymentIntent.status}`
+    );
+    throw {
+      status: 400,
+      error: "Payment not completed",
+      stripeStatus: paymentIntent.status,
+    };
+  }
+
+  // Update booking status
+  const updatedBooking = await prisma.booking.update({
+    where: { id: booking.id },
+    data: {
+      paymentStatus: "succeeded",
+      status: "confirmed",
+      paymentMethod:
+        (paymentIntent as any).charges?.data[0]?.payment_method_details?.type ||
+        null,
+    },
+    include: {
+      guest: true,
+      package: true,
+      participantGear: true,
+    },
+  });
+
+  // Send confirmation email
+  try {
+    console.log(
+      `Sending confirmation email for booking ${booking.id} to ${booking.guest.email}`
+    );
+
+    // Extract date and time from notes or use booking created date
+    const noteMatch = booking.notes?.match(
+      /Date: (\d{4}-\d{2}-\d{2}), Time: (\d{2}:\d{2})/
+    );
+    const bookingDate =
+      noteMatch?.[1] || new Date(booking.createdAt).toISOString().split("T")[0];
+    const bookingTime = noteMatch?.[2] || "09:00";
+
+    // Convert participant gear to the format expected by email
+    const gearSizes: Record<string, any> = {};
+    if (booking.participantGear && booking.participantGear.length > 0) {
+      booking.participantGear.forEach((gear, index) => {
+        gearSizes[String(index + 1)] = {
+          name: gear.name,
+          overalls: gear.overalls,
+          boots: gear.boots,
+          gloves: gear.gloves,
+          helmet: gear.helmet,
+        };
+      });
+    }
+
+    const emailData = {
+      email: booking.guest.email,
+      name: booking.guest.name,
+      tour: booking.package.name,
+      date: bookingDate,
+      time: bookingTime,
+      participants: booking.participants,
+      total: Number(booking.totalPrice),
+      bookingId: `UK${booking.id}`,
+      phone: booking.guest.phone || "",
+      addons: booking.notes || "",
+      gearSizes: Object.keys(gearSizes).length > 0 ? gearSizes : undefined,
+    };
+
+    await sendConfirmationEmail(emailData);
+    console.log(`✅ Confirmation email sent for booking ${booking.id}`);
+  } catch (error) {
+    console.error(
+      `❌ Failed to send confirmation email for booking ${booking.id}:`,
+      error
+    );
+    // Don't throw - we still want the payment to be marked as succeeded
+  }
+
+  return { message: "Payment confirmed successfully", booking: updatedBooking };
 }

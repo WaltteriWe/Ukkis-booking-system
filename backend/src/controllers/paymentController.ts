@@ -17,6 +17,7 @@ const createPaymentIntentSchema = z.object({
   amount: z.number().int().positive(), // cents
   currency: z.string().min(1),
   bookingId: z.number().int().positive().optional(), // Link to existing booking
+  rentalId: z.number().int().positive().optional(), // Link to existing rental
   customer: z.object({
     name: z.string().min(1),
     email: z.string().email(),
@@ -53,6 +54,17 @@ export async function createPaymentIntent(body: unknown) {
   if (data.bookingId) {
     await prisma.booking.update({
       where: { id: data.bookingId },
+      data: {
+        paymentIntentId: intent.id,
+        paymentStatus: "pending",
+      },
+    });
+  }
+
+  // If rentalId is provided, link the payment intent to the snowmobile rental
+  if (data.rentalId) {
+    await prisma.snowmobileRental.update({
+      where: { id: data.rentalId },
       data: {
         paymentIntentId: intent.id,
         paymentStatus: "pending",
