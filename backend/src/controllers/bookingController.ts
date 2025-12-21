@@ -37,10 +37,7 @@ const createBookingSchema = z.object({
 });
 
 export async function createBooking(body: unknown) {
-  console.log("Received booking request:", body);
-
   const data = createBookingSchema.parse(body);
-  console.log("Validated data:", data);
 
   const booking = await prisma.$transaction(
     async (tx) => {
@@ -72,8 +69,6 @@ export async function createBooking(body: unknown) {
         },
       });
 
-      console.log("Guest created/updated:", guest.email);
-
       // Extract date and time from notes
       let bookingDate = null;
       let bookingTime = null;
@@ -83,13 +78,6 @@ export async function createBooking(body: unknown) {
 
         if (dateMatch) bookingDate = dateMatch[1];
         if (timeMatch) bookingTime = timeMatch[1];
-
-        console.log(
-          "Extracted from notes - Date:",
-          bookingDate,
-          "Time:",
-          bookingTime
-        );
       }
 
       // Check departure capacity if departureId is provided
@@ -157,13 +145,6 @@ export async function createBooking(body: unknown) {
         },
       });
 
-      console.log(
-        "Booking created:",
-        createdBooking.id,
-        "for date:",
-        bookingDate
-      );
-
       if (data.participantGearSizes) {
         const gearPromises = Object.entries(data.participantGearSizes).map(
           ([participantNum, gear]) =>
@@ -180,11 +161,6 @@ export async function createBooking(body: unknown) {
         );
 
         await Promise.all(gearPromises);
-        console.log(
-          "Gear sizes saved for",
-          Object.keys(data.participantGearSizes).length,
-          "participants"
-        );
       }
 
       return createdBooking;

@@ -62,11 +62,16 @@ async function main() {
       // Check if this endpoint is public
       const isPublic = publicEndpoints.some((endpoint) => {
         if (endpoint.method !== method) return false;
-        if (endpoint.path.includes("/")) {
-          // For paths with wildcards, check if URL starts with the path
+
+        // Handle wildcard paths (e.g., "/api/packages/slug/")
+        if (endpoint.path.endsWith("/")) {
           return urlPath.startsWith(endpoint.path);
         }
-        return urlPath === endpoint.path;
+
+        // For exact paths, match exactly or allow sub-routes with /
+        return (
+          urlPath === endpoint.path || urlPath.startsWith(endpoint.path + "/")
+        );
       });
 
       if (isPublic) {

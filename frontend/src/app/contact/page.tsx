@@ -1,7 +1,4 @@
-
-
 "use client";
-
 
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
@@ -114,7 +111,11 @@ export default function Contact() {
               <div className="flex items-center space-x-3">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: colors.pink, width: "48px", height: "48px" }}
+                  style={{
+                    backgroundColor: colors.pink,
+                    width: "48px",
+                    height: "48px",
+                  }}
                 >
                   <MapPin className="h-6 w-6 text-white" />
                 </div>
@@ -125,7 +126,12 @@ export default function Contact() {
                   >
                     {t("address")}
                   </h3>
-                  <p className="text-sm" style={{ color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666" }}>
+                  <p
+                    className="text-sm"
+                    style={{
+                      color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666",
+                    }}
+                  >
                     Ukkohallantie 5<br />
                     89400 Hyrynsalmi
                     <br />
@@ -138,7 +144,11 @@ export default function Contact() {
               <div className="flex items-center space-x-3">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: colors.pink, width: "48px", height: "48px" }}
+                  style={{
+                    backgroundColor: colors.pink,
+                    width: "48px",
+                    height: "48px",
+                  }}
                 >
                   <Phone className="h-6 w-6 text-white" />
                 </div>
@@ -152,7 +162,9 @@ export default function Contact() {
                   <a
                     href="tel:+358401306777"
                     className="hover:underline text-sm"
-                    style={{ color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666" }}
+                    style={{
+                      color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666",
+                    }}
                   >
                     +358 40 1306777
                   </a>
@@ -163,7 +175,11 @@ export default function Contact() {
               <div className="flex items-center space-x-3">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: colors.pink, width: "48px", height: "48px" }}
+                  style={{
+                    backgroundColor: colors.pink,
+                    width: "48px",
+                    height: "48px",
+                  }}
                 >
                   <Mail className="h-6 w-6 text-white" />
                 </div>
@@ -177,7 +193,9 @@ export default function Contact() {
                   <a
                     href="mailto:info@ukkis.fi"
                     className="hover:underline text-sm"
-                    style={{ color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666" }}
+                    style={{
+                      color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666",
+                    }}
                   >
                     info@ukkis.fi
                   </a>

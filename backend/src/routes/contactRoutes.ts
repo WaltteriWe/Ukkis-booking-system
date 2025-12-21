@@ -1,5 +1,10 @@
 import { FastifyInstance } from "fastify";
-import { handleContact, listContactMessages, deleteContactMessage, sendContactReply } from "../controllers/contactController";
+import {
+  handleContact,
+  listContactMessages,
+  deleteContactMessage,
+  sendContactReply,
+} from "../controllers/contactController";
 
 export async function contactRoutes(app: FastifyInstance) {
   app.post("/contact", async (req, reply) => {
@@ -8,8 +13,14 @@ export async function contactRoutes(app: FastifyInstance) {
       const res = await handleContact(req.body);
       return reply.code(201).send(res);
     } catch (err: any) {
-      app.log.error("Contact error:", err);
-      return reply.code(400).send({ success: false, error: err?.message || "Invalid request" });
+      app.log.error({ err }, "Contact error");
+      app.log.error(
+        { message: err?.message, issues: err?.issues },
+        "Error details"
+      );
+      return reply
+        .code(400)
+        .send({ success: false, error: err?.message || "Invalid request" });
     }
   });
 
@@ -28,7 +39,8 @@ export async function contactRoutes(app: FastifyInstance) {
   app.delete("/contact/:id", async (req, reply) => {
     try {
       const id = Number((req.params as any).id);
-      if (Number.isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+      if (Number.isNaN(id))
+        return reply.code(400).send({ error: "Invalid id" });
       const deleted = await deleteContactMessage(id);
       return reply.send(deleted);
     } catch (err: any) {
@@ -41,7 +53,8 @@ export async function contactRoutes(app: FastifyInstance) {
   app.post("/contact/:id/reply", async (req, reply) => {
     try {
       const id = Number((req.params as any).id);
-      if (Number.isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+      if (Number.isNaN(id))
+        return reply.code(400).send({ error: "Invalid id" });
       const { to, subject, body } = req.body as any;
       const res = await sendContactReply(id, { to, subject, body });
       return reply.send(res);
