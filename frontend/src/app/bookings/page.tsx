@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useDepartures } from "@/hooks/useDepartures";
+import Image from "next/image";
 
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
@@ -54,7 +55,6 @@ type Tour = {
   description?: string;
   basePrice: number;
   durationMin: number;
-  capacity?: number;
   difficulty: "Easy" | "Moderate" | "Advanced";
   imageUrl?: string;
   isActive: boolean;
@@ -610,10 +610,12 @@ export default function Bookings() {
                         borderColor: darkModeStyles.border(darkMode),
                       }}
                     >
-                      <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
-                        <img
-                          src={getImageUrl(tour.imageUrl) || "/images/atv.jpg"}
+                      <div className=" overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
+                        <Image
+                          src={getImageUrl(tour.imageUrl) || "/images/placeholderTour.jpg"}
                           alt={tour.name}
+                          width={400}
+                          height={300}
                           className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
@@ -653,9 +655,6 @@ export default function Bookings() {
                             {tour.durationMin % 60}min
                           </li>
                           <li>
-                            👥 {tour.capacity || 8} {t("people")}
-                          </li>
-                          <li>
                             ⭐ {t("difficulty")}: {tour.difficulty}
                           </li>
                         </ul>
@@ -680,23 +679,6 @@ export default function Bookings() {
                   );
                 })}
               </div>
-
-              {/* Package selection UI */}
-              {selectedTour && (
-                <div
-                  className="mt-6 p-4 border rounded-lg"
-                  style={{
-                    backgroundColor: darkModeStyles.bgSecondary(darkMode),
-                    borderColor: darkModeStyles.border(darkMode),
-                  }}
-                >
-                  <p
-                    style={{ color: darkModeStyles.textSecondary(darkMode) }}
-                  >
-                    {t("selectADeparture")} {t("inTheNextStep")}
-                  </p>
-                </div>
-              )}
 
               <div className="mt-8 flex justify-end">
                 <button
@@ -759,7 +741,9 @@ export default function Bookings() {
                           onSelectDeparture={handleDepartureSelect}
                           selectedDeparture={
                             selectedDeparture
-                              ? packageDepartures.find((d) => d.id === selectedDeparture) || null
+                              ? packageDepartures.find(
+                                  (d) => d.id === selectedDeparture
+                                ) || null
                               : null
                           }
                         />
@@ -813,7 +797,8 @@ export default function Bookings() {
 
                     {participants >= maxCapacity && (
                       <p className="mt-2 text-sm text-orange-600">
-                        ⚠️ ({t("maxCapacityReached")} {t("participantsWarning")} {maxCapacity})
+                        ⚠️ ({t("maxCapacityReached")} {t("participantsWarning")}{" "}
+                        {maxCapacity})
                       </p>
                     )}
                   </div>

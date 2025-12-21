@@ -135,6 +135,7 @@ export const translations: Record<Language, Record<string, string>> = {
     noDeparturesAvailable: "Click a package to see available departures",
     maxCapacityReached: "Maximum capacity reached",
     participantsWarning: "for the selected departure",
+    inTheNextStep: "in the next step",
 
     // Snowmobile Rental
     contactForRental:"Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
@@ -404,6 +405,7 @@ export const translations: Record<Language, Record<string, string>> = {
     noDeparturesAvailable: "Klikkaa pakettia nähdäksesi saatavilla olevat lähdöt",
     maxCapacityReached: "Maksimikapasiteetti saavutettu",
     participantsWarning: "valitulle lähdölle",
+    inTheNextStep: "seuraavassa vaiheessa",
 
     // Snowmobile Rental
     rentSnowmobileTitle:

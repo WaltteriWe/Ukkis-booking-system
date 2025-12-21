@@ -305,7 +305,6 @@ export const createPackage = async (packageData: {
   description?: string;
   basePrice: number;
   durationMin: number;
-  capacity?: number;
   difficulty: "Easy" | "Moderate" | "Advanced";
   imageUrl?: string;
 }) => {
@@ -327,7 +326,6 @@ export const createPackage = async (packageData: {
       description: packageData.description,
       basePrice: Number(packageData.basePrice),
       durationMin: Number(packageData.durationMin),
-      capacity: Number(packageData.capacity),
       difficulty: packageData.difficulty,
       imageUrl: packageData.imageUrl,
       isActive: true,
@@ -350,7 +348,6 @@ export async function updatePackage(
     description: string;
     basePrice: number;
     durationMin: number;
-    capacity: number;
     difficulty: "Easy" | "Moderate" | "Advanced";
     imageUrl: string;
     active: boolean;

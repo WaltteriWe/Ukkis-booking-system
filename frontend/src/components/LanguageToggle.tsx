@@ -3,9 +3,12 @@
 import { useLanguage } from "@/context/LanguageContext";
 import { colors } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { GB, FI } from 'country-flag-icons/react/3x2'
 
 export default function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage();
+
+  const flagComponent = language === "en" ? <GB className="w-6 h-10" title="English" /> : <FI className="w-6 h-10" title="Finnish" />
 
   return (
     <button
@@ -19,7 +22,7 @@ export default function LanguageToggle() {
       }}
       aria-label={`Switch to ${language === "en" ? "Finnish" : "English"}`}
     >
-      <span className="text-2xl">{language === "en" ? "🇬🇧" : "🇫🇮"}</span>
+      {flagComponent}
     </button>
   );
 }

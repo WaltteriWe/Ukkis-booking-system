@@ -48,7 +48,6 @@ interface Tour {
   description?: string;
   basePrice: number;
   durationMin: number;
-  capacity?: number;
   difficulty: "Easy" | "Moderate" | "Advanced";
   imageUrl?: string;
   active: boolean;
@@ -224,7 +223,6 @@ export default function AdminPage() {
     description: "",
     basePrice: "",
     durationMin: "",
-    capacity: "",
     difficulty: "Easy" as "Easy" | "Moderate" | "Advanced",
     imageUrl: "",
     active: true,
@@ -693,7 +691,6 @@ export default function AdminPage() {
       description: formData.description || undefined,
       basePrice: Number(formData.basePrice),
       durationMin: Number(formData.durationMin),
-      capacity: Number(formData.capacity) || undefined,
       difficulty: formData.difficulty,
       imageUrl: formData.imageUrl || undefined,
       active: formData.active,
@@ -714,7 +711,6 @@ export default function AdminPage() {
         description: "",
         basePrice: "",
         durationMin: "",
-        capacity: "",
         difficulty: "Easy",
         imageUrl: "",
         active: true,
@@ -736,7 +732,6 @@ export default function AdminPage() {
       description: tour.description || "",
       basePrice: tour.basePrice.toString(),
       durationMin: tour.durationMin.toString(),
-      capacity: tour.capacity?.toString() || "",
       difficulty: tour.difficulty,
       imageUrl: tour.imageUrl || "",
       active: tour.active,
@@ -1168,23 +1163,6 @@ export default function AdminPage() {
                   }
                   className="w-full border rounded px-3 py-2"
                   required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Capacity
-                </label>
-                <input
-                  type="number"
-                  value={formData.capacity}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      capacity: e.target.value,
-                    }))
-                  }
-                  className="w-full border rounded px-3 py-2"
                 />
               </div>
 
