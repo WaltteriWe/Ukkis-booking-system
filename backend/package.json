@@ -12,6 +12,7 @@
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "build": "tsc && node scripts/copyGenerated.js",
     "start": "node dist/src/index.js",
+    "createAdmin": "node scripts/createAdmin.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio"

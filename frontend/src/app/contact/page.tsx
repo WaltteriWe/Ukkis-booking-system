@@ -42,8 +42,7 @@ export default function Contact() {
     };
 
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-      const res = await fetch(`${base}/contact`, {
+      const res = await fetch(`/api/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -90,7 +89,7 @@ export default function Contact() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 object-center text-center ">
+        <div className="grid lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Contact Information */}
           <div
             className="rounded-lg shadow-lg p-8"
@@ -100,7 +99,7 @@ export default function Contact() {
             }}
           >
             <h2
-              className="text-2xl font-bold mb-6 text-center object-center"
+              className="text-2xl font-bold mb-6 text-center"
               style={{ color: darkMode ? "#10b981" : colors.navy }}
             >
               {t("getInTouch")}
@@ -108,7 +107,7 @@ export default function Contact() {
 
             <div className="space-y-6 flex flex-col items-center">
               {/* Address */}
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col items-center space-y-2">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
                   style={{
@@ -141,7 +140,7 @@ export default function Contact() {
               </div>
 
               {/* Phone */}
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col items-center space-y-2">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
                   style={{
@@ -172,7 +171,7 @@ export default function Contact() {
               </div>
 
               {/* Email */}
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col items-center space-y-2">
                 <div
                   className="rounded-full p-3 flex-shrink-0 flex items-center justify-center"
                   style={{

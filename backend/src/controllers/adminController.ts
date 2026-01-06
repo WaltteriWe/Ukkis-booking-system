@@ -70,7 +70,8 @@ export async function loginAdmin(body: any) {
     });
 
     if (!admin) throw { status: 401, error: "InvalidCredentials" };
-    const { hash } = hashPassword(data.password, admin.passwordSalt);
+    const trimmedPassword = data.password.trim();
+    const { hash } = hashPassword(trimmedPassword, admin.passwordSalt);
     if (hash !== admin.passwordHash) {
       throw { status: 401, error: "InvalidCredentials" };
     }

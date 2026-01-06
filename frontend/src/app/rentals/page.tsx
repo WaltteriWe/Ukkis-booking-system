@@ -358,10 +358,10 @@ export default function SnowmobileRentalPage() {
           ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
           : colors.beige,
       }}
-      className="min-h-screen"
+      className="min-h-screen rounded-lg"
     >
       <header
-        className={`text-white py-12 ${darkMode ? "shadow-lg" : ""}`}
+        className={`text-white py-12 rounded-lg ${darkMode ? "shadow-lg" : ""}`}
         style={{
           backgroundColor: darkMode ? colors.navy : colors.navy,
           boxShadow: darkMode
