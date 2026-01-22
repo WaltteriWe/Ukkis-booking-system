@@ -36,9 +36,7 @@ const getImageUrl = (url?: string) => {
   return url;
 };
 
-import { DayPicker } from "react-day-picker";
-import { format } from "date-fns";
-import "react-day-picker/dist/style.css";
+import { DayPicker } from "react-day-picker";import "react-day-picker/dist/style.css";
 import { useError } from "@/hooks/useError";
 
 interface Tour {

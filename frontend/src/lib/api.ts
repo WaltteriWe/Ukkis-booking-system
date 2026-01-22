@@ -1,6 +1,3 @@
-import { get } from "http";
-
-
 const API_BASE_URL = "/api";
 
 export interface CreateBookingRequest {

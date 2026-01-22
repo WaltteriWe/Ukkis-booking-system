@@ -4,18 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   createBooking,
-  sendConfirmationEmail,
+  // sendConfirmationEmail,
   getPackages,
-  getDepartures,
-  createDeparture,
-  confirmPayment,
+  // getDepartures,
+  // createDeparture,
+  // confirmPayment,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { DepartureSelector } from "@/components/DepartureSelector";
-import StripeCheckout from "@/components/StripeCheckout";
+// import StripeCheckout from "@/components/StripeCheckout";
+import { PackageDetailsModal } from "@/components/PackageDetailsModal";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -27,10 +28,13 @@ const getImageUrl = (url?: string) => {
   if (!url) return undefined;
   // If already absolute URL, return as is
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  // If relative URL starting with /uploads, prepend backend base URL
+  // Images are served as static files at /uploads/ by the backend
+  // Use NEXT_PUBLIC_API_URL to get the backend base URL
   if (url.startsWith("/uploads")) {
-    // Backend runs on port 3001
-    return `http://localhost:3001${url}`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    // Remove /api suffix if it exists to get just the backend base URL
+    const baseUrl = apiUrl.replace(/\/api\/?$/, "");
+    return `${baseUrl}${url}`;
   }
   return url;
 };
@@ -151,22 +155,22 @@ export default function Bookings() {
       }
     >
   >({});
-  const [showPayment, setShowPayment] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [currentBookingId, setCurrentBookingId] = useState<number | null>(null);
-  const [bookingComplete, setBookingComplete] = useState(false);
+  // TEMPORARY: Commenting out Stripe payment flow
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     email: "",
     phone: "",
   });
-  const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  // TEMPORARY: Minimal state for commented-out Stripe flow
+  const [showPayment] = useState(false);
+  const [clientSecret] = useState<string | null>(null);
   const [selectedDepartureData, setSelectedDepartureData] = useState<any>(null);
+  const [showPackageModal, setShowPackageModal] = useState(false);
 
   const handleSelectTour = (tour: Tour) => {
+    // Open modal for package details
     setSelectedTour(tour);
-    handlePackageSelect(tour.id);
-    setSelectedPackage(tour.id);
+    setShowPackageModal(true);
   };
 
   const toggleAddon = (id: string) =>
@@ -256,6 +260,8 @@ export default function Bookings() {
   };
 
   // Create payment intent and show Stripe form
+  // TEMPORARY: Commenting out payment handler
+  /*
   const handleProceedToPayment = async () => {
     try {
       // First, create the booking
@@ -319,7 +325,10 @@ export default function Bookings() {
       alert(`Payment setup failed: ${errorMsg}`);
     }
   };
+  */
 
+  // TEMPORARY: Commenting out payment success handler
+  /*
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
       console.log("✅ Payment successful! Payment Intent:", paymentIntentId);
@@ -339,6 +348,7 @@ export default function Bookings() {
       console.error("❌ Post-payment process failed:", error);
     }
   };
+  */
 
   // Load tours from database
   useEffect(() => {
@@ -417,85 +427,33 @@ export default function Bookings() {
     ? selectedDepartureData.capacity - (selectedDepartureData.reserved || 0)
     : 1;
 
-  // Success screen
-  if (bookingComplete) {
-    return (
-      <div className="min-h-screen bg-[#f7fbf9] flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center bg-white rounded-2xl p-8 shadow-lg">
-          <div className="rounded-full w-20 h-20 bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <svg
-              className="w-10 h-10 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-[#101651] mb-4">
-            Booking Confirmed!
-          </h2>
-          <p className="text-[#3b4463] mb-2">
-            Thank you {customerInfo.name}! Your Arctic adventure is booked.
-          </p>
-          <p className="text-sm text-[#3b4463] mb-8">
-            Booking reference: #UK{Date.now().toString().slice(-6)}
-          </p>
-
-          <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-left">
-            <h3 className="font-bold text-[#101651] mb-3">Your Booking</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#3b4463]">Tour:</span>
-                <span>{selectedTour?.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#3b4463]">Date:</span>
-                <span>{date}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#3b4463]">Time:</span>
-                <span>{time}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-[#3b4463]">Total Paid:</span>
-                <span className="font-bold text-[#ff8c3a]">€{total}</span>
-              </div>
-            </div>
-          </div>
-
-          <Link
-            href="/"
-            className="inline-block rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold mr-4"
-          >
-            Return Home
-          </Link>
-          <button
-            onClick={() => window.print()}
-            className="inline-block rounded-full border border-[#ffb64d] text-[#ffb64d] px-6 py-3 font-semibold"
-          >
-            Print
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // TEMPORARY: Commenting out success screen
+  // if (bookingComplete) {
+  //   return (
+  // TEMPORARY: Commenting out success screen - commented code removed to prevent syntax errors
+  // if (bookingComplete) {
+  //   return (<...booking success JSX...>);
+  // }
 
   return (
-    <div
-      style={{
-        backgroundColor: darkMode ? "transparent" : colors.beige,
-        background: darkMode
-          ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
-          : colors.beige,
-      }}
-      className="rounded-lg"
-    >
+    <>
+      {/* Package Details Modal */}
+      <PackageDetailsModal
+        tour={selectedTour}
+        isOpen={showPackageModal}
+        onClose={() => setShowPackageModal(false)}
+        getImageUrl={getImageUrl}
+      />
+
+      <div
+        style={{
+          backgroundColor: darkMode ? "transparent" : colors.beige,
+          background: darkMode
+            ? "linear-gradient(135deg, #1a1a2e 0%, #16243a 30%, #2d1a3a 60%, #2a3a4e 100%)"
+            : colors.beige,
+        }}
+        className="rounded-lg"
+      >
       <header
         className={`text-white py-12 ${darkMode ? "shadow-lg" : ""}`}
         style={{
@@ -600,7 +558,7 @@ export default function Bookings() {
                       key={tour.id}
                       onClick={() => handleSelectTour(tour)}
                       className={
-                        "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
+                        "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow cursor-pointer " +
                         (active
                           ? "border-[#ffb64d] ring-2 ring-[#ffb64d]/40"
                           : "border-gray-200")
@@ -610,13 +568,14 @@ export default function Bookings() {
                         borderColor: darkModeStyles.border(darkMode),
                       }}
                     >
-                      <div className=" overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
+                      <div className="overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
                         <Image
                           src={getImageUrl(tour.imageUrl) || "/images/placeholderTour.jpg"}
                           alt={tour.name}
                           width={400}
                           height={300}
                           className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                          unoptimized
                         />
                       </div>
                       <div className="p-6">
@@ -680,14 +639,14 @@ export default function Bookings() {
                 })}
               </div>
 
-              <div className="mt-8 flex justify-end">
+              {/* <div className="mt-8 flex justify-end">
                 <button
                   onClick={() => setStep(2)}
                   className="rounded-full bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-6 py-3 text-white font-semibold shadow hover:opacity-95"
                 >
                   {t("continue")}
                 </button>
-              </div>
+              </div> */}
             </section>
           )}
 
@@ -1456,11 +1415,13 @@ export default function Bookings() {
                       "time:",
                       time
                     );
-                    handleProceedToPayment();
+                    // TEMPORARY: Payment disabled - redirecting to contact page
+                    window.location.href = "/contact";
+                    // handleProceedToPayment();
                   }}
                   className="w-full rounded-lg bg-gradient-to-r from-[#ffb64d] to-[#ff8c3a] px-8 py-4 text-lg font-bold text-white transition-all hover:opacity-90"
                 >
-                  {t("confirmBooking")}
+                  {t("contactForBooking")}
                 </button>
               </div>
 
@@ -1479,6 +1440,7 @@ export default function Bookings() {
                     >
                       Complete Your Payment
                     </h3>
+                    {/* TEMPORARY: Stripe payment commented out
                     <StripeCheckout
                       clientSecret={clientSecret}
                       onSuccess={handlePaymentSuccess}
@@ -1489,6 +1451,10 @@ export default function Bookings() {
                       }}
                       onCancel={() => setShowPayment(false)}
                     />
+                    */}
+                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                      Payment integration coming soon. Please contact us for booking details.
+                    </p>
                   </div>
                 </div>
               )}
@@ -1496,16 +1462,7 @@ export default function Bookings() {
           )}
         </section>
       </header>
-    </div>
-  );
-}
-
-// YOUR EXISTING HELPER COMPONENTS - UNCHANGED
-function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex justify-between text-sm text-[#3b4463]">
-      <span>{label}</span>
-      <span className="font-semibold text-[#101651]">{value}</span>
-    </div>
+      </div>
+    </>
   );
 }
