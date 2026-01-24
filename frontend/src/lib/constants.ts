@@ -5,6 +5,7 @@ export const routes = {
   categories: "/categories",
   bookings: "/bookings",
   rentals: "/rentals",
+  tempRentals: "/tempRentals",
   contact: "/contact",
   admin: "/admin",
   //TODO: add other routes here if needed

@@ -163,6 +163,11 @@ export const translations: Record<Language, Record<string, string>> = {
     continueToBooking: "Continue to contact details and payment",
     availableNow: "Available Now",
 
+    //temp Rentals Page
+    tempRentalTitle: "Snowmobile Rental",
+    tempRentalSubtitle: "Contact us to rent a snowmobile for your private adventure",
+    moreInfo: "For more information and to book your snowmobile rental, please reach out to us.",
+
     // Tours Section
     bookingsPageTitle: "Bookings",
     toursTitle: "Our Safari Tours",
@@ -434,6 +439,12 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Palaa etusivulle",
     continueToBooking: "Jatka yhteystietoihin ja maksamiseen",
     availableNow: "Saatavilla nyt",
+
+    // Temp rentals Page
+    //temp Rentals Page
+    tempRentalTitle: "Moottorikelkka vuokraus",
+    tempRentalSubtitle: "Ota yhteyttä moottorikelkan vuokrausta varten",
+    moreInfo: "Lisätietoja ja moottorikelkkavuokrauksen varaamiseksi ota meihin yhteyttä.",
 
     // Tours Section
     bookingsPageTitle: "Safari varaukset",

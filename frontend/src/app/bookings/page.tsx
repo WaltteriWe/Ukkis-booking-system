@@ -96,26 +96,28 @@ const GEAR_SIZES = {
   helmet: ["XS", "S", "M", "L", "XL"],
 };
 
-const ADDONS: Addon[] = [
-  {
-    id: "photo",
-    title: "Professional Photography",
-    desc: "High-quality photos of your adventure",
-    price: 35,
-  },
-  {
-    id: "meal",
-    title: "Hot Meal & Drinks",
-    desc: "Traditional Lapland lunch by campfire",
-    price: 25,
-  },
-  {
-    id: "pickup",
-    title: "Hotel Pickup & Drop-off",
-    desc: "Convenient transportation service",
-    price: 15,
-  },
-];
+//TODO: Replace with API data fetching
+
+// const ADDONS: Addon[] = [
+//   {
+//     id: "photo",
+//     title: "Professional Photography",
+//     desc: "High-quality photos of your adventure",
+//     price: 35,
+//   },
+//   {
+//     id: "meal",
+//     title: "Hot Meal & Drinks",
+//     desc: "Traditional Lapland lunch by campfire",
+//     price: 25,
+//   },
+//   {
+//     id: "pickup",
+//     title: "Hotel Pickup & Drop-off",
+//     desc: "Convenient transportation service",
+//     price: 15,
+//   },
+// ];
 
 export default function Bookings() {
   const { t } = useLanguage();
@@ -468,7 +470,7 @@ export default function Bookings() {
         {/* Keep only the Safari Tours section - remove the activeTab check */}
         <section className="max-w-6xl mx-auto px-4">
           {/* Stepper - only show for safari */}
-          <div className="mb-10">
+          {/* <div className="mb-10">
             <div className="grid grid-cols-3 gap-6">
               {[
                 { n: 1, label: t("selectYourTour") },
@@ -511,7 +513,7 @@ export default function Bookings() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* STEP 1: SELECT TOUR */}
           {step === 1 && (

@@ -74,7 +74,7 @@ export function Navigation() {
               {t("safariTours")}
             </Link>
             <Link
-              href={routes.rentals}
+              href={routes.tempRentals}
               className={cn(
                 "transition-colors duration-200",
                 darkMode ? "text-white hover:text-emerald-400" : "text-navy hover:text-pink-500"
