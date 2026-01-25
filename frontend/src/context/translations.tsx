@@ -136,6 +136,7 @@ export const translations: Record<Language, Record<string, string>> = {
     maxCapacityReached: "Maximum capacity reached",
     participantsWarning: "for the selected departure",
     inTheNextStep: "in the next step",
+    about: "Additional Information:",
 
     // Snowmobile Rental
     contactForRental:"Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
@@ -442,7 +443,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Temp rentals Page
     //temp Rentals Page
-    tempRentalTitle: "Moottorikelkka vuokraus",
+    tempRentalCompanyName: "Ukkohalla Safaris and Adventures",
+    tempRentalTitle: "Moottorikelkkavuokraus",
     tempRentalSubtitle: "Ota yhteyttä moottorikelkan vuokrausta varten",
     moreInfo: "Lisätietoja ja moottorikelkkavuokrauksen varaamiseksi ota meihin yhteyttä.",
 
@@ -490,6 +492,7 @@ export const translations: Record<Language, Record<string, string>> = {
     customerInformation: "Asiakastiedot",
     additionalNotes: "Lisätiedot",
     proceedToPayment: "Siirry maksamaan",
+    about: "Tarkemmat tiedot:",
 
     // Admin
     adminPanel: "Hallintapaneeli",

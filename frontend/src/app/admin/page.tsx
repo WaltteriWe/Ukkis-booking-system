@@ -31,7 +31,9 @@ const getImageUrl = (url?: string) => {
   if (!url) return undefined;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/uploads")) {
-    return `http://localhost:3001${url}`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    const baseUrl = apiUrl.replace(/\/api\/?$/, "");
+    return `${baseUrl}${url}`;
   }
   return url;
 };

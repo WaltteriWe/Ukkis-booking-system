@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -61,6 +61,25 @@ const TempRentals = () => {
               }`}
             >
               info@ukkis.fi
+            </a>
+          </div>
+
+          {/* Phone */}
+          <div className="flex items-center gap-4 justify-center">
+            <Phone
+              className={`w-6 h-6 flex-shrink-0 ${
+                darkMode ? "text-blue-400" : "text-blue-600"
+              }`}
+            />
+            <a
+              href="tel:+358401316777"
+              className={`text-2xl transition font-medium ${
+                darkMode
+                  ? "text-slate-100 hover:text-blue-400"
+                  : "text-gray-900 hover:text-blue-600"
+              }`}
+            >
+              +358 401 316 777
             </a>
           </div>
 

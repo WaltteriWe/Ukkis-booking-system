@@ -26,10 +26,7 @@ import Image from "next/image";
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
   if (!url) return undefined;
-  // If already absolute URL, return as is
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  // Images are served as static files at /uploads/ by the backend
-  // Use NEXT_PUBLIC_API_URL to get the backend base URL
   if (url.startsWith("/uploads")) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
     // Remove /api suffix if it exists to get just the backend base URL
@@ -492,7 +489,7 @@ export default function Bookings() {
                     <div
                       className="text-sm font-semibold"
                       style={{
-                        color: darkMode ? "#10b981" : "#101651",
+                        color: darkModeStyles.textSecondary(darkMode),
                       }}
                     >
                       {s.label}
