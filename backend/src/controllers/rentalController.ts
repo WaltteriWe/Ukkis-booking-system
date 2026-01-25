@@ -126,6 +126,7 @@ export async function createSnowmobileRental(body: unknown) {
 
 export async function getSnowmobiles() {
   return await prisma.snowmobile.findMany({
+    where: { disabled: false },
     orderBy: { name: "asc" },
   });
 }
@@ -137,6 +138,9 @@ export async function createSnowmobile(body: unknown) {
     model: z.string().optional(),
     year: z.number().int().optional(),
     hourlyRate: z.number().optional(),
+    imageUrl: z.string().optional(),
+    quantity: z.number().int().positive().optional(),
+    description: z.string().optional(),
     pricing: z
       .object({
         "2h": z.number().optional(),
@@ -353,6 +357,9 @@ export async function updateSnowmobile(id: number, body: unknown) {
     model: z.string().optional().nullable(),
     year: z.number().int().optional().nullable(),
     hourlyRate: z.number().optional().nullable(),
+    imageUrl: z.string().optional().nullable(),
+    quantity: z.number().int().positive().optional(),
+    description: z.string().optional().nullable(),
   });
 
   const data = schema.parse(body);
@@ -365,6 +372,9 @@ export async function updateSnowmobile(id: number, body: unknown) {
       model: data.model !== undefined ? data.model : undefined,
       year: data.year !== undefined ? data.year : undefined,
       hourlyRate: data.hourlyRate !== undefined ? data.hourlyRate : undefined,
+      imageUrl: data.imageUrl !== undefined ? data.imageUrl : undefined,
+      quantity: data.quantity || undefined,
+      description: data.description !== undefined ? data.description : undefined,
     },
   });
 }

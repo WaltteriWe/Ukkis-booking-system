@@ -171,7 +171,7 @@ export function Navigation() {
               {t("home")}
             </Link>
             <Link
-              href={routes.bookings + "?tab=safari"}
+              href={routes.bookings}
               onClick={() => setOpen(false)}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"
@@ -179,7 +179,7 @@ export function Navigation() {
               {t("safariTours")}
             </Link>
             <Link
-              href={routes.bookings + "?tab=rental"}
+              href={routes.rentals}
               onClick={() => setOpen(false)}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"

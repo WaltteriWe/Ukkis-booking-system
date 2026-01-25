@@ -60,6 +60,9 @@ interface Snowmobile {
   model?: string;
   year?: number;
   hourlyRate?: number;
+  imageUrl?: string;
+  description?: string;
+  quantity?: number;
 }
 
 interface Departure {
@@ -254,6 +257,9 @@ export default function AdminPage() {
     model: "",
     year: new Date().getFullYear(),
     hourlyRate: 0,
+    quantity: 1,
+    imageUrl: "",
+    description: "",
     pricing: {
       "2h": 0,
       "4h": 0,
@@ -365,6 +371,9 @@ export default function AdminPage() {
         model: snowmobile.model || "",
         year: snowmobile.year || new Date().getFullYear(),
         hourlyRate: snowmobile.hourlyRate || 0,
+        quantity: snowmobile.quantity || 1,
+        imageUrl: snowmobile.imageUrl || "",
+        description: snowmobile.description || "",
       });
     },
     [snowmobiles]
@@ -380,7 +389,16 @@ export default function AdminPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${adminToken}`
         },
-        body: JSON.stringify(editingSnowmobileData),
+        body: JSON.stringify({
+          name: editingSnowmobileData.name,
+          licensePlate: editingSnowmobileData.licensePlate,
+          model: editingSnowmobileData.model,
+          year: editingSnowmobileData.year,
+          hourlyRate: editingSnowmobileData.hourlyRate,
+          quantity: editingSnowmobileData.quantity,
+          imageUrl: editingSnowmobileData.imageUrl,
+          description: editingSnowmobileData.description,
+        }),
       });
 
       if (response.ok) {
@@ -565,6 +583,9 @@ export default function AdminPage() {
         model: newSnowmobile.model || undefined,
         year: newSnowmobile.year || undefined,
         hourlyRate: newSnowmobile.hourlyRate || undefined,
+        quantity: newSnowmobile.quantity || 1,
+        imageUrl: newSnowmobile.imageUrl || undefined,
+        description: newSnowmobile.description || undefined,
         pricing: newSnowmobile.pricing,
       });
       alert("Snowmobile created successfully!");
@@ -574,6 +595,9 @@ export default function AdminPage() {
         model: "",
         year: new Date().getFullYear(),
         hourlyRate: 0,
+        quantity: 1,
+        imageUrl: "",
+        description: "",
         pricing: {
           "2h": 0,
           "4h": 0,
@@ -1637,6 +1661,23 @@ export default function AdminPage() {
 
                           <div>
                             <label className="block text-sm font-medium mb-1">
+                              Description
+                            </label>
+                            <textarea
+                              value={editingSnowmobileData.description}
+                              onChange={(e) =>
+                                setEditingSnowmobileData({
+                                  ...editingSnowmobileData,
+                                  description: e.target.value,
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              placeholder="e.g., Weight: 300kg, Engine: 800cc, etc."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
                               Hourly Rate (€)
                             </label>
                             <input
@@ -1657,6 +1698,79 @@ export default function AdminPage() {
                             </p>
                           </div>
 
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Quantity (# of Units)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editingSnowmobileData.quantity}
+                              onChange={(e) =>
+                                setEditingSnowmobileData({
+                                  ...editingSnowmobileData,
+                                  quantity: Math.max(1, parseInt(e.target.value) || 1),
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              placeholder="1"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              How many snowmobiles of this model do you have?
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Photo
+                            </label>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/gif,image/webp"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const formData = new FormData();
+                                  formData.append("file", file);
+                                  try {
+                                    const response = await fetch(
+                                      `${process.env.NEXT_PUBLIC_API_URL}/upload/image`,
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Authorization": `Bearer ${adminToken}`
+                                        },
+                                        body: formData,
+                                      }
+                                    );
+                                    if (response.ok) {
+                                      const data = await response.json();
+                                      setEditingSnowmobileData({
+                                        ...editingSnowmobileData,
+                                        imageUrl: data.url,
+                                      });
+                                    } else {
+                                      alert("Failed to upload image");
+                                    }
+                                  } catch (error) {
+                                    console.error("Upload failed:", error);
+                                    alert("Failed to upload image");
+                                  }
+                                }
+                              }}
+                              className="w-full"
+                            />
+                            {editingSnowmobileData.imageUrl && (
+                              <div className="mt-3">
+                                <img
+                                  src={getImageUrl(editingSnowmobileData.imageUrl)}
+                                  alt="Snowmobile preview"
+                                  className="h-24 w-24 object-cover rounded border"
+                                />
+                              </div>
+                            )}
+                          </div>
+
                           <div className="flex gap-2">
                             <button
                               onClick={handleSaveSnowmobile}
@@ -1673,8 +1787,15 @@ export default function AdminPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex gap-6 items-start justify-between">
+                          <div className="flex-1">
+                            {sm.imageUrl && (
+                              <img
+                                src={getImageUrl(sm.imageUrl)}
+                                alt={sm.name}
+                                className="h-32 w-32 object-cover rounded border mb-4"
+                              />
+                            )}
                             <h3 className="font-bold text-lg">{sm.name}</h3>
                             <p className="text-sm text-gray-600">
                               {sm.licensePlate || "No plate"} •{" "}
@@ -1795,6 +1916,23 @@ export default function AdminPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={newSnowmobile.description}
+                    onChange={(e) =>
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="e.g., Weight: 300kg, Engine: 800cc, etc."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
                     Hourly Rate (€)
                   </label>
                   <input
@@ -1813,6 +1951,79 @@ export default function AdminPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Leave empty or 0 to use tier-based pricing below
                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Quantity (# of Units)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newSnowmobile.quantity}
+                    onChange={(e) =>
+                      setNewSnowmobile({
+                        ...newSnowmobile,
+                        quantity: Math.max(1, parseInt(e.target.value) || 1),
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    How many snowmobiles of this model do you have?
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Photo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        try {
+                          const response = await fetch(
+                            `${process.env.NEXT_PUBLIC_API_URL}/upload/image`,
+                            {
+                              method: "POST",
+                              headers: {
+                                "Authorization": `Bearer ${adminToken}`
+                              },
+                              body: formData,
+                            }
+                          );
+                          if (response.ok) {
+                            const data = await response.json();
+                            setNewSnowmobile({
+                              ...newSnowmobile,
+                              imageUrl: data.url,
+                            });
+                          } else {
+                            alert("Failed to upload image");
+                          }
+                        } catch (error) {
+                          console.error("Upload failed:", error);
+                          alert("Failed to upload image");
+                        }
+                      }
+                    }}
+                    className="w-full"
+                  />
+                  {newSnowmobile.imageUrl && (
+                    <div className="mt-3">
+                      <img
+                        src={getImageUrl(newSnowmobile.imageUrl)}
+                        alt="Snowmobile preview"
+                        className="h-24 w-24 object-cover rounded border"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="border rounded p-4 space-y-3">
