@@ -15,7 +15,7 @@ import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { DepartureSelector } from "@/components/DepartureSelector";
-import StripeCheckout from "@/components/StripeCheckout";
+import OnSitePaymentModal from "@/components/OnSitePaymentModal";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -255,10 +255,10 @@ export default function Bookings() {
     return true;
   };
 
-  // Create payment intent and show Stripe form
+  // Proceed to payment confirmation (no Stripe, just show modal)
   const handleProceedToPayment = async () => {
     try {
-      // First, create the booking
+      // Create the booking
       const gearSizesForApi: Record<string, any> = {};
       Object.entries(participantGearSizes).forEach(([key, value]) => {
         gearSizesForApi[key] = value;
@@ -280,63 +280,23 @@ export default function Bookings() {
         bookingRequest as CreateBookingRequest
       );
 
-      // Now create payment intent with the booking ID
-      const paymentResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/create-payment-intent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: Math.round(total * 100), // Convert to cents
-            currency: "eur",
-            bookingId: createdBooking.id,
-            customer: {
-              name: customerInfo.name,
-              email: customerInfo.email,
-              phone: customerInfo.phone,
-            },
-            booking: {
-              tour: selectedTour!.name,
-              date: date,
-              time: time,
-              participants: participants,
-            },
-          }),
-        }
-      );
-
-      if (!paymentResponse.ok) {
-        throw new Error("Failed to create payment intent");
-      }
-
-      const { client_secret } = await paymentResponse.json();
-      setClientSecret(client_secret);
       setCurrentBookingId(createdBooking.id);
       setShowPayment(true);
     } catch (error) {
-      console.error("❌ Payment setup failed:", error);
+      console.error("❌ Booking creation failed:", error);
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      alert(`Payment setup failed: ${errorMsg}`);
+      alert(`Booking failed: ${errorMsg}`);
     }
   };
 
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
+  const handlePaymentSuccess = async () => {
     try {
-      console.log("✅ Payment successful! Payment Intent:", paymentIntentId);
-
-      // Confirm the payment on the backend (fallback for when webhooks don't work locally)
-      try {
-        await confirmPayment(paymentIntentId);
-        console.log("✅ Payment confirmed on backend");
-      } catch (confirmError) {
-        console.error("Failed to confirm payment:", confirmError);
-        // Don't throw - payment still succeeded on Stripe
-      }
+      console.log("✅ Booking confirmed! Booking ID:", currentBookingId);
 
       setShowPayment(false);
       setBookingComplete(true);
     } catch (error) {
-      console.error("❌ Post-payment process failed:", error);
+      console.error("❌ Post-booking process failed:", error);
     }
   };
 
@@ -388,10 +348,8 @@ export default function Bookings() {
         setError(null);
       } catch (err) {
         console.error("Failed to load tours:", err);
-        setError("Failed to load tours. Using demo data.");
-        // Use demo data as fallback
-        setTours(TOURS);
-        setSelectedTour(TOURS[0]);
+        setError("Failed to load tours. Please try again later.");
+        setTours([]);
       } finally {
         setLoading(false);
       }
@@ -1465,7 +1423,7 @@ export default function Bookings() {
               </div>
 
               {/* Payment Modal */}
-              {showPayment && clientSecret && (
+              {showPayment && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                   <div
                     className="rounded-2xl p-8 max-w-md w-full shadow-2xl"
@@ -1477,16 +1435,10 @@ export default function Bookings() {
                       className="text-2xl font-bold mb-6"
                       style={{ color: darkModeStyles.textPrimary(darkMode) }}
                     >
-                      Complete Your Payment
+                      Complete Your Booking
                     </h3>
-                    <StripeCheckout
-                      clientSecret={clientSecret}
-                      onSuccess={handlePaymentSuccess}
-                      onError={(error) => {
-                        console.error("Payment error:", error);
-                        alert(`Payment failed: ${error}`);
-                        setShowPayment(false);
-                      }}
+                    <OnSitePaymentModal
+                      onConfirm={handlePaymentSuccess}
                       onCancel={() => setShowPayment(false)}
                     />
                   </div>

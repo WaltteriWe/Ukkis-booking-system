@@ -382,51 +382,6 @@ export async function deletePackage(id: number) {
   return true;
 }
 
-// Stripe Payment Intent
-export async function createPaymentIntent(paymentData: {
-  amount: number;
-  currency: string;
-  bookingId?: number;
-  customer: {
-    name: string;
-    email: string;
-    phone?: string;
-  };
-  booking: {
-    tour: string;
-    date: string;
-    time: string;
-    participants: number;
-  };
-}) {
-  const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }, // ✅ No auth
-    body: JSON.stringify(paymentData),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to create payment intent");
-  }
-
-  return response.json();
-}
-
-// Confirm payment (for local dev without webhooks)
-export async function confirmPayment(paymentIntentId: string) {
-  const response = await fetch(`${API_BASE_URL}/bookings/confirm-payment`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paymentIntentId }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to confirm payment");
-  }
-
-  return response.json();
-}
-
 // Admin authentication
 export interface AdminAuthResponse {
   token?: string;
@@ -488,7 +443,8 @@ export async function getAvailableSnowmobiles(
 }
 
 export async function createSnowmobileRental(data: {
-  snowmobileId: number;
+  snowmobiles?: Array<{ snowmobileId: number; quantity: number }>;
+  snowmobileId?: number;
   guestEmail: string;
   guestName: string;
   phone?: string;

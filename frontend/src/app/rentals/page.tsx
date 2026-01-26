@@ -13,7 +13,7 @@ import {
 import { colors } from "@/lib/constants";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
-import StripeCheckout from "@/components/StripeCheckout";
+import OnSitePaymentModal from "@/components/OnSitePaymentModal";
 import SnowmobileModal from "@/components/SnowmobileModal";
 
 interface SelectedSnowmobileItem {
@@ -278,54 +278,11 @@ export default function SnowmobileRentalPage() {
         });
 
         setRentalId(rental.id);
-
-        // Create booking details string
-        const bookingDetails = selectedSnowmobiles
-          .map((item) => {
-            const model = snowmobileModels.find(
-              (sm) => sm.id === item.snowmobileId
-            );
-            return `${model?.name || "Snowmobile"} x${item.quantity}`;
-          })
-          .join(", ");
-
-        const paymentResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/create-payment-intent`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: Math.round(total * 100), // Convert to cents
-              currency: "eur",
-              rentalId: rental.id,
-              customer: {
-                name: guestName,
-                email: guestEmail,
-                phone: phone,
-              },
-              booking: {
-                tour: `${t("snowmobileRental")} - ${bookingDetails}`,
-                date: format(selectedDate, "MMMM d, yyyy"),
-                time: `${startTime} - ${endTime}`,
-                participants: selectedSnowmobiles.reduce(
-                  (acc, item) => acc + item.quantity,
-                  0
-                ),
-              },
-            }),
-          }
-        );
-
-        if (!paymentResponse.ok) {
-          throw new Error("Failed to create payment intent");
-        }
-
-        const { client_secret } = await paymentResponse.json();
-        setClientSecret(client_secret);
         setShowPayment(true);
+        setLoading(false);
       } catch (error) {
-        console.error("❌ Payment setup failed:", error);
-        alert("Payment setup failed. Please try again.");
+        console.error("❌ Rental creation failed:", error);
+        alert("Rental creation failed. Please try again.");
         setLoading(false);
       }
     },
@@ -344,7 +301,7 @@ export default function SnowmobileRentalPage() {
   );
 
   const handlePaymentSuccess = useCallback(
-    async (paymentIntentId: string) => {
+    async () => {
       try {
         const bookingDetails = selectedSnowmobiles
           .map((item) => {
@@ -370,7 +327,7 @@ export default function SnowmobileRentalPage() {
           bookingId: rentalId?.toString() || "",
         });
 
-        alert("✅ Payment successful! Check your email for confirmation.");
+        alert("✅ Booking confirmed! Check your email for confirmation.");
 
         // Reset form
         setShowPayment(false);
@@ -1023,10 +980,8 @@ export default function SnowmobileRentalPage() {
                 ✕
               </button>
             </div>
-            <StripeCheckout
-              clientSecret={clientSecret}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
+            <OnSitePaymentModal
+              onConfirm={handlePaymentSuccess}
               onCancel={handlePaymentCancel}
             />
           </div>

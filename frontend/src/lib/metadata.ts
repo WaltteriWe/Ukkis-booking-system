@@ -29,25 +29,39 @@ export const siteMetadata: Metadata = {
     description: "Arctic Adventure Tours & Snowmobile Rentals",
   },
   robots: "index, follow",
+  alternates: {
+    canonical: "https://ukkohallasafaris.fi/",
+  },
+  // Authors and creator info
+  authors: [{ name: "Ukkohalla Safaris" }],
+  creator: "Ukkohalla Safaris",
+  publisher: "Ukkohalla Safaris",
+  // Category
+  category: "Tourism & Travel",
 };
+
 
 export const canonicalUrl = "https://ukkohallasafaris.fi";
 
 export const pageMetadata = {
   home: {
-    title: "Home - Ukkohalla Safaris",
-    description: "Discover Arctic adventures with Ukkohalla Safaris",
+    title: "Ukkohalla Safaris - Snowmobile Tours & Rentals in Hyrynsalmi, Finland",
+    description: "Experience authentic Arctic snowmobile adventures in Ukkohalla. Guided tours, rentals, and northern lights safaris. Book your Finnish Lapland winter adventure today!",
+    keywords: "Ukkohalla snowmobile, Hyrynsalmi safaris, Ukkohalla safaris, Snowmobile tours finland, Arctic tours Finland, winter activities",
   },
   bookings: {
-    title: "Book Safari Tours - Ukkohalla Safaris",
-    description: "Reserve your safari tour in Finnish Lapland",
+    title: "Book Snowmobile Safari Tours - Ukkohalla Safaris",
+    description: "Reserve your guided snowmobile safari in Ukkohalla, Hyrynsalmi. Choose from northern lights tours, family adventures, and customized Arctic experiences.",
+    keywords: "book snowmobile tour, safari booking Finland, Ukkohalla reservations, guided snowmobile tours",
   },
   rentals: {
-    title: "Snowmobile Rental - Ukkohalla Safaris",
-    description: "Rent a snowmobile for your Arctic adventure",
+    title: "Snowmobile Rental - Ukkohalla Safaris | Moottorikelkka Vuokraus",
+    description: "Rent quality snowmobiles in Ukkohalla, Hyrynsalmi. Hourly and daily rentals available. All equipment included. Perfect for exploring Finnish Lapland wilderness.",
+    keywords: "snowmobile rental Finland, moottorikelkka vuokraus, Ukkohalla rental, Arctic equipment rental",
   },
   contact: {
-    title: "Contact Us - Ukkohalla Safaris",
-    description: "Get in touch with Ukkohalla Safaris for inquiries",
+    title: "Contact Ukkohalla Safaris - Book Tours & Rentals",
+    description: "Contact Ukkohalla Safaris for bookings, inquiries, and customized Arctic adventures. Located in Hyrynsalmi, Finland. Available in English and Finnish.",
+    keywords: "contact Ukkohalla Safaris, book snowmobile tour, safari inquiries Finland",
   },
 };

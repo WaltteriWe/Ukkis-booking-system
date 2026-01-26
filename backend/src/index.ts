@@ -10,8 +10,6 @@ import { bookingRoutes } from "./routes/bookingRoutes";
 import { emailRoutes } from "./routes/emailRoutes";
 import { contactRoutes } from "./routes/contactRoutes";
 import { uploadRoutes } from "./routes/uploadRoutes";
-import { paymentRoutes } from "./routes/paymentRoutes";
-import { webhookRoutes } from "./routes/webhookRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
 import { requireAuth } from "../middleware/auth";
@@ -24,9 +22,6 @@ async function main() {
     origin: "*", // Allow all origins in development
     credentials: true,
   });
-
-  // Register webhook routes BEFORE body parsing and auth
-  await app.register(webhookRoutes, { prefix: `${API_PREFIX}/webhook` });
 
   // Serve static files from uploads directory (BEFORE auth hook)
   await app.register(import("@fastify/static"), {
@@ -41,12 +36,9 @@ async function main() {
     { method: "GET", path: "/api/upload/images" }, // Get images (public)
     { method: "GET", path: "/api/bookings/availability/" }, // Get availability (public)
     { method: "POST", path: "/api/bookings" }, // Create booking (customer)
-    { method: "POST", path: "/api/bookings/confirm-payment" }, // Confirm payment (customer)
     { method: "POST", path: "/api/contact" }, // Create contact message (customer)
     { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
     { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
-    { method: "POST", path: "/api/create-payment-intent" }, // Payment (customer)
-    { method: "POST", path: "/api/webhook/stripe" }, // Stripe webhook (public)
     { method: "GET", path: "/api/snowmobiles" },
     { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
@@ -89,7 +81,6 @@ async function main() {
   await app.register(emailRoutes, { prefix: API_PREFIX });
   await app.register(contactRoutes, { prefix: API_PREFIX });
   await app.register(uploadRoutes, { prefix: API_PREFIX });
-  await app.register(paymentRoutes, { prefix: API_PREFIX });
   await app.register(adminRoutes, { prefix: API_PREFIX });
   await app.register(rentalRoutes, { prefix: API_PREFIX });
 

@@ -66,7 +66,13 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
 
 export async function createSnowmobileRental(body: unknown) {
   const schema = z.object({
-    snowmobileId: z.number().int().positive(),
+    snowmobiles: z.array(
+      z.object({
+        snowmobileId: z.number().int().positive(),
+        quantity: z.number().int().positive(),
+      })
+    ).optional(),
+    snowmobileId: z.number().int().positive().optional(),
     guestEmail: z.string().email(),
     guestName: z.string().min(1),
     phone: z.string().optional(),
@@ -78,15 +84,30 @@ export async function createSnowmobileRental(body: unknown) {
 
   const data = schema.parse(body);
 
-  // Check if snowmobile is available
-  const available = await getAvailableSnowmobiles(data.startTime, data.endTime);
-  const isAvailable = available.some((sm: any) => sm.id === data.snowmobileId);
+  // Support both old single snowmobile format and new multiple snowmobiles format
+  const snowmobilesToRent = data.snowmobiles 
+    ? data.snowmobiles 
+    : data.snowmobileId 
+    ? [{ snowmobileId: data.snowmobileId, quantity: 1 }] 
+    : [];
 
-  if (!isAvailable) {
+  if (snowmobilesToRent.length === 0) {
     throw {
       status: 400,
-      error: "Snowmobile not available for the selected time",
+      error: "At least one snowmobile must be selected",
     };
+  }
+
+  // Check if all snowmobiles are available
+  const available = await getAvailableSnowmobiles(data.startTime, data.endTime);
+  for (const item of snowmobilesToRent) {
+    const isAvailable = available.some((sm: any) => sm.id === item.snowmobileId);
+    if (!isAvailable) {
+      throw {
+        status: 400,
+        error: `Snowmobile ID ${item.snowmobileId} is not available for the selected time`,
+      };
+    }
   }
 
   // Find or create guest
@@ -104,24 +125,38 @@ export async function createSnowmobileRental(body: unknown) {
     });
   }
 
-  // Create rental
-  const rental = await prisma.snowmobileRental.create({
-    data: {
-      snowmobileId: data.snowmobileId,
-      guestId: guest.id,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      totalPrice: data.totalPrice,
-      notes: data.notes,
-      status: "pending",
-    },
-    include: {
-      snowmobile: true,
-      guest: true,
-    },
-  });
+  // Create rentals for each snowmobile (handling quantities)
+  const rentals = [];
+  for (const item of snowmobilesToRent) {
+    for (let i = 0; i < item.quantity; i++) {
+      const rental = await prisma.snowmobileRental.create({
+        data: {
+          snowmobileId: item.snowmobileId,
+          guestId: guest.id,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          totalPrice: data.totalPrice / snowmobilesToRent.reduce((acc, s) => acc + s.quantity, 0), // Distribute price
+          notes: data.notes,
+          status: "pending",
+        },
+        include: {
+          snowmobile: true,
+          guest: true,
+        },
+      });
+      rentals.push(rental);
+    }
+  }
 
-  return rental;
+  // Return the first rental (or throw if none created)
+  if (rentals.length === 0) {
+    throw {
+      status: 500,
+      error: "Failed to create rental",
+    };
+  }
+  
+  return rentals[0];
 }
 
 export async function getSnowmobiles() {
