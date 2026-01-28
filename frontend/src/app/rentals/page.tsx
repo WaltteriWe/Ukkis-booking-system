@@ -48,7 +48,6 @@ export default function SnowmobileRentalPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [rentalId, setRentalId] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedSnowmobileForModal, setSelectedSnowmobileForModal] = useState<any>(null);
@@ -60,6 +59,7 @@ export default function SnowmobileRentalPage() {
       try {
         const models = await getSnowmobiles();
         setSnowmobileModels(models);
+        setAvailableSnowmobiles(models); // Initialize all as available
       } catch (error) {
         console.error("Failed to load snowmobiles:", error);
       } finally {
@@ -70,11 +70,11 @@ export default function SnowmobileRentalPage() {
     loadSnowmobiles();
   }, []);
 
-  // ✅ Check availability when snowmobiles, date, or time changes
+  // ✅ Check availability when date or time changes
   useEffect(() => {
     async function checkSnowmobileAvailability() {
-      if (selectedSnowmobiles.length === 0 || !selectedDate || !startTime || !endTime) {
-        setAvailableSnowmobiles([]);
+      if (!selectedDate || !startTime || !endTime) {
+        setAvailableSnowmobiles(snowmobileModels);
         return;
       }
 
@@ -92,58 +92,22 @@ export default function SnowmobileRentalPage() {
           return;
         }
 
-        // ✅ Check availability for each selected snowmobile
-        const availabilityChecks = await Promise.all(
-          selectedSnowmobiles.map(async (item) => {
-            const [rentalBookings, adminAssignments] = await Promise.all([
-              fetch(
-                `/api/snowmobile-rentals?snowmobileId=${item.snowmobileId}&startTime=${start.toISOString()}&endTime=${end.toISOString()}`
-              )
-                .then((r) => r.json())
-                .then((data) => data.rentals || [])
-                .catch(() => []),
-              fetch(
-                `/api/departures?startTime=${dateStr}T${startTime}:00&endTime=${dateStr}T${endTime}:00`
-              )
-                .then((r) => r.json())
-                .then(
-                  (data) =>
-                    data.departures?.flatMap(
-                      (d: any) => d.assignedSnowmobiles || []
-                    ) || []
-                )
-                .catch(() => []),
-            ]);
-
-            const isAvailable =
-              rentalBookings.length === 0 &&
-              !adminAssignments.includes(item.snowmobileId);
-
-            return {
-              snowmobileId: item.snowmobileId,
-              isAvailable,
-            };
-          })
+        const available = await getAvailableSnowmobiles(
+          start.toISOString(),
+          end.toISOString()
         );
-
-        const available = availabilityChecks
-          .filter((check) => check.isAvailable)
-          .map((check) =>
-            snowmobileModels.find((sm) => sm.id === check.snowmobileId)
-          )
-          .filter(Boolean);
 
         setAvailableSnowmobiles(available);
       } catch (error) {
-        console.error(error);
-        setAvailableSnowmobiles([]);
+        console.error("Failed to check availability:", error);
+        setAvailableSnowmobiles(snowmobileModels);
       } finally {
         setCheckingAvailability(false);
       }
     }
 
     checkSnowmobileAvailability();
-  }, [selectedSnowmobiles, selectedDate, startTime, endTime, snowmobileModels]);
+  }, [selectedDate, startTime, endTime, snowmobileModels]);
 
   // ✅ Toggle snowmobile selection
   const toggleSnowmobileSelection = (snowmobileId: number) => {
@@ -170,6 +134,16 @@ export default function SnowmobileRentalPage() {
       )
     );
   };
+
+  // ✅ Check if all selected snowmobiles are available
+  const allSelectedSnowmobilesAvailable = useMemo(() => {
+    if (!selectedDate || !startTime || !endTime || selectedSnowmobiles.length === 0) {
+      return true;
+    }
+    return selectedSnowmobiles.every((selected) =>
+      availableSnowmobiles.some((available) => available.id === selected.snowmobileId)
+    );
+  }, [selectedSnowmobiles, availableSnowmobiles, selectedDate, startTime, endTime]);
 
   // ✅ Open modal for snowmobile details
   const openSnowmobileModal = (snowmobile: any) => {
@@ -339,8 +313,7 @@ export default function SnowmobileRentalPage() {
         setGuestName("");
         setGuestEmail("");
         setPhone("");
-        setClientSecret(null);
-        setRentalId(null);
+
         setLoading(false);
       } catch (error) {
         console.error("Failed to send confirmation:", error);
@@ -370,7 +343,6 @@ export default function SnowmobileRentalPage() {
 
   const handlePaymentCancel = useCallback(() => {
     setShowPayment(false);
-    setClientSecret(null);
     setLoading(false);
   }, []);
 
@@ -438,19 +410,36 @@ export default function SnowmobileRentalPage() {
 
             {/* ✅ Multiple Snowmobile Selection with Availability Check */}
             <div className="mb-8">
+              {checkingAvailability && (
+                <p className="text-center mb-4" style={{ color: darkMode ? "#10b981" : colors.navy }}>
+                  {t("checkingAvailability") || "Checking availability..."}
+                </p>
+              )}
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {snowmobileModels.map((snowmobile) => {
                   const selectedItem = selectedSnowmobiles.find(
                     (item) => item.snowmobileId === snowmobile.id
                   );
                   const isSelected = !!selectedItem;
+                  
+                  const isAvailable = 
+                    !selectedDate || 
+                    !startTime || 
+                    !endTime || 
+                    checkingAvailability ||
+                    availableSnowmobiles.some((available) => available.id === snowmobile.id);
 
                   return (
                     <div
                       key={snowmobile.id}
+                      onClick={() => {
+                        if (isAvailable) {
+                          toggleSnowmobileSelection(snowmobile.id);
+                        }
+                      }}
                       className={`rounded-lg p-4 transition border-2 ${
                         isSelected ? "ring-2" : "hover:shadow-md"
-                      }`}
+                      } ${!isAvailable ? "opacity-50" : ""} ${isAvailable ? "cursor-pointer" : "cursor-not-allowed"}`}
                       style={{
                         backgroundColor: darkMode ? "#16243a" : colors.white,
                         borderColor:
@@ -494,10 +483,7 @@ export default function SnowmobileRentalPage() {
                         </div>
                       )}
 
-                      <div
-                        onClick={() => toggleSnowmobileSelection(snowmobile.id)}
-                        className="cursor-pointer"
-                      >
+                      <div>
                         <h4
                           className="font-semibold"
                           style={{
@@ -505,6 +491,11 @@ export default function SnowmobileRentalPage() {
                           }}
                         >
                           {snowmobile.name}
+                          {!isAvailable && (
+                            <span className="ml-2 text-xs text-red-500 font-normal">
+                              ({t("unavailable") || "Unavailable"})
+                            </span>
+                          )}
                         </h4>
                         <p
                           className="text-sm mt-1"
@@ -533,7 +524,7 @@ export default function SnowmobileRentalPage() {
 
                       {/* ✅ Quantity Selector for Selected Snowmobiles */}
                       {isSelected && (
-                        <div className="mt-4 pt-4 border-t border-gray-400">
+                        <div className="mt-4 pt-4 border-t border-gray-400" onClick={(e) => e.stopPropagation()}>
                           <label
                             className="text-xs font-medium block mb-2"
                             style={{
@@ -544,14 +535,15 @@ export default function SnowmobileRentalPage() {
                           </label>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() =>
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateSnowmobileQuantity(
                                   snowmobile.id,
                                   Math.max(1, selectedItem.quantity - 1)
-                                )
-                              }
+                                );
+                              }}
                               disabled={selectedItem.quantity <= 1}
-                              className="px-2 py-1 rounded disabled:opacity-50"
+                              className="px-3 py-2 rounded disabled:opacity-50 font-bold text-lg"
                               style={{
                                 backgroundColor: darkMode ? "#2d1a3a" : "#eee",
                                 color: darkMode ? "white" : colors.darkGray,
@@ -560,18 +552,10 @@ export default function SnowmobileRentalPage() {
                               −
                             </button>
                             <input
-                              type="number"
-                              min="1"
-                              max={snowmobile.quantity || 1}
+                              type="text"
                               value={selectedItem.quantity}
-                              onChange={(e) => {
-                                const newQty = Math.min(
-                                  parseInt(e.target.value) || 1,
-                                  snowmobile.quantity || 1
-                                );
-                                updateSnowmobileQuantity(snowmobile.id, newQty);
-                              }}
-                              className="w-12 text-center"
+                              readOnly
+                              className="w-16 text-center border rounded"
                               style={{
                                 backgroundColor: darkMode ? "#16243a" : "white",
                                 color: darkMode ? "white" : colors.darkGray,
@@ -579,19 +563,20 @@ export default function SnowmobileRentalPage() {
                               }}
                             />
                             <button
-                              onClick={() =>
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateSnowmobileQuantity(
                                   snowmobile.id,
                                   Math.min(
                                     selectedItem.quantity + 1,
                                     snowmobile.quantity || 1
                                   )
-                                )
-                              }
+                                );
+                              }}
                               disabled={
                                 selectedItem.quantity >= (snowmobile.quantity || 1)
                               }
-                              className="px-2 py-1 rounded disabled:opacity-50"
+                              className="px-3 py-2 rounded disabled:opacity-50 font-bold text-lg"
                               style={{
                                 backgroundColor: darkMode ? "#2d1a3a" : "#eee",
                                 color: darkMode ? "white" : colors.darkGray,
@@ -705,7 +690,7 @@ export default function SnowmobileRentalPage() {
                   className="p-4 rounded-md"
                   style={{
                     backgroundColor:
-                      availableSnowmobiles.length === selectedSnowmobiles.length
+                      allSelectedSnowmobilesAvailable
                         ? darkMode
                           ? "#2d1a3a"
                           : `${colors.teal}20`
@@ -722,7 +707,7 @@ export default function SnowmobileRentalPage() {
                     >
                       {t("checkingAvailability")}...
                     </p>
-                  ) : availableSnowmobiles.length === selectedSnowmobiles.length ? (
+                  ) : allSelectedSnowmobilesAvailable ? (
                     <>
                       <p
                         className="text-sm"
@@ -767,8 +752,7 @@ export default function SnowmobileRentalPage() {
                   loading ||
                   selectedSnowmobiles.length === 0 ||
                   !selectedDate ||
-                  availableSnowmobiles.length !==
-                    selectedSnowmobiles.length ||
+                  !allSelectedSnowmobilesAvailable ||
                   checkingAvailability
                 }
                 className="w-full text-white py-3 px-6 rounded-md transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -776,8 +760,7 @@ export default function SnowmobileRentalPage() {
               >
                 {loading
                   ? t("processing")
-                  : availableSnowmobiles.length !==
-                        selectedSnowmobiles.length &&
+                  : !allSelectedSnowmobilesAvailable &&
                       selectedSnowmobiles.length > 0 &&
                       selectedDate
                     ? t("notAvailable")
@@ -953,8 +936,8 @@ export default function SnowmobileRentalPage() {
         onClose={() => setIsModalOpen(false)}
       />
 
-      {/* Stripe Payment Modal */}
-      {showPayment && clientSecret && (
+      {/* Payment Modal */}
+      {showPayment && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={handlePaymentCancel}

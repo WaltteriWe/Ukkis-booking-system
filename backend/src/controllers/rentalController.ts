@@ -39,26 +39,47 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   });
 
   // Get snowmobiles assigned to safaris during this time
+  // Query departures that could potentially overlap with the rental period
+  // We fetch departures that start up to 24 hours before the rental end time
+  // (assuming no safari lasts more than 24 hours)
+  const maxSafariDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  const earliestPossibleDeparture = new Date(endTime.getTime() - maxSafariDuration);
+  
   const safariAssignments = await prisma.safariSnowmobileAssignment.findMany({
     where: {
       departure: {
-        AND: [
-          { departureTime: { lt: endTime } },
-          // Assuming safaris last 2-4 hours, adjust as needed
-          {
-            departureTime: {
-              gt: new Date(startTime.getTime() - 4 * 60 * 60 * 1000),
-            },
-          },
-        ],
+        departureTime: {
+          gte: earliestPossibleDeparture,
+          lt: endTime,
+        },
       },
     },
-    select: { snowmobileId: true },
+    include: {
+      departure: {
+        include: {
+          package: {
+            select: { durationMin: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Filter assignments where safari end time actually overlaps with rental period
+  const conflictingAssignments = safariAssignments.filter((assignment) => {
+    const safariStart = assignment.departure.departureTime;
+    const safariDurationMs = assignment.departure.package.durationMin * 60 * 1000;
+    const safariEnd = new Date(safariStart.getTime() + safariDurationMs);
+    
+    // Overlap occurs if: safari ends after rental starts AND safari starts before rental ends
+    const hasOverlap = safariEnd > startTime && safariStart < endTime;
+    
+    return hasOverlap;
   });
 
   const unavailableIds = new Set([
     ...rentedSnowmobiles.map((r) => r.snowmobileId),
-    ...safariAssignments.map((s) => s.snowmobileId),
+    ...conflictingAssignments.map((s) => s.snowmobileId),
   ]);
 
   return allSnowmobiles.filter((sm) => !unavailableIds.has(sm.id));
@@ -82,7 +103,17 @@ export async function createSnowmobileRental(body: unknown) {
     notes: z.string().optional(),
   });
 
-  const data = schema.parse(body);
+  let data;
+  try {
+    data = schema.parse(body);
+  } catch (err: any) {
+    console.error("❌ Validation error:", err.errors || err);
+    console.error("📦 Received body:", JSON.stringify(body, null, 2));
+    throw {
+      status: 400,
+      error: err.errors || err.message || "Validation failed",
+    };
+  }
 
   // Support both old single snowmobile format and new multiple snowmobiles format
   const snowmobilesToRent = data.snowmobiles 
@@ -110,7 +141,7 @@ export async function createSnowmobileRental(body: unknown) {
     }
   }
 
-  // Find or create guest
+  // Find or create guest, update if exists
   let guest = await prisma.guest.findUnique({
     where: { email: data.guestEmail },
   });
@@ -119,6 +150,15 @@ export async function createSnowmobileRental(body: unknown) {
     guest = await prisma.guest.create({
       data: {
         email: data.guestEmail,
+        name: data.guestName,
+        phone: data.phone,
+      },
+    });
+  } else {
+    // Update guest information if it has changed
+    guest = await prisma.guest.update({
+      where: { id: guest.id },
+      data: {
         name: data.guestName,
         phone: data.phone,
       },
@@ -201,7 +241,7 @@ export async function getSingleReservations() {
       snowmobile: true,
       guest: true,
     },
-    orderBy: { startTime: "desc" },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -375,6 +415,37 @@ export async function getSnowmobileAssignments(departureId: number) {
       snowmobile: true,
     },
   });
+}
+
+export async function getAllDepartureAssignments() {
+  const departures = await prisma.departure.findMany({
+    include: {
+      package: {
+        select: { name: true, durationMin: true },
+      },
+      snowmobileAssignments: {
+        include: {
+          snowmobile: true,
+        },
+      },
+    },
+    orderBy: { departureTime: 'desc' },
+  });
+
+  return departures.map((dep) => ({
+    id: dep.id,
+    departureTime: dep.departureTime,
+    packageName: dep.package.name,
+    durationMin: dep.package.durationMin,
+    capacity: dep.capacity,
+    reserved: dep.reserved,
+    assignedSnowmobiles: dep.snowmobileAssignments.map((a) => ({
+      id: a.snowmobile.id,
+      name: a.snowmobile.name,
+      licensePlate: a.snowmobile.licensePlate,
+      model: a.snowmobile.model,
+    })),
+  }));
 }
 
 export async function getDisabledSnowmobiles() {

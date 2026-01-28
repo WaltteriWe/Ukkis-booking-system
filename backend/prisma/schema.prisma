@@ -118,6 +118,17 @@ model Snowmobile {
   status                String    @default("available")
   disabled              Boolean   @default(false)
   description           String?
+  
+  // Technical specifications
+  engineSize            String?   // e.g., "600cm3 2-tahtimoottori"
+  driveSystem           String?   // e.g., "Hihnaveto"
+  seating               String?   // e.g., "1-paikkainen", "2-paikkainen"
+  startSystem           String?   // e.g., "vetokäynnistys", "sähköstartti"
+  targetAudience        String?   // e.g., "Aloittelijaystävällinen"
+  features              String?   // Multi-line features list
+  kilometerlimit        String?   // e.g., "200km"
+  extraKmPrice          String?   // e.g., "0.50€/km"
+  
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -168,4 +179,15 @@ model ContactMessage {
   message   String
   repliedAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+model AdditionalService {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  active      Boolean  @default(true)
+  displayOrder Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

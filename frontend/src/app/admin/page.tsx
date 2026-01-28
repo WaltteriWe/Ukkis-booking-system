@@ -20,11 +20,19 @@ import {
   deleteContactMessage,
   getSnowmobileAssignments,
   assignSnowmobilesToDeparture,
+  getAllDepartureAssignments,
   createSnowmobile,
   sendContactReply,
   createDeparture,
+  getAllAdditionalServices,
+  createAdditionalService,
+  updateAdditionalService,
+  deleteAdditionalService,
 } from "@/lib/api";
 import { useDepartureManagement } from "@/hooks/useDepartureManagement";
+import { useContactMessagePolling } from '@/hooks/useContactMessagePolling';
+import { useBookingPolling } from '@/hooks/useBookingPolling';
+import { useRentalPolling } from '@/hooks/useRentalPolling';
 
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
@@ -218,7 +226,19 @@ export default function AdminPage() {
     | "singleReservations"
     | "snowmobiles"
     | "messages"
+    | "additionalServices"
   >("packages");
+
+  // Additional Services state
+  const [additionalServices, setAdditionalServices] = useState<any[]>([]);
+  const [newService, setNewService] = useState({
+    name: "",
+    description: "",
+    price: 0,
+    displayOrder: 0,
+  });
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
+  const [editingServiceData, setEditingServiceData] = useState<any>({});
 
   const [formData, setFormData] = useState({
     slug: "",
@@ -243,7 +263,6 @@ export default function AdminPage() {
     null
   );
   const [snowmobiles, setSnowmobiles] = useState<Snowmobile[]>([]);
-  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyToEmail, setReplyToEmail] = useState<string>("");
   const [replyBody, setReplyBody] = useState<string>("");
@@ -251,6 +270,22 @@ export default function AdminPage() {
   const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>(
     []
   );
+  const [departureAssignments, setDepartureAssignments] = useState<
+    Array<{
+      id: number;
+      departureTime: string;
+      packageName: string;
+      durationMin: number;
+      capacity: number;
+      reserved: number;
+      assignedSnowmobiles: Array<{
+        id: number;
+        name: string;
+        licensePlate?: string | null;
+        model?: string | null;
+      }>;
+    }>
+  >([]);
   const [newSnowmobile, setNewSnowmobile] = useState({
     name: "",
     licensePlate: "",
@@ -270,7 +305,7 @@ export default function AdminPage() {
   });
 
   const [snowmobileTab, setSnowmobileTab] = useState<
-    "add" | "view" | "maintenance"
+    "add" | "view" | "maintenance" | "assignments"
   >("view");
   const [editingSnowmobileId, setEditingSnowmobileId] = useState<number | null>(
     null
@@ -307,9 +342,10 @@ export default function AdminPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [toursResponse, bookingsData] = await Promise.all([
+      const [toursResponse, bookingsData, servicesData] = await Promise.all([
         getPackages(false),
         getBookings(),
+        getAllAdditionalServices(),
       ]);
 
       let reservationsData = [];
@@ -324,11 +360,13 @@ export default function AdminPage() {
       setSingleReservations(
         Array.isArray(reservationsData) ? reservationsData : []
       );
+      setAdditionalServices(Array.isArray(servicesData) ? servicesData : []);
 
       console.log("Loaded data:", {
         tours: toursResponse.items.length,
         bookings: bookingsData.length,
         singleReservations: reservationsData.length,
+        additionalServices: servicesData.length,
       });
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -346,73 +384,42 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Failed to load snowmobile data:", error);
     }
-  }, [adminToken]);
+  }, [adminToken, loadDepartures]);
 
-  const loadContactMessages = useCallback(async () => {
-    try {
-      const msgs = await getContactMessages();
-      setContactMessages(Array.isArray(msgs) ? msgs : []);
-    } catch (error) {
-      console.error("Failed to load contact messages:", error);
-      setContactMessages([]);
-    }
-  }, []);
+  // ✅ Now use the polling hook (this provides contactMessages and setContactMessages)
+  const { 
+    contactMessages, 
+    unreadCount, 
+    refreshMessages: loadContactMessages,
+    setContactMessages 
+  } = useContactMessagePolling(adminToken, 30000);
 
-  // ✅ MOVED: These were after early returns - now they're here with other useCallbacks
-  const handleEditSnowmobile = useCallback(
-    (snowmobileId: number) => {
-      const snowmobile = snowmobiles.find((s) => s.id === snowmobileId);
-      if (!snowmobile) return;
+  // ✅ Polling hooks for bookings and rentals
+  const {
+    bookings: polledBookings,
+    pendingCount: pendingBookingsCount,
+    refreshBookings,
+    setBookings: setPolledBookings
+  } = useBookingPolling(adminToken, 30000);
 
-      setEditingSnowmobileId(snowmobileId);
-      setEditingSnowmobileData({
-        name: snowmobile.name,
-        licensePlate: snowmobile.licensePlate || "",
-        model: snowmobile.model || "",
-        year: snowmobile.year || new Date().getFullYear(),
-        hourlyRate: snowmobile.hourlyRate || 0,
-        quantity: snowmobile.quantity || 1,
-        imageUrl: snowmobile.imageUrl || "",
-        description: snowmobile.description || "",
-      });
-    },
-    [snowmobiles]
-  );
+  const {
+    rentals: polledRentals,
+    pendingCount: pendingRentalsCount,
+    refreshRentals,
+    setRentals: setPolledRentals
+  } = useRentalPolling(adminToken, 30000);
 
-  const handleSaveSnowmobile = useCallback(async () => {
-    if (!editingSnowmobileId) return;
+  // ========================================
+  // SYNC POLLED DATA WITH LOCAL STATE
+  // ========================================
+  
+  useEffect(() => {
+    setBookings(polledBookings);
+  }, [polledBookings]);
 
-    try {
-      const response = await fetch(`/api/snowmobiles/${editingSnowmobileId}`, {
-        method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({
-          name: editingSnowmobileData.name,
-          licensePlate: editingSnowmobileData.licensePlate,
-          model: editingSnowmobileData.model,
-          year: editingSnowmobileData.year,
-          hourlyRate: editingSnowmobileData.hourlyRate,
-          quantity: editingSnowmobileData.quantity,
-          imageUrl: editingSnowmobileData.imageUrl,
-          description: editingSnowmobileData.description,
-        }),
-      });
-
-      if (response.ok) {
-        alert("Snowmobile updated successfully!");
-        setEditingSnowmobileId(null);
-        loadSnowmobilesAndDepartures();
-      } else {
-        alert("Failed to update snowmobile");
-      }
-    } catch (error) {
-      console.error("Failed to save snowmobile:", error);
-      alert("Failed to save snowmobile");
-    }
-  }, [editingSnowmobileId, editingSnowmobileData, loadSnowmobilesAndDepartures, adminToken]);
+  useEffect(() => {
+    setSingleReservations(polledRentals);
+  }, [polledRentals]);
 
   // ========================================
   // ALL useEffect HOOKS
@@ -440,16 +447,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (adminToken && activeTab === "snowmobiles") {
       loadSnowmobilesAndDepartures();
+      if (snowmobileTab === "assignments") {
+        loadDepartureAssignments();
+      }
     }
-    if (adminToken && activeTab === "messages") {
-      loadContactMessages();
-    }
-  }, [
-    adminToken,
-    activeTab,
-    loadSnowmobilesAndDepartures,
-    loadContactMessages,
-  ]);
+  }, [adminToken, activeTab, snowmobileTab, loadSnowmobilesAndDepartures]);
 
   useEffect(() => {
     if (adminToken) {
@@ -506,7 +508,17 @@ export default function AdminPage() {
     );
     if (!confirmed) return;
     try {
-      await deleteContactMessage(id);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete message');
+      }
+
       setContactMessages((prev) => prev.filter((m) => m.id !== id));
     } catch (error) {
       console.error("Failed to delete message:", error);
@@ -646,10 +658,44 @@ export default function AdminPage() {
         selectedSnowmobileIds
       );
       alert("Snowmobiles assigned successfully!");
+      // Reload assignments to show updated data
+      await loadDepartureAssignments();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to assign snowmobiles: ${msg}`);
     }
+  }
+
+  async function loadDepartureAssignments() {
+    try {
+      const assignments = await getAllDepartureAssignments();
+      setDepartureAssignments(Array.isArray(assignments) ? assignments : []);
+    } catch (error) {
+      console.error("Failed to load departure assignments:", error);
+      setDepartureAssignments([]);
+    }
+  }
+
+  async function handleDepartureSelect(departureId: number) {
+    setSelectedDeparture(departureId);
+    
+    // Load existing assignments for this departure
+    try {
+      const assignments = await getSnowmobileAssignments(departureId);
+      const assignedIds = assignments.map((a: any) => a.snowmobileId);
+      setSelectedSnowmobileIds(assignedIds);
+    } catch (error) {
+      console.error("Failed to load assignments:", error);
+      setSelectedSnowmobileIds([]);
+    }
+  }
+
+  function toggleSnowmobileSelection(snowmobileId: number) {
+    setSelectedSnowmobileIds((prev) =>
+      prev.includes(snowmobileId)
+        ? prev.filter((id) => id !== snowmobileId)
+        : [...prev, snowmobileId]
+    );
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -877,6 +923,109 @@ export default function AdminPage() {
     }
   }
 
+  function handleEditSnowmobile(snowmobileId: number) {
+    const sm = snowmobiles.find((s) => s.id === snowmobileId);
+    if (sm) {
+      setEditingSnowmobileId(snowmobileId);
+      setEditingSnowmobileData({
+        name: sm.name || "",
+        licensePlate: sm.licensePlate || "",
+        model: sm.model || "",
+        year: sm.year || new Date().getFullYear(),
+        hourlyRate: sm.hourlyRate || 0,
+        imageUrl: sm.imageUrl || "",
+        quantity: sm.quantity || 1,
+        description: sm.description || "",
+        pricing: sm.pricing || {
+          "2h": 0,
+          "4h": 0,
+          "6h": 0,
+          "8h": 0,
+          vrk: 0,
+        },
+      });
+    }
+  }
+
+  async function handleSaveSnowmobile() {
+    if (!editingSnowmobileId) return;
+
+    try {
+      const response = await fetch(`/api/snowmobiles/${editingSnowmobileId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
+        body: JSON.stringify(editingSnowmobileData),
+      });
+
+      if (response.ok) {
+        alert("Snowmobile updated successfully!");
+        setEditingSnowmobileId(null);
+        await loadData();
+      } else {
+        alert("Failed to update snowmobile");
+      }
+    } catch (error) {
+      console.error("Failed to save snowmobile:", error);
+      alert("Failed to update snowmobile");
+    }
+  }
+
+  // Additional Services handlers
+  async function handleCreateService(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await createAdditionalService(newService);
+      alert("Service created successfully!");
+      setNewService({ name: "", description: "", price: 0, displayOrder: 0 });
+      await loadData();
+    } catch (error) {
+      console.error("Failed to create service:", error);
+      alert("Failed to create service");
+    }
+  }
+
+  function handleEditService(serviceId: number) {
+    const service = additionalServices.find((s) => s.id === serviceId);
+    if (service) {
+      setEditingServiceId(serviceId);
+      setEditingServiceData({
+        name: service.name || "",
+        description: service.description || "",
+        price: service.price || 0,
+        displayOrder: service.displayOrder || 0,
+        active: service.active !== undefined ? service.active : true,
+      });
+    }
+  }
+
+  async function handleSaveService() {
+    if (!editingServiceId) return;
+    try {
+      await updateAdditionalService(editingServiceId, editingServiceData);
+      alert("Service updated successfully!");
+      setEditingServiceId(null);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to update service:", error);
+      alert("Failed to update service");
+    }
+  }
+
+  async function handleDeleteService(serviceId: number) {
+    if (!confirm("Are you sure you want to delete this service?")) return;
+    try {
+      await deleteAdditionalService(serviceId);
+      alert("Service deleted successfully!");
+      await loadData();
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+      alert("Failed to delete service");
+    }
+  }
+
   // ========================================
   // EARLY RETURNS (after ALL hooks)
   // ========================================
@@ -1042,7 +1191,12 @@ export default function AdminPage() {
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            Bookings ({bookings.length})
+            Bookings ({polledBookings.length})
+            {pendingBookingsCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-orange-600 rounded-full">
+                {pendingBookingsCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => {
@@ -1055,7 +1209,12 @@ export default function AdminPage() {
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            Single Reservations ({singleReservations.length})
+            Single Reservations ({polledRentals.length})
+            {pendingRentalsCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-orange-600 rounded-full">
+                {pendingRentalsCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("snowmobiles")}
@@ -1097,6 +1256,24 @@ export default function AdminPage() {
             }`}
           >
             Messages ({contactMessages.length})
+            {unreadCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("additionalServices");
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === "additionalServices"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Additional Services ({additionalServices.length})
           </button>
         </div>
 
@@ -1351,13 +1528,19 @@ export default function AdminPage() {
                   Departure Time
                 </label>
                 <select
-                  value={newDeparture.departureTime ? newDeparture.departureTime.split('T')[1]?.substring(0, 5) || "" : ""}
+                  value={(() => {
+                    if (!newDeparture.departureTime) return "";
+                    const date = new Date(newDeparture.departureTime);
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    return `${hours}:${minutes}`;
+                  })()}
                   onChange={(e) => {
                     const time = e.target.value;
                     if (selectedDate && time) {
                       const [hours, minutes] = time.split(':');
                       const dateTime = new Date(selectedDate);
-                      dateTime.setHours(Number(hours), Number(minutes));
+                      dateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                       setNewDeparture((prev) => ({
                         ...prev,
                         departureTime: dateTime.toISOString(),
@@ -1575,6 +1758,20 @@ export default function AdminPage() {
               >
                 Maintenance ({disabledSnowmobiles.length})
               </button>
+              <button
+                onClick={() => {
+                  setSnowmobileTab("assignments");
+                  setEditingSnowmobileId(null);
+                  setSelectedDeparture(null);
+                }}
+                className={`px-4 py-2 font-medium border-b-2 ${
+                  snowmobileTab === "assignments"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Departure Assignments
+              </button>
             </div>
 
             {/* View Tab */}
@@ -1676,6 +1873,150 @@ export default function AdminPage() {
                             />
                           </div>
 
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Engine Size
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.engineSize || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    engineSize: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., 600cm3 2-tahtimoottori"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Drive System
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.driveSystem || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    driveSystem: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., Hihnaveto"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Seating
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.seating || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    seating: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., 1-paikkainen or 2-paikkainen"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Start System
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.startSystem || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    startSystem: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., vetokäynnistys or sähköstartti"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Target Audience
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSnowmobileData.targetAudience || ''}
+                              onChange={(e) =>
+                                setEditingSnowmobileData({
+                                  ...editingSnowmobileData,
+                                  targetAudience: e.target.value,
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              placeholder="e.g., Aloittelijaystävällinen, sopii myös kokeneemmalle"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Features (one per line)
+                            </label>
+                            <textarea
+                              value={editingSnowmobileData.features || ''}
+                              onChange={(e) =>
+                                setEditingSnowmobileData({
+                                  ...editingSnowmobileData,
+                                  features: e.target.value,
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              rows={5}
+                              placeholder="Kahvanlämmittäjät kuljettajalle&#10;Virran ulosotto sähkökypärälle/laseille&#10;USB-A ja USB-C latausportit hanskalokerossa"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Kilometer Limit
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.kilometerlimit || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    kilometerlimit: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., 200km"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Extra Km Price
+                              </label>
+                              <input
+                                type="text"
+                                value={editingSnowmobileData.extraKmPrice || ''}
+                                onChange={(e) =>
+                                  setEditingSnowmobileData({
+                                    ...editingSnowmobileData,
+                                    extraKmPrice: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="e.g., 0.50€/km"
+                              />
+                            </div>
+                          </div>
+
                           <div>
                             <label className="block text-sm font-medium mb-1">
                               Hourly Rate (€)
@@ -1769,6 +2110,114 @@ export default function AdminPage() {
                                 />
                               </div>
                             )}
+                          </div>
+
+                          <div className="border rounded p-4 space-y-3">
+                            <h3 className="text-sm font-medium mb-2">
+                              Tier-Based Pricing (€)
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs mb-1">2 hours</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingSnowmobileData.pricing?.["2h"] || 0}
+                                  onChange={(e) =>
+                                    setEditingSnowmobileData({
+                                      ...editingSnowmobileData,
+                                      pricing: {
+                                        ...editingSnowmobileData.pricing,
+                                        "2h": parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                  placeholder="100"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1">4 hours</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingSnowmobileData.pricing?.["4h"] || 0}
+                                  onChange={(e) =>
+                                    setEditingSnowmobileData({
+                                      ...editingSnowmobileData,
+                                      pricing: {
+                                        ...editingSnowmobileData.pricing,
+                                        "4h": parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                  placeholder="180"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1">6 hours</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingSnowmobileData.pricing?.["6h"] || 0}
+                                  onChange={(e) =>
+                                    setEditingSnowmobileData({
+                                      ...editingSnowmobileData,
+                                      pricing: {
+                                        ...editingSnowmobileData.pricing,
+                                        "6h": parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                  placeholder="250"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1">8 hours</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingSnowmobileData.pricing?.["8h"] || 0}
+                                  onChange={(e) =>
+                                    setEditingSnowmobileData({
+                                      ...editingSnowmobileData,
+                                      pricing: {
+                                        ...editingSnowmobileData.pricing,
+                                        "8h": parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                  placeholder="320"
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <label className="block text-xs mb-1">
+                                  Full Day (vrk)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingSnowmobileData.pricing?.["vrk"] || 0}
+                                  onChange={(e) =>
+                                    setEditingSnowmobileData({
+                                      ...editingSnowmobileData,
+                                      pricing: {
+                                        ...editingSnowmobileData.pricing,
+                                        vrk: parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                  placeholder="400"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Pricing tiers are used when hourly rate is not set or is 0
+                            </p>
                           </div>
 
                           <div className="flex gap-2">
@@ -2178,6 +2627,132 @@ export default function AdminPage() {
                       ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Assignments Tab */}
+            {snowmobileTab === "assignments" && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">
+                    📍 Assign Snowmobiles to Safari Departures
+                  </h3>
+                  <p className="text-sm text-blue-800">
+                    Assign snowmobiles to specific departures to reserve them for tours.
+                    Assigned snowmobiles will be blocked from rental during the departure time.
+                  </p>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <label className="block text-sm font-medium mb-3">
+                    Select Departure:
+                  </label>
+                  <select
+                    value={selectedDeparture || ""}
+                    onChange={(e) => handleDepartureSelect(Number(e.target.value))}
+                    className="w-full border rounded px-3 py-2 mb-4"
+                  >
+                    <option value="">-- Choose a departure --</option>
+                    {departures.map((dep) => {
+                      const pkg = tours.find((t) => t.id === dep.packageId);
+                      return (
+                        <option key={dep.id} value={dep.id}>
+                          {pkg?.name || "Package"} - {new Date(dep.departureTime).toLocaleString()} 
+                          ({dep.capacity} capacity, {dep.reserved || 0} booked)
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  {selectedDeparture && (
+                    <>
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-3">
+                          Available Snowmobiles (select to assign):
+                        </h4>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {snowmobiles
+                            .filter((sm) => !disabledSnowmobiles.includes(sm.id))
+                            .map((sm) => (
+                              <label
+                                key={sm.id}
+                                className="flex items-center gap-3 p-3 border rounded hover:bg-gray-50 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSnowmobileIds.includes(sm.id)}
+                                  onChange={() => toggleSnowmobileSelection(sm.id)}
+                                  className="w-4 h-4"
+                                />
+                                <div className="flex-1">
+                                  <p className="font-medium">{sm.name}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {sm.licensePlate || "No plate"} • {sm.model || "No model"}
+                                  </p>
+                                </div>
+                                {sm.imageUrl && (
+                                  <img
+                                    src={getImageUrl(sm.imageUrl)}
+                                    alt={sm.name}
+                                    className="h-12 w-12 object-cover rounded"
+                                  />
+                                )}
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t">
+                        <p className="text-sm text-gray-600">
+                          {selectedSnowmobileIds.length} snowmobile(s) selected
+                        </p>
+                        <button
+                          onClick={handleAssignSnowmobiles}
+                          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                          disabled={selectedSnowmobileIds.length === 0}
+                        >
+                          Save Assignment
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Show current assignments */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-3">Current Assignments:</h4>
+                  <div className="space-y-4">
+                    {departureAssignments.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">
+                        No departures with assignments yet.
+                      </p>
+                    ) : (
+                      departureAssignments.map((assignment) => {
+                        const startTime = new Date(assignment.departureTime);
+                        const endTime = new Date(startTime.getTime() + assignment.durationMin * 60 * 1000);
+                        
+                        return (
+                          <div key={assignment.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                            <p className="font-medium">
+                              {assignment.packageName} - {startTime.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Duration: {assignment.durationMin} minutes (until {endTime.toLocaleTimeString()})
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Booking Status: {assignment.reserved || 0}/{assignment.capacity}
+                            </p>
+                            <p className="text-sm text-blue-700 mt-1 font-medium">
+                              {assignment.assignedSnowmobiles.length > 0 
+                                ? `🛷 ${assignment.assignedSnowmobiles.map(sm => `${sm.name}${sm.licensePlate ? ` (${sm.licensePlate})` : ''}`).join(", ")}`
+                                : "⚠️ No snowmobiles assigned"}
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -2666,6 +3241,266 @@ export default function AdminPage() {
                     : "Reject & Notify"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Additional Services Tab */}
+        {activeTab === "additionalServices" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-2xl font-bold mb-6">Add New Service</h2>
+              <form onSubmit={handleCreateService} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Service Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newService.name}
+                      onChange={(e) =>
+                        setNewService({ ...newService, name: e.target.value })
+                      }
+                      className="w-full border rounded px-3 py-2"
+                      placeholder="e.g., Professional Photography"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Price (€) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={newService.price}
+                      onChange={(e) =>
+                        setNewService({
+                          ...newService,
+                          price: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full border rounded px-3 py-2"
+                      placeholder="35.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={newService.description}
+                    onChange={(e) =>
+                      setNewService({
+                        ...newService,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    rows={2}
+                    placeholder="High-quality photos of your adventure"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    value={newService.displayOrder}
+                    onChange={(e) =>
+                      setNewService({
+                        ...newService,
+                        displayOrder: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Lower numbers appear first
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                >
+                  Add Service
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-2xl font-bold mb-6">Existing Services</h2>
+              {additionalServices.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  No services yet. Add one above!
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {additionalServices.map((service) => (
+                    <div
+                      key={service.id}
+                      className="border rounded-lg p-4"
+                    >
+                      {editingServiceId === service.id ? (
+                        <div className="space-y-4">
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Service Name
+                              </label>
+                              <input
+                                type="text"
+                                value={editingServiceData.name}
+                                onChange={(e) =>
+                                  setEditingServiceData({
+                                    ...editingServiceData,
+                                    name: e.target.value,
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Price (€)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editingServiceData.price}
+                                onChange={(e) =>
+                                  setEditingServiceData({
+                                    ...editingServiceData,
+                                    price: parseFloat(e.target.value),
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Description
+                            </label>
+                            <textarea
+                              value={editingServiceData.description}
+                              onChange={(e) =>
+                                setEditingServiceData({
+                                  ...editingServiceData,
+                                  description: e.target.value,
+                                })
+                              }
+                              className="w-full border rounded px-3 py-2"
+                              rows={2}
+                            />
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Display Order
+                              </label>
+                              <input
+                                type="number"
+                                value={editingServiceData.displayOrder}
+                                onChange={(e) =>
+                                  setEditingServiceData({
+                                    ...editingServiceData,
+                                    displayOrder: parseInt(e.target.value),
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Status
+                              </label>
+                              <select
+                                value={editingServiceData.active ? "active" : "inactive"}
+                                onChange={(e) =>
+                                  setEditingServiceData({
+                                    ...editingServiceData,
+                                    active: e.target.value === "active",
+                                  })
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSaveService}
+                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={() => setEditingServiceId(null)}
+                              className="px-4 py-2 border rounded hover:bg-gray-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="font-bold text-lg">
+                                  {service.name}
+                                </h3>
+                                <span
+                                  className={`px-2 py-1 text-xs rounded ${
+                                    service.active
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {service.active ? "Active" : "Inactive"}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {service.description}
+                              </p>
+                              <div className="flex items-center gap-4 text-sm">
+                                <span className="font-semibold text-blue-600">
+                                  €{Number(service.price).toFixed(2)}
+                                </span>
+                                <span className="text-gray-500">
+                                  Display Order: {service.displayOrder}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={() => handleEditService(service.id)}
+                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteService(service.id)}
+                                className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

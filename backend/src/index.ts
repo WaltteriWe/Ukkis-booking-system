@@ -12,6 +12,7 @@ import { contactRoutes } from "./routes/contactRoutes";
 import { uploadRoutes } from "./routes/uploadRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
+import additionalServiceRoutes from "./routes/additionalServiceRoutes";
 import { requireAuth } from "../middleware/auth";
 
 async function main() {
@@ -33,6 +34,7 @@ async function main() {
     { method: "GET", path: "/api/packages" }, // Get packages (public)
     { method: "GET", path: "/api/packages/slug/" }, // Get by slug (public)
     { method: "GET", path: "/api/departures" }, // Get departures (public)
+    { method: "GET", path: "/api/additional-services" }, // Get additional services (public)
     { method: "GET", path: "/api/upload/images" }, // Get images (public)
     { method: "GET", path: "/api/bookings/availability/" }, // Get availability (public)
     { method: "POST", path: "/api/bookings" }, // Create booking (customer)
@@ -83,6 +85,7 @@ async function main() {
   await app.register(uploadRoutes, { prefix: API_PREFIX });
   await app.register(adminRoutes, { prefix: API_PREFIX });
   await app.register(rentalRoutes, { prefix: API_PREFIX });
+  await app.register(additionalServiceRoutes, { prefix: API_PREFIX });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: "0.0.0.0" });

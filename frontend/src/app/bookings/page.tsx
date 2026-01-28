@@ -9,6 +9,7 @@ import {
   getDepartures,
   createDeparture,
   confirmPayment,
+  getAdditionalServices,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
@@ -92,27 +93,6 @@ const GEAR_SIZES = {
   helmet: ["XS", "S", "M", "L", "XL"],
 };
 
-const ADDONS: Addon[] = [
-  {
-    id: "photo",
-    title: "Professional Photography",
-    desc: "High-quality photos of your adventure",
-    price: 35,
-  },
-  {
-    id: "meal",
-    title: "Hot Meal & Drinks",
-    desc: "Traditional Lapland lunch by campfire",
-    price: 25,
-  },
-  {
-    id: "pickup",
-    title: "Hotel Pickup & Drop-off",
-    desc: "Convenient transportation service",
-    price: 15,
-  },
-];
-
 export default function Bookings() {
   const { t } = useLanguage();
   const { darkMode } = useTheme();
@@ -132,6 +112,9 @@ export default function Bookings() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Additional services from database
+  const [additionalServices, setAdditionalServices] = useState<Addon[]>([]);
 
   // state
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
@@ -355,12 +338,33 @@ export default function Bookings() {
       }
     }
 
+    async function loadAdditionalServices() {
+      try {
+        console.log("Loading additional services...");
+        const services = await getAdditionalServices();
+        console.log("Received services:", services);
+        // Transform to match Addon type
+        const formattedServices: Addon[] = services.map((s: any) => ({
+          id: String(s.id),
+          title: s.name,
+          desc: s.description || "",
+          price: Number(s.price),
+        }));
+        console.log("Formatted services:", formattedServices);
+        setAdditionalServices(formattedServices);
+      } catch (err) {
+        console.error("Failed to load additional services:", err);
+        setAdditionalServices([]);
+      }
+    }
+
     loadTours();
+    loadAdditionalServices();
   }, []);
 
   const selectedAddons = Object.entries(addons)
     .filter(([, v]) => v)
-    .map(([k]) => ADDONS.find((x) => x.id === k)!)
+    .map(([k]) => additionalServices.find((x) => x.id === k)!)
     .filter(Boolean);
 
   // ✅ Calculate total with participant-scaled add-ons
@@ -1001,7 +1005,12 @@ export default function Bookings() {
 
                 {/* Add-ons Section */}
                 <div className="mt-6 space-y-4">
-                  {ADDONS.map((addon) => (
+                  {additionalServices.length === 0 ? (
+                    <p style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                      No additional services available
+                    </p>
+                  ) : (
+                    additionalServices.map((addon) => (
                     <div
                       key={addon.id}
                       className={`p-4 rounded-lg border cursor-pointer transition-all`}
@@ -1021,7 +1030,7 @@ export default function Bookings() {
                         className="font-semibold"
                         style={{ color: darkModeStyles.textPrimary(darkMode) }}
                       >
-                        {t(`addon_${addon.id}_title`)}
+                        {addon.title}
                       </h4>
                       <p
                         className="text-sm mb-2"
@@ -1029,7 +1038,7 @@ export default function Bookings() {
                           color: darkModeStyles.textSecondary(darkMode),
                         }}
                       >
-                        {t(`addon_${addon.id}_desc`)}
+                        {addon.desc}
                       </p>
                       <div
                         className="text-lg font-bold"
@@ -1040,7 +1049,8 @@ export default function Bookings() {
                           ` × ${participants} = €${addon.price * participants}`}
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Summary Section */}
@@ -1322,7 +1332,7 @@ export default function Bookings() {
                   {t("optionalAddons")}
                 </h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {ADDONS.map((addon) => (
+                  {additionalServices.map((addon) => (
                     <div
                       key={addon.id}
                       className={`p-4 rounded-lg border cursor-pointer transition-all`}
@@ -1342,7 +1352,7 @@ export default function Bookings() {
                         className="font-semibold"
                         style={{ color: darkModeStyles.textPrimary(darkMode) }}
                       >
-                        {t(`addon_${addon.id}_title`)}
+                        {addon.title}
                       </h4>
                       <p
                         className="text-sm mb-2"
@@ -1350,7 +1360,7 @@ export default function Bookings() {
                           color: darkModeStyles.textSecondary(darkMode),
                         }}
                       >
-                        {t(`addon_${addon.id}_desc`)}
+                        {addon.desc}
                       </p>
                       <div
                         className="text-lg font-bold"

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { listDepartures, createDeparture, updateDeparture, deleteDeparture } from '../controllers/departureController';
-import { assignSnowmobilesToDeparture, getSnowmobileAssignments } from '../controllers/rentalController';
+import { assignSnowmobilesToDeparture, getSnowmobileAssignments, getAllDepartureAssignments } from '../controllers/rentalController';
 
 export async function departureRoutes(app: FastifyInstance) {
   // Get departures
@@ -93,6 +93,18 @@ export async function departureRoutes(app: FastifyInstance) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);
       return reply.code(c).send({ error: e?.message || 'Failed to delete departure' });
+    }
+  });
+
+  // Get all departure assignments (for admin view)
+  app.get('/departures/assignments/all', async (req, reply) => {
+    try {
+      const assignments = await getAllDepartureAssignments();
+      return reply.send(assignments);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
     }
   });
 }

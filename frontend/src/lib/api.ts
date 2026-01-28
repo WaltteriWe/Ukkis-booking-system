@@ -427,7 +427,10 @@ export async function adminRegister(
 // Snowmobile Rental API calls
 export async function getSnowmobiles() {
   const response = await fetch(`${API_BASE_URL}/snowmobiles`);
-  if (!response.ok) throw new Error("Failed to fetch snowmobiles");
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new Error(`Failed to fetch snowmobiles (${response.status}): ${errorText}`);
+  }
   return response.json();
 }
 
@@ -557,6 +560,17 @@ export async function getSnowmobileAssignments(departureId: number) {
   return response.json();
 }
 
+export async function getAllDepartureAssignments() {
+  const response = await fetch(
+    `${API_BASE_URL}/departures/assignments/all`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to get all assignments");
+  return response.json();
+}
+
 // Contact messages (admin)
 export async function getContactMessages() {
   const response = await fetch(`${API_BASE_URL}/contact`, {
@@ -631,5 +645,63 @@ export async function updateDeparture(
     throw new Error("Failed to update departure");
   }
 
+  return response.json();
+}
+
+// Additional Services API calls
+export async function getAdditionalServices() {
+  const response = await fetch(`${API_BASE_URL}/additional-services`);
+  if (!response.ok) throw new Error("Failed to fetch additional services");
+  return response.json();
+}
+
+export async function getAllAdditionalServices() {
+  const response = await fetch(`${API_BASE_URL}/additional-services/all`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to fetch all additional services");
+  return response.json();
+}
+
+export async function createAdditionalService(data: {
+  name: string;
+  description?: string;
+  price: number;
+  displayOrder?: number;
+}) {
+  const response = await fetch(`${API_BASE_URL}/additional-services`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create additional service");
+  return response.json();
+}
+
+export async function updateAdditionalService(
+  id: number,
+  data: Partial<{
+    name: string;
+    description: string;
+    price: number;
+    active: boolean;
+    displayOrder: number;
+  }>
+) {
+  const response = await fetch(`${API_BASE_URL}/additional-services/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update additional service");
+  return response.json();
+}
+
+export async function deleteAdditionalService(id: number) {
+  const response = await fetch(`${API_BASE_URL}/additional-services/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to delete additional service");
   return response.json();
 }
