@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   createBooking,
@@ -362,22 +362,32 @@ export default function Bookings() {
     loadAdditionalServices();
   }, []);
 
-  const selectedAddons = Object.entries(addons)
-    .filter(([, v]) => v)
-    .map(([k]) => additionalServices.find((x) => x.id === k)!)
-    .filter(Boolean);
+  const selectedAddons = useMemo(() => 
+    Object.entries(addons)
+      .filter(([, v]) => v)
+      .map(([k]) => additionalServices.find((x) => x.id === k)!)
+      .filter(Boolean),
+    [addons, additionalServices]
+  );
 
   // ✅ Calculate total with participant-scaled add-ons
-  const addonsCost = selectedAddons.reduce(
-    (sum, a) => sum + a.price * participants,
-    0
+  const addonsCost = useMemo(() => 
+    selectedAddons.reduce((sum, a) => sum + a.price * participants, 0),
+    [selectedAddons, participants]
   );
-  const total = (selectedTour?.basePrice ?? 0) * participants + addonsCost;
+  
+  const total = useMemo(() => 
+    (selectedTour?.basePrice ?? 0) * participants + addonsCost,
+    [selectedTour, participants, addonsCost]
+  );
 
   // ✅ Get max capacity from selected departure (departure capacity is the source of truth)
-  const maxCapacity = selectedDepartureData
-    ? selectedDepartureData.capacity - (selectedDepartureData.reserved || 0)
-    : 1;
+  const maxCapacity = useMemo(() => 
+    selectedDepartureData
+      ? selectedDepartureData.capacity - (selectedDepartureData.reserved || 0)
+      : 1,
+    [selectedDepartureData]
+  );
 
   // Success screen
   if (bookingComplete) {
