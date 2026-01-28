@@ -531,19 +531,19 @@ export default function Bookings() {
           {step === 1 && (
             <section>
               <h1
-                className="text-4xl font-extrabold"
+                className="text-2xl sm:text-3xl md:text-4xl font-extrabold"
                 style={{ color: darkModeStyles.accent(darkMode) }}
               >
                 {t("chooseYourAdventure")}
               </h1>
               <p
-                className="mt-2 text-lg"
+                className="mt-2 text-base sm:text-lg"
                 style={{ color: darkModeStyles.textSecondary(darkMode) }}
               >
                 {t("selectFromPremiumCollection")}
               </p>
 
-              <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {loading ? (
                   <div className="col-span-full text-center py-8">
                     <div className="animate-spin h-8 w-8 border-2 border-[#ffb64d] border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -572,7 +572,7 @@ export default function Bookings() {
                       key={tour.id}
                       onClick={() => handleSelectTour(tour)}
                       className={
-                        "group relative text-left rounded-3xl border bg-white shadow-sm transition hover:shadow " +
+                        "group relative text-left rounded-2xl sm:rounded-3xl border bg-white shadow-sm transition hover:shadow " +
                         (active
                           ? "border-[#ffb64d] ring-2 ring-[#ffb64d]/40"
                           : "border-gray-200")
@@ -582,18 +582,18 @@ export default function Bookings() {
                         borderColor: darkModeStyles.border(darkMode),
                       }}
                     >
-                      <div className=" overflow-hidden rounded-t-3xl flex justify-center items-center bg-gray-100">
+                      <div className="overflow-hidden rounded-t-2xl sm:rounded-t-3xl flex justify-center items-center bg-gray-100">
                         <Image
                           src={getImageUrl(tour.imageUrl) || "/images/placeholderTour.jpg"}
                           alt={tour.name}
                           width={400}
                           height={300}
-                          className="h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="h-40 sm:h-48 md:h-56 lg:h-64 w-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-6">
+                      <div className="p-3 sm:p-4 md:p-6">
                         <h3
-                          className="text-xl font-bold hover:underline"
+                          className="text-base sm:text-lg md:text-xl font-bold hover:underline"
                           style={{
                             color: darkModeStyles.textPrimary(darkMode),
                           }}
@@ -605,7 +605,7 @@ export default function Bookings() {
                         </h3>
                         {tour.description && (
                           <p
-                            className="mt-2 text-sm line-clamp-2"
+                            className="mt-1 sm:mt-2 text-xs sm:text-sm line-clamp-2"
                             style={{
                               color: darkModeStyles.textSecondary(darkMode),
                             }}
@@ -617,7 +617,7 @@ export default function Bookings() {
                           </p>
                         )}
                         <ul
-                          className="mt-3 space-y-1"
+                          className="mt-2 sm:mt-3 space-y-1 text-xs sm:text-sm"
                           style={{
                             color: darkModeStyles.textSecondary(darkMode),
                           }}
@@ -630,10 +630,10 @@ export default function Bookings() {
                             ⭐ {t("difficulty")}: {tour.difficulty}
                           </li>
                         </ul>
-                        <div className="mt-4 text-2xl font-extrabold text-[#ff8c3a]">
+                        <div className="mt-3 sm:mt-4 text-xl sm:text-2xl font-extrabold text-[#ff8c3a]">
                           €{tour.basePrice}
                           <span
-                            className="text-base font-semibold"
+                            className="text-sm sm:text-base font-semibold"
                             style={{
                               color: darkModeStyles.textSecondary(darkMode),
                             }}
@@ -643,7 +643,7 @@ export default function Bookings() {
                         </div>
                       </div>
                       {active && (
-                        <span className="absolute left-4 top-4 rounded-full bg-[#ffb64d] px-3 py-1 text-sm font-semibold text-white shadow">
+                        <span className="absolute left-2 sm:left-4 top-2 sm:top-4 rounded-full bg-[#ffb64d] px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold text-white shadow">
                           {t("selectedTour")}
                         </span>
                       )}

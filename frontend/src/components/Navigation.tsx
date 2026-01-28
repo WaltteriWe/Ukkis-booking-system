@@ -15,6 +15,7 @@ export function Navigation() {
   const [open, setOpen] = useState(false);
   const { darkMode } = useTheme();
   const { t } = useLanguage();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -23,6 +24,14 @@ export function Navigation() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  const handleMobileNavClick = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+    setOpen(false);
+    // Reset navigating state after a short delay
+    setTimeout(() => setIsNavigating(false), 500);
+  };
 
   return (
     <nav
@@ -164,7 +173,7 @@ export function Navigation() {
           <nav className="mt-6 space-y-4">
             <Link
               href={routes.home}
-              onClick={() => setOpen(false)}
+              onClick={handleMobileNavClick}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"
             >
@@ -172,7 +181,7 @@ export function Navigation() {
             </Link>
             <Link
               href={routes.bookings}
-              onClick={() => setOpen(false)}
+              onClick={handleMobileNavClick}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"
             >
@@ -180,7 +189,7 @@ export function Navigation() {
             </Link>
             <Link
               href={routes.rentals}
-              onClick={() => setOpen(false)}
+              onClick={handleMobileNavClick}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"
             >
@@ -188,7 +197,7 @@ export function Navigation() {
             </Link>
             <Link
               href={routes.contact}
-              onClick={() => setOpen(false)}
+              onClick={handleMobileNavClick}
               {...getHoverColorProps(colors.navy, colors.pink)}
               className="block text-lg"
             >
