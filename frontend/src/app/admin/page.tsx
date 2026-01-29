@@ -2765,69 +2765,84 @@ export default function AdminPage() {
               <h2 className="text-xl font-bold">Tour Bookings</h2>
             </div>
             <div className="divide-y">
-              {bookings.map((booking) => (
-                <div key={booking.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold">{booking.guest.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {booking.guest.email}
-                      </p>
-                      <p className="text-sm">
-                        {booking.departure?.package?.name} •{" "}
-                        {booking.participants} participants
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(
-                          booking.departure?.departureTime
-                        ).toLocaleString()}
-                      </p>
-                      <p className="font-medium mt-2">€{booking.totalPrice}</p>
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
-                          booking.approvalStatus === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : booking.approvalStatus === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {booking.approvalStatus || "pending"}
-                      </span>
-                    </div>
-                    {booking.approvalStatus === "pending" && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() =>
-                            setApprovalModal({
-                              open: true,
-                              bookingId: booking.id,
-                              action: "approve",
-                              message: "",
-                            })
-                          }
-                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+              {bookings.map((booking) => {
+                // Parse additional services from notes
+                const addonsMatch = booking.notes?.match(/Add-ons: (.+)/);
+                const addonsText = addonsMatch ? addonsMatch[1].trim() : "";
+                const hasAddons = addonsText && addonsText !== "";
+
+                return (
+                  <div key={booking.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-bold">{booking.guest.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {booking.guest.email}
+                        </p>
+                        <p className="text-sm">
+                          {booking.departure?.package?.name} •{" "}
+                          {booking.participants} participants
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(
+                            booking.departure?.departureTime
+                          ).toLocaleString()}
+                        </p>
+                        {hasAddons && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                            <p className="text-xs font-semibold text-blue-900 mb-1">
+                              Additional Services:
+                            </p>
+                            <p className="text-sm text-blue-800">{addonsText}</p>
+                          </div>
+                        )}
+                        <p className="font-medium mt-2">€{booking.totalPrice}</p>
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded mt-2 ${
+                            booking.approvalStatus === "approved"
+                              ? "bg-green-100 text-green-800"
+                              : booking.approvalStatus === "rejected"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
                         >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            setApprovalModal({
-                              open: true,
-                              bookingId: booking.id,
-                              action: "reject",
-                              message: "",
-                            })
-                          }
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                        >
-                          Reject
-                        </button>
+                          {booking.approvalStatus || "pending"}
+                        </span>
                       </div>
-                    )}
+                      {booking.approvalStatus === "pending" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              setApprovalModal({
+                                open: true,
+                                bookingId: booking.id,
+                                action: "approve",
+                                message: "",
+                              })
+                            }
+                            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              setApprovalModal({
+                                open: true,
+                                bookingId: booking.id,
+                                action: "reject",
+                                message: "",
+                              })
+                            }
+                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
