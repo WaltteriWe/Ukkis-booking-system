@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { listDepartures, createDeparture, updateDeparture, deleteDeparture } from '../controllers/departureController';
+import { listDepartures, createDeparture, updateDeparture, deleteDeparture, getDepartureSnowmobiles } from '../controllers/departureController';
 import { assignSnowmobilesToDeparture, getSnowmobileAssignments, getAllDepartureAssignments } from '../controllers/rentalController';
 
 export async function departureRoutes(app: FastifyInstance) {
@@ -63,6 +63,19 @@ export async function departureRoutes(app: FastifyInstance) {
       const { id } = req.params as { id: string };
       const assignments = await getSnowmobileAssignments(parseInt(id));
       return reply.send(assignments);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Get available snowmobiles for booking (customer-facing)
+  app.get('/departures/:id/available-snowmobiles', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const snowmobiles = await getDepartureSnowmobiles(parseInt(id));
+      return reply.send(snowmobiles);
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);

@@ -22,6 +22,10 @@ export interface CreateBookingRequest {
       helmet: string;
     }
   >;
+  snowmobileAssignments?: Array<{
+    snowmobileId: number;
+    passengerCount: number;
+  }>;
 }
 
 export interface EmailConfirmationRequest {
@@ -250,6 +254,18 @@ export async function getDepartures(params?: {
 
   if (!response.ok) {
     throw new Error("Failed to fetch departures");
+  }
+
+  return response.json();
+}
+
+export async function getDepartureSnowmobiles(departureId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/departures/${departureId}/available-snowmobiles`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch departure snowmobiles");
   }
 
   return response.json();
@@ -568,6 +584,18 @@ export async function getAllDepartureAssignments() {
     }
   );
   if (!response.ok) throw new Error("Failed to get all assignments");
+  return response.json();
+}
+
+export async function getSnowmobileRentalStatus(departureId?: number) {
+  const url = departureId
+    ? `${API_BASE_URL}/snowmobiles/rental-status?departureId=${departureId}`
+    : `${API_BASE_URL}/snowmobiles/rental-status`;
+  
+  const response = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to get rental status");
   return response.json();
 }
 

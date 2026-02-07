@@ -28,6 +28,7 @@ import {
   createAdditionalService,
   updateAdditionalService,
   deleteAdditionalService,
+  getSnowmobileRentalStatus,
 } from "@/lib/api";
 import { useDepartureManagement } from "@/hooks/useDepartureManagement";
 import { useContactMessagePolling } from '@/hooks/useContactMessagePolling';
@@ -270,6 +271,16 @@ export default function AdminPage() {
   const [selectedSnowmobileIds, setSelectedSnowmobileIds] = useState<number[]>(
     []
   );
+  const [snowmobileRentalStatus, setSnowmobileRentalStatus] = useState<
+    Record<number, Array<{
+      rentalId: number;
+      guestName: string;
+      guestEmail: string;
+      startTime: string;
+      endTime: string;
+      approvalStatus: string;
+    }>>
+  >({});
   const [departureAssignments, setDepartureAssignments] = useState<
     Array<{
       id: number;
@@ -626,27 +637,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleDepartureSelect(departureId: number) {
-    setSelectedDeparture(departureId);
-    try {
-      const assignments = await getSnowmobileAssignments(departureId);
-      setSelectedSnowmobileIds(
-        assignments.map((a: { snowmobileId: number }) => a.snowmobileId)
-      );
-    } catch (error: unknown) {
-      console.error("Failed to load assignments:", error);
-      setSelectedSnowmobileIds([]);
-    }
-  }
-
-  function toggleSnowmobileSelection(snowmobileId: number) {
-    setSelectedSnowmobileIds((prev) =>
-      prev.includes(snowmobileId)
-        ? prev.filter((id) => id !== snowmobileId)
-        : [...prev, snowmobileId]
-    );
-  }
-
   async function handleAssignSnowmobiles() {
     if (!selectedDeparture) {
       alert("Please select a departure first");
@@ -684,9 +674,14 @@ export default function AdminPage() {
       const assignments = await getSnowmobileAssignments(departureId);
       const assignedIds = assignments.map((a: any) => a.snowmobileId);
       setSelectedSnowmobileIds(assignedIds);
+      
+      // Load rental status for this departure
+      const rentalStatus = await getSnowmobileRentalStatus(departureId);
+      setSnowmobileRentalStatus(rentalStatus);
     } catch (error) {
-      console.error("Failed to load assignments:", error);
+      console.error("Failed to load assignments or rental status:", error);
       setSelectedSnowmobileIds([]);
+      setSnowmobileRentalStatus({});
     }
   }
 
@@ -1026,6 +1021,23 @@ export default function AdminPage() {
     }
   }
 
+   const getSnowmobileStats = (departure: any) => {
+    if (!departure.snowmobiles || departure.snowmobiles.length === 0) {
+      return { total: 0, totalCapacity: 0, availableSpots: 0 };
+    }
+    
+    const total = departure.snowmobiles.length;
+    const totalCapacity = departure.snowmobiles.reduce(
+      (sum: number, s: any) => sum + (s.currentPassengers || 0), 
+      0
+    );
+    const availableSpots = departure.snowmobiles.reduce(
+      (sum: number, s: any) => sum + (s.availableSpots || 0), 
+      0
+    );
+    
+    return { total, totalCapacity, availableSpots };
+  };
   // ========================================
   // EARLY RETURNS (after ALL hooks)
   // ========================================
@@ -1605,6 +1617,24 @@ export default function AdminPage() {
                           <p className="text-xs text-gray-500 mt-1">
                             ID: {departure.id}
                           </p>
+                          
+                          {/* Snowmobile indicator badge */}
+                          {(() => {
+                            const stats = getSnowmobileStats(departure);
+                            return (
+                              <div className="mt-2">
+                                {stats.total > 0 ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    🛷 {stats.total} snowmobile{stats.total !== 1 ? 's' : ''} assigned
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    ⚠️ No snowmobiles assigned
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div className="flex items-center gap-6">
@@ -2666,6 +2696,32 @@ export default function AdminPage() {
 
                   {selectedDeparture && (
                     <>
+                      {/* Snowmobile statistics summary */}
+                      {(() => {
+                        const selectedDep = departures.find(d => d.id === selectedDeparture);
+                        if (!selectedDep) return null;
+                        const stats = getSnowmobileStats(selectedDep);
+                        return (
+                          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Current Status</h4>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Total Snowmobiles</p>
+                                <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Passengers Booked</p>
+                                <p className="text-2xl font-bold text-green-600">{stats.totalCapacity}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Available Spots</p>
+                                <p className="text-2xl font-bold text-orange-600">{stats.availableSpots}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      
                       <div className="mb-4">
                         <h4 className="font-medium mb-3">
                           Available Snowmobiles (select to assign):
@@ -2673,32 +2729,47 @@ export default function AdminPage() {
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {snowmobiles
                             .filter((sm) => !disabledSnowmobiles.includes(sm.id))
-                            .map((sm) => (
-                              <label
-                                key={sm.id}
-                                className="flex items-center gap-3 p-3 border rounded hover:bg-gray-50 cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedSnowmobileIds.includes(sm.id)}
-                                  onChange={() => toggleSnowmobileSelection(sm.id)}
-                                  className="w-4 h-4"
-                                />
-                                <div className="flex-1">
-                                  <p className="font-medium">{sm.name}</p>
-                                  <p className="text-xs text-gray-600">
-                                    {sm.licensePlate || "No plate"} • {sm.model || "No model"}
-                                  </p>
-                                </div>
-                                {sm.imageUrl && (
-                                  <img
-                                    src={getImageUrl(sm.imageUrl)}
-                                    alt={sm.name}
-                                    className="h-12 w-12 object-cover rounded"
+                            .map((sm) => {
+                              const isRented = snowmobileRentalStatus[sm.id]?.length > 0;
+                              const rentalInfo = snowmobileRentalStatus[sm.id]?.[0];
+                              
+                              return (
+                                <label
+                                  key={sm.id}
+                                  className={`flex items-center gap-3 p-3 border rounded ${
+                                    isRented
+                                      ? "bg-red-50 border-red-300 cursor-not-allowed opacity-60"
+                                      : "hover:bg-gray-50 cursor-pointer"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedSnowmobileIds.includes(sm.id)}
+                                    onChange={() => toggleSnowmobileSelection(sm.id)}
+                                    className="w-4 h-4"
+                                    disabled={isRented}
                                   />
-                                )}
-                              </label>
-                            ))}
+                                  <div className="flex-1">
+                                    <p className="font-medium">{sm.name}</p>
+                                    <p className="text-xs text-gray-600">
+                                      {sm.licensePlate || "No plate"} • {sm.model || "No model"}
+                                    </p>
+                                    {isRented && rentalInfo && (
+                                      <p className="text-xs text-red-600 font-medium mt-1">
+                                        ⚠️ RENTED: {rentalInfo.guestName} ({new Date(rentalInfo.startTime).toLocaleString()} - {new Date(rentalInfo.endTime).toLocaleString()})
+                                      </p>
+                                    )}
+                                  </div>
+                                  {sm.imageUrl && (
+                                    <img
+                                      src={getImageUrl(sm.imageUrl)}
+                                      alt={sm.name}
+                                      className="h-12 w-12 object-cover rounded"
+                                    />
+                                  )}
+                                </label>
+                              );
+                            })}
                         </div>
                       </div>
 

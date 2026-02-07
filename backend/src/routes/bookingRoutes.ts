@@ -7,6 +7,7 @@ import {
   getAvailability,
   approveBooking,
   rejectBooking,
+  syncDepartureReservedCounts,
 } from "../controllers/bookingController";
 
 export async function bookingRoutes(app: FastifyInstance) {
@@ -90,6 +91,18 @@ export async function bookingRoutes(app: FastifyInstance) {
       const { id } = req.params as { id: string };
       const data = await rejectBooking(Number(id), req.body);
       return reply.send(data);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Admin endpoint to sync departure reserved counts
+  app.post("/admin/sync-reserved-counts", async (req, reply) => {
+    try {
+      const result = await syncDepartureReservedCounts();
+      return reply.send(result);
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);

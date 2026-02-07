@@ -51,18 +51,18 @@ model Departure {
 }
 
 model Booking {
-  id                   Int               @id @default(autoincrement())
+  id                   Int                        @id @default(autoincrement())
   guestId              Int
   departureId          Int?
   participants         Int
   totalPrice           Float
-  status               String            @default("confirmed")
-  approvalStatus       String            @default("pending")
+  status               String                     @default("confirmed")
+  approvalStatus       String                     @default("pending")
   adminMessage         String?
   rejectionReason      String?
   notes                String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
   guestEmail           String
   guestName            String
   packageId            Int
@@ -70,13 +70,14 @@ model Booking {
   phone                String?
   bookingDate          String?
   bookingTime          String?
-  paymentIntentId      String?           @unique
-  paymentStatus        String            @default("pending")
+  paymentIntentId      String?                    @unique
+  paymentStatus        String                     @default("pending")
   paymentMethod        String?
-  departure            Departure?        @relation(fields: [departureId], references: [id])
-  guest                Guest             @relation(fields: [guestId], references: [id])
-  package              SafariPackage     @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  departure            Departure?                 @relation(fields: [departureId], references: [id])
+  guest                Guest                      @relation(fields: [guestId], references: [id])
+  package              SafariPackage              @relation(fields: [packageId], references: [id], onDelete: Cascade)
   participantGear      ParticipantGear[]
+  snowmobileBookings   BookingSnowmobileAssignment[]
 }
 
 model ParticipantGear {
@@ -135,6 +136,7 @@ model Snowmobile {
   // relationships
   departureAssignments  SafariSnowmobileAssignment[]
   rentalBookings        SnowmobileRental[]
+  bookingAssignments    BookingSnowmobileAssignment[]
 }
 
 model SafariSnowmobileAssignment {
@@ -179,6 +181,18 @@ model ContactMessage {
   message   String
   repliedAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+model BookingSnowmobileAssignment {
+  id              Int        @id @default(autoincrement())
+  bookingId       Int
+  snowmobileId    Int
+  passengerCount  Int        @default(1)
+  createdAt       DateTime   @default(now())
+  booking         Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  snowmobile      Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
 
 model AdditionalService {

@@ -167,3 +167,62 @@ export async function deleteDeparture(departureId: number) {
 
   return deletedDeparture;
 }
+
+/**
+ * Get snowmobiles assigned to a specific departure
+ * Includes availability status for each snowmobile
+ */
+export async function getDepartureSnowmobiles(departureId: number) {
+  const departure = await prisma.departure.findUnique({
+    where: { id: departureId },
+    include: {
+      package: {
+        select: { durationMin: true },
+      },
+      snowmobileAssignments: {
+        include: {
+          snowmobile: true,
+        },
+      },
+    },
+  });
+
+  if (!departure) {
+    throw { status: 404, error: "Departure not found" };
+  }
+
+  // Get all bookings for this departure to check snowmobile availability
+  const bookings = await prisma.booking.findMany({
+    where: {
+      departureId: departureId,
+      approvalStatus: { in: ["approved", "pending"] },
+    },
+    include: {
+      snowmobileBookings: true,
+    },
+  });
+
+  // Count how many passengers have booked each snowmobile
+  const snowmobileUsage = new Map<number, number>();
+  bookings.forEach(booking => {
+    booking.snowmobileBookings.forEach(assignment => {
+      const current = snowmobileUsage.get(assignment.snowmobileId) || 0;
+      snowmobileUsage.set(assignment.snowmobileId, current + assignment.passengerCount);
+    });
+  });
+
+  // Return snowmobiles with availability info
+  return departure.snowmobileAssignments.map(assignment => ({
+    id: assignment.snowmobile.id,
+    name: assignment.snowmobile.name,
+    licensePlate: assignment.snowmobile.licensePlate,
+    model: assignment.snowmobile.model,
+    imageUrl: assignment.snowmobile.imageUrl,
+    description: assignment.snowmobile.description,
+    seating: assignment.snowmobile.seating,
+    maxPassengers: 2, // Hard-coded max
+    currentPassengers: snowmobileUsage.get(assignment.snowmobile.id) || 0,
+    availableSpots: 2 - (snowmobileUsage.get(assignment.snowmobile.id) || 0),
+    isAvailable: (snowmobileUsage.get(assignment.snowmobile.id) || 0) < 2,
+  }));
+}

@@ -60,21 +60,39 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
           package: {
             select: { durationMin: true },
           },
+          bookings: {
+            where: {
+              approvalStatus: { in: ["approved", "pending"] },
+            },
+            select: {
+              participants: true,
+            },
+          },
         },
       },
     },
   });
 
-  // Filter assignments where safari end time actually overlaps with rental period
+  // Filter assignments where:
+  // 1. Safari end time actually overlaps with rental period
+  // 2. The safari departure has bookings (is actually booked)
   const conflictingAssignments = safariAssignments.filter((assignment) => {
     const safariStart = assignment.departure.departureTime;
     const safariDurationMs = assignment.departure.package.durationMin * 60 * 1000;
     const safariEnd = new Date(safariStart.getTime() + safariDurationMs);
     
-    // Overlap occurs if: safari ends after rental starts AND safari starts before rental ends
+    // Check if there's time overlap
     const hasOverlap = safariEnd > startTime && safariStart < endTime;
     
-    return hasOverlap;
+    if (!hasOverlap) {
+      return false;
+    }
+    
+    // Check if the safari has any approved or pending bookings
+    const hasBookings = assignment.departure.bookings && assignment.departure.bookings.length > 0;
+    
+    // Only mark snowmobile as unavailable if the safari is actually booked
+    return hasBookings;
   });
 
   const unavailableIds = new Set([
@@ -383,6 +401,93 @@ export async function assignSnowmobilesToDeparture(body: unknown) {
 
   const data = schema.parse(body);
 
+  // Get the departure details to determine the time range
+  const departure = await prisma.departure.findUnique({
+    where: { id: data.departureId },
+    include: {
+      package: {
+        select: { durationMin: true },
+      },
+    },
+  });
+
+  if (!departure) {
+    throw {
+      status: 404,
+      error: "Departure not found",
+    };
+  }
+
+  const safariStart = departure.departureTime;
+  const safariDurationMs = departure.package.durationMin * 60 * 1000;
+  const safariEnd = new Date(safariStart.getTime() + safariDurationMs);
+
+  // Check if any of the selected snowmobiles are rented during the safari time
+  const rentedSnowmobiles = await prisma.snowmobileRental.findMany({
+    where: {
+      AND: [
+        { snowmobileId: { in: data.snowmobileIds } },
+        { startTime: { lt: safariEnd } },
+        { endTime: { gt: safariStart } },
+        { approvalStatus: { in: ["approved", "pending"] } },
+      ],
+    },
+    include: {
+      snowmobile: true,
+      guest: true,
+    },
+  });
+
+  if (rentedSnowmobiles.length > 0) {
+    const rentedNames = rentedSnowmobiles
+      .map((r) => `${r.snowmobile.name} (rented by ${r.guest.name})`)
+      .join(", ");
+    throw {
+      status: 400,
+      error: `Cannot assign snowmobiles that are already rented: ${rentedNames}`,
+    };
+  }
+
+  // Check if any snowmobiles are assigned to other departures during the safari time
+  const conflictingAssignments = await prisma.safariSnowmobileAssignment.findMany({
+    where: {
+      AND: [
+        { snowmobileId: { in: data.snowmobileIds } },
+        { departureId: { not: data.departureId } },
+      ],
+    },
+    include: {
+      snowmobile: true,
+      departure: {
+        include: {
+          package: {
+            select: { name: true, durationMin: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Filter for actual time conflicts
+  const timeConflicts = conflictingAssignments.filter((assignment) => {
+    const otherStart = assignment.departure.departureTime;
+    const otherDurationMs = assignment.departure.package.durationMin * 60 * 1000;
+    const otherEnd = new Date(otherStart.getTime() + otherDurationMs);
+    
+    // Check if there's time overlap
+    return otherEnd > safariStart && otherStart < safariEnd;
+  });
+
+  if (timeConflicts.length > 0) {
+    const conflictNames = timeConflicts
+      .map((c) => `${c.snowmobile.name} (assigned to ${c.departure.package.name})`)
+      .join(", ");
+    throw {
+      status: 400,
+      error: `Cannot assign snowmobiles already assigned to other departures during this time: ${conflictNames}`,
+    };
+  }
+
   return await prisma.$transaction(async (tx) => {
     // Remove existing assignments
     await tx.safariSnowmobileAssignment.deleteMany({
@@ -496,4 +601,75 @@ export async function toggleSnowmobileMaintenance(id: number, body: unknown) {
     where: { id },
     data: { disabled: data.disabled },
   });
+}
+
+/**
+ * Get rental status information for snowmobiles
+ * Optionally filter by specific departure time to show conflicts
+ */
+export async function getSnowmobileRentalStatus(departureId?: number) {
+  const now = new Date();
+  
+  // If departureId is provided, get the departure details
+  let safariStart: Date | null = null;
+  let safariEnd: Date | null = null;
+  
+  if (departureId) {
+    const departure = await prisma.departure.findUnique({
+      where: { id: departureId },
+      include: {
+        package: {
+          select: { durationMin: true },
+        },
+      },
+    });
+    
+    if (departure) {
+      safariStart = departure.departureTime;
+      const safariDurationMs = departure.package.durationMin * 60 * 1000;
+      safariEnd = new Date(safariStart.getTime() + safariDurationMs);
+    }
+  }
+
+  // Get all active rentals
+  const rentals = await prisma.snowmobileRental.findMany({
+    where: {
+      approvalStatus: { in: ["approved", "pending"] },
+      endTime: { gte: now }, // Only future or ongoing rentals
+      ...(safariStart && safariEnd ? {
+        AND: [
+          { startTime: { lt: safariEnd } },
+          { endTime: { gt: safariStart } },
+        ],
+      } : {}),
+    },
+    include: {
+      snowmobile: true,
+      guest: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: { startTime: 'asc' },
+  });
+
+  // Group by snowmobile ID
+  const rentalsBySnowmobile = rentals.reduce((acc, rental) => {
+    if (!acc[rental.snowmobileId]) {
+      acc[rental.snowmobileId] = [];
+    }
+    acc[rental.snowmobileId].push({
+      rentalId: rental.id,
+      guestName: rental.guest.name,
+      guestEmail: rental.guest.email,
+      startTime: rental.startTime,
+      endTime: rental.endTime,
+      approvalStatus: rental.approvalStatus,
+    });
+    return acc;
+  }, {} as Record<number, any[]>);
+
+  return rentalsBySnowmobile;
 }

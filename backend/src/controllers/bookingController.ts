@@ -32,6 +32,10 @@ const createBookingSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   participantGearSizes: z.record(z.string(), gearSizesSchema).optional(),
+  snowmobileAssignments: z.array(z.object({
+    snowmobileId: z.number().int().positive(),
+    passengerCount: z.number().int().min(1).max(2),
+  })).optional(),
 });
 
 export async function createBooking(body: unknown) {
@@ -161,6 +165,56 @@ export async function createBooking(body: unknown) {
         await Promise.all(gearPromises);
       }
 
+      // Create snowmobile assignments if provided
+      if (data.snowmobileAssignments && data.snowmobileAssignments.length > 0) {
+        // Validate total passenger count matches
+        const totalSnowmobilePassengers = data.snowmobileAssignments.reduce(
+          (sum, assignment) => sum + assignment.passengerCount,
+          0
+        );
+
+        if (totalSnowmobilePassengers !== data.participants) {
+          throw {
+            status: 400,
+            error: `Snowmobile passenger count (${totalSnowmobilePassengers}) must match total participants (${data.participants})`,
+          };
+        }
+
+        // Check if snowmobiles are assigned to this departure
+        if (data.departureId) {
+          const assignedSnowmobiles = await tx.safariSnowmobileAssignment.findMany({
+            where: {
+              departureId: data.departureId,
+              snowmobileId: { in: data.snowmobileAssignments.map(a => a.snowmobileId) },
+            },
+          });
+
+          const assignedIds = new Set(assignedSnowmobiles.map(a => a.snowmobileId));
+          const unassignedSnowmobiles = data.snowmobileAssignments.filter(
+            a => !assignedIds.has(a.snowmobileId)
+          );
+
+          if (unassignedSnowmobiles.length > 0) {
+            throw {
+              status: 400,
+              error: `Some selected snowmobiles are not assigned to this departure`,
+            };
+          }
+        }
+
+        const assignmentPromises = data.snowmobileAssignments.map((assignment) =>
+          tx.bookingSnowmobileAssignment.create({
+            data: {
+              bookingId: createdBooking.id,
+              snowmobileId: assignment.snowmobileId,
+              passengerCount: assignment.passengerCount,
+            },
+          })
+        );
+
+        await Promise.all(assignmentPromises);
+      }
+
       return createdBooking;
     },
     { isolationLevel: "Serializable" }
@@ -236,26 +290,51 @@ const updateBookingStatusSchema = z.object({
 export async function updateBookingStatus(id: number, body: unknown) {
   const data = updateBookingStatusSchema.parse(body);
 
-  const booking = await prisma.booking.findUnique({
-    where: { id },
-  });
+  // Use transaction to handle reserved count updates
+  const updatedBooking = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id },
+    });
 
-  if (!booking) {
-    throw { status: 404, error: "Booking not found" };
-  }
+    if (!booking) {
+      throw { status: 404, error: "Booking not found" };
+    }
 
-  const updatedBooking = await prisma.booking.update({
-    where: { id },
-    data: { status: data.status },
-    include: {
-      guest: true,
-      departure: {
-        include: {
-          package: true,
+    // If cancelling an approved booking, decrease reserved count
+    if (
+      data.status === "cancelled" &&
+      booking.approvalStatus === "approved" &&
+      booking.departureId
+    ) {
+      const departure = await tx.departure.findUnique({
+        where: { id: booking.departureId },
+      });
+
+      if (departure) {
+        const newReserved = Math.max(0, departure.reserved - booking.participants);
+        await tx.departure.update({
+          where: { id: booking.departureId },
+          data: { reserved: newReserved },
+        });
+        console.log(
+          `Decreased reserved count from ${departure.reserved} to ${newReserved} for departure ${booking.departureId} (cancelled)`
+        );
+      }
+    }
+
+    return await tx.booking.update({
+      where: { id },
+      data: { status: data.status },
+      include: {
+        guest: true,
+        departure: {
+          include: {
+            package: true,
+          },
         },
+        participantGear: true,
       },
-      participantGear: true,
-    },
+    });
   });
 
   return updatedBooking;
@@ -355,80 +434,96 @@ const approveBookingSchema = z.object({
 export async function approveBooking(id: number, body: unknown) {
   const data = approveBookingSchema.parse(body);
 
-  const booking = await prisma.booking.findUnique({
-    where: { id },
-    include: {
-      package: true,
-      participantGear: true,
-    },
-  });
-
-  if (!booking) {
-    throw { status: 404, error: "Booking not found" };
-  }
-
-  // Check capacity if this booking has a departureId
-  if (booking.departureId) {
-    const departure = await prisma.departure.findUnique({
-      where: { id: booking.departureId },
-    });
-
-    if (!departure) {
-      throw { status: 400, error: "Invalid departure" };
-    }
-
-    // Calculate current approved bookings (excluding this one)
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        departureId: booking.departureId,
-        approvalStatus: "approved",
-        id: { not: id }, // Exclude current booking
+  // Use a transaction to prevent race conditions
+  const updatedBooking = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id },
+      include: {
+        package: true,
+        participantGear: true,
       },
     });
 
-    const totalReserved = existingBookings.reduce(
-      (sum, b) => sum + b.participants,
-      0
-    );
-
-    // Check if approving this booking would exceed capacity
-    if (totalReserved + booking.participants > departure.capacity) {
-      throw {
-        status: 400,
-        error: `Cannot approve: Exceeds capacity. Available: ${
-          departure.capacity - totalReserved
-        }, Booking has: ${booking.participants}`,
-      };
+    if (!booking) {
+      throw { status: 404, error: "Booking not found" };
     }
 
-    console.log(
-      `Approval capacity check passed: ${totalReserved}/${departure.capacity} reserved, approving ${booking.participants}`
-    );
-  }
+    // Prevent approving already approved bookings
+    if (booking.approvalStatus === "approved") {
+      throw { status: 400, error: "Booking is already approved" };
+    }
 
-  const updatedBooking = await prisma.booking.update({
-    where: { id },
-    data: { approvalStatus: "approved" },
-    include: {
-      guest: true,
-      package: true,
-      participantGear: true,
-    },
+    // Check capacity if this booking has a departureId
+    if (booking.departureId) {
+      // Lock the departure row to prevent concurrent modifications
+      const departure = await tx.departure.findUnique({
+        where: { id: booking.departureId },
+      });
+
+      if (!departure) {
+        throw { status: 400, error: "Invalid departure" };
+      }
+
+      // Calculate current approved bookings (excluding this one)
+      const existingBookings = await tx.booking.findMany({
+        where: {
+          departureId: booking.departureId,
+          approvalStatus: "approved",
+          id: { not: id }, // Exclude current booking
+        },
+      });
+
+      const totalReserved = existingBookings.reduce(
+        (sum, b) => sum + b.participants,
+        0
+      );
+
+      // Check if approving this booking would exceed capacity
+      if (totalReserved + booking.participants > departure.capacity) {
+        throw {
+          status: 400,
+          error: `Cannot approve: Exceeds capacity. Available: ${
+            departure.capacity - totalReserved
+          }, Booking has: ${booking.participants}`,
+        };
+      }
+
+      console.log(
+        `Approval capacity check passed: ${totalReserved}/${departure.capacity} reserved, approving ${booking.participants}`
+      );
+
+      // Update the reserved count on the departure
+      await tx.departure.update({
+        where: { id: booking.departureId },
+        data: { reserved: totalReserved + booking.participants },
+      });
+    }
+
+    // Update booking approval status
+    return await tx.booking.update({
+      where: { id },
+      data: { approvalStatus: "approved" },
+      include: {
+        guest: true,
+        package: true,
+        participantGear: true,
+      },
+    });
   });
 
   // Send approval confirmation email
   try {
     await sendApprovalEmail({
-      email: booking.guestEmail,
-      name: booking.guestName,
-      tour: booking.package.name,
-      date: booking.bookingDate || "TBD",
-      time: booking.bookingTime || "TBD",
-      total: booking.totalPrice,
-      bookingId: String(booking.id),
-      participants: booking.participants,
+      email: updatedBooking.guestEmail,
+      name: updatedBooking.guestName,
+      tour: updatedBooking.package.name,
+      date: updatedBooking.bookingDate || "TBD",
+      time: updatedBooking.bookingTime || "TBD",
+      total: updatedBooking.totalPrice,
+      bookingId: String(updatedBooking.id),
+      participants: updatedBooking.participants,
       adminMessage: data.adminMessage,
-      participantGearSizes: (booking.participantGearSizes as any) || undefined,
+      participantGearSizes: (updatedBooking.participantGearSizes as any) || undefined,
     });
     console.log(`✅ Approval email sent for booking ${id}`);
   } catch (error) {
@@ -446,38 +541,60 @@ const rejectBookingSchema = z.object({
 export async function rejectBooking(id: number, body: unknown) {
   const data = rejectBookingSchema.parse(body);
 
-  const booking = await prisma.booking.findUnique({
-    where: { id },
-    include: {
-      package: true,
-      participantGear: true,
-    },
-  });
+  // Use a transaction to handle reserved count properly
+  const updatedBooking = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id },
+      include: {
+        package: true,
+        participantGear: true,
+      },
+    });
 
-  if (!booking) {
-    throw { status: 404, error: "Booking not found" };
-  }
+    if (!booking) {
+      throw { status: 404, error: "Booking not found" };
+    }
 
-  const updatedBooking = await prisma.booking.update({
-    where: { id },
-    data: {
-      approvalStatus: "rejected",
-      rejectionReason: data.rejectionReason,
-    },
-    include: {
-      guest: true,
-      package: true,
-      participantGear: true,
-    },
+    // If the booking was previously approved, we need to decrease the reserved count
+    if (booking.approvalStatus === "approved" && booking.departureId) {
+      const departure = await tx.departure.findUnique({
+        where: { id: booking.departureId },
+      });
+
+      if (departure) {
+        const newReserved = Math.max(0, departure.reserved - booking.participants);
+        await tx.departure.update({
+          where: { id: booking.departureId },
+          data: { reserved: newReserved },
+        });
+        console.log(
+          `Decreased reserved count from ${departure.reserved} to ${newReserved} for departure ${booking.departureId}`
+        );
+      }
+    }
+
+    // Update booking to rejected
+    return await tx.booking.update({
+      where: { id },
+      data: {
+        approvalStatus: "rejected",
+        rejectionReason: data.rejectionReason,
+      },
+      include: {
+        guest: true,
+        package: true,
+        participantGear: true,
+      },
+    });
   });
 
   // Send rejection email
   try {
     await sendRejectionEmail({
-      email: booking.guestEmail,
-      name: booking.guestName,
-      tour: booking.package.name,
-      bookingId: String(booking.id),
+      email: updatedBooking.guestEmail,
+      name: updatedBooking.guestName,
+      tour: updatedBooking.package.name,
+      bookingId: String(updatedBooking.id),
       rejectionReason: data.rejectionReason,
     });
     console.log(`✅ Rejection email sent for booking ${id}`);
@@ -494,3 +611,51 @@ export async function rejectBooking(id: number, body: unknown) {
 
 // This function is no longer needed as payment is handled on-site
 // Removed Stripe payment confirmation logic
+
+/**
+ * Recalculate and sync the reserved counts for all departures
+ * Use this to fix any inconsistencies in the reserved field
+ */
+export async function syncDepartureReservedCounts() {
+  const departures = await prisma.departure.findMany({
+    include: {
+      bookings: {
+        where: {
+          approvalStatus: "approved",
+        },
+        select: {
+          participants: true,
+        },
+      },
+    },
+  });
+
+  const updates = [];
+  for (const departure of departures) {
+    const calculatedReserved = departure.bookings.reduce(
+      (sum, b) => sum + b.participants,
+      0
+    );
+
+    if (departure.reserved !== calculatedReserved) {
+      console.log(
+        `🔄 Syncing departure ${departure.id}: ${departure.reserved} -> ${calculatedReserved}`
+      );
+      updates.push(
+        prisma.departure.update({
+          where: { id: departure.id },
+          data: { reserved: calculatedReserved },
+        })
+      );
+    }
+  }
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+    console.log(`✅ Synced ${updates.length} departure(s)`);
+  } else {
+    console.log(`✅ All departures are in sync`);
+  }
+
+  return { synced: updates.length, total: departures.length };
+}

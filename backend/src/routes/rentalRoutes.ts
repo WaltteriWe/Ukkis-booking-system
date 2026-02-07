@@ -13,6 +13,7 @@ import {
   getDisabledSnowmobiles,
   updateSnowmobile,
   toggleSnowmobileMaintenance,
+  getSnowmobileRentalStatus,
 } from '../controllers/rentalController';
 
 export async function rentalRoutes(app: FastifyInstance) {
@@ -160,6 +161,21 @@ export async function rentalRoutes(app: FastifyInstance) {
       const { id } = req.params as { id: string };
       const snowmobile = await toggleSnowmobileMaintenance(parseInt(id), req.body);
       return reply.send(snowmobile);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Get rental status for snowmobiles
+  app.get("/snowmobiles/rental-status", async (req, reply) => {
+    try {
+      const { departureId } = req.query as { departureId?: string };
+      const status = await getSnowmobileRentalStatus(
+        departureId ? parseInt(departureId) : undefined
+      );
+      return reply.send(status);
     } catch (e: any) {
       const c = e?.status ?? 500;
       if (!e?.status) app.log.error(e);

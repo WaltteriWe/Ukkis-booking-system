@@ -10,6 +10,7 @@ import {
   createDeparture,
   confirmPayment,
   getAdditionalServices,
+  getDepartureSnowmobiles,
 } from "@/lib/api";
 import "react-day-picker/dist/style.css";
 import type { CreateBookingRequest } from "@/lib/api";
@@ -21,6 +22,7 @@ import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useDepartures } from "@/hooks/useDepartures";
+import { useSnowmobileSelection } from "@/hooks/useSnowmobileSelection";
 import Image from "next/image";
 
 // Helper to get full image URL (backend serves images)
@@ -146,6 +148,18 @@ export default function Bookings() {
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [selectedDepartureData, setSelectedDepartureData] = useState<any>(null);
 
+  // Use snowmobile selection hook
+  const {
+    availableSnowmobiles,
+    selectedSnowmobiles,
+    loadingSnowmobiles,
+    loadSnowmobiles,
+    incrementSnowmobile,
+    decrementSnowmobile,
+    getTotalAssigned,
+    getSnowmobileAssignments,
+  } = useSnowmobileSelection();
+
   const handleSelectTour = (tour: Tour) => {
     setSelectedTour(tour);
     handlePackageSelect(tour.id);
@@ -155,13 +169,16 @@ export default function Bookings() {
   const toggleAddon = (id: string) =>
     setAddons((a) => ({ ...a, [id]: !a[id] }));
 
-  const handleDepartureSelect = useCallback((departure: any) => {
+  const handleDepartureSelect = useCallback(async (departure: any) => {
     if (departure) {
       setSelectedDeparture(departure.id);
       setSelectedDepartureData(departure);
       setTime(format(new Date(departure.departureTime), "HH:mm"));
+      
+      // Load available snowmobiles for this departure
+      await loadSnowmobiles(departure.id, getDepartureSnowmobiles);
     }
-  }, []);
+  }, [loadSnowmobiles]);
 
   // Initialize gear sizes for new participants
   const initializeGearSizes = (numParticipants: number) => {
@@ -241,11 +258,24 @@ export default function Bookings() {
   // Proceed to payment confirmation (no Stripe, just show modal)
   const handleProceedToPayment = async () => {
     try {
+      // Validate snowmobile selections if departure is selected
+      if (selectedDeparture && availableSnowmobiles.length > 0) {
+        const totalSnowmobilePassengers = getTotalAssigned();
+        
+        if (totalSnowmobilePassengers !== participants) {
+          alert(`Please assign all ${participants} participants to snowmobiles. Currently assigned: ${totalSnowmobilePassengers}`);
+          return;
+        }
+      }
+
       // Create the booking
       const gearSizesForApi: Record<string, any> = {};
       Object.entries(participantGearSizes).forEach(([key, value]) => {
         gearSizesForApi[key] = value;
       });
+
+      // Prepare snowmobile assignments using hook method
+      const snowmobileAssignments = getSnowmobileAssignments();
 
       const bookingRequest = {
         packageId: selectedTour!.id,
@@ -257,6 +287,7 @@ export default function Bookings() {
         phone: customerInfo.phone,
         notes: `Date: ${date}, Time: ${time}. Add-ons: ${selectedAddons.map((a) => a.title).join(", ")}`,
         participantGearSizes: gearSizesForApi,
+        ...(snowmobileAssignments.length > 0 && { snowmobileAssignments }),
       };
 
       const createdBooking = await createBooking(
@@ -989,6 +1020,146 @@ export default function Bookings() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Snowmobile Selection */}
+                  {selectedDeparture && availableSnowmobiles.length > 0 && (
+                    <div className="mt-6">
+                      {/* Snowmobile overview */}
+                      <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-900 mb-2">📊 Snowmobile Overview</h4>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-blue-700">Total Available</p>
+                            <p className="text-xl font-bold text-blue-900">{availableSnowmobiles.length}</p>
+                          </div>
+                          <div>
+                            <p className="text-blue-700">Total Free Spots</p>
+                            <p className="text-xl font-bold text-blue-900">
+                              {availableSnowmobiles.reduce((sum, s) => sum + s.availableSpots, 0)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <h4
+                        className="text-lg font-semibold mb-4"
+                        style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                      >
+                        🛷 {t("selectSnowmobiles") || "Select Snowmobiles"}
+                      </h4>
+                      <p className="text-sm mb-4" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                        Assign passengers to snowmobiles (max 2 per snowmobile). Total must equal {participants} participants.
+                      </p>
+                      
+                      {loadingSnowmobiles ? (
+                        <p>Loading snowmobiles...</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {availableSnowmobiles.map((snowmobile) => (
+                            <div
+                              key={snowmobile.id}
+                              className="p-4 border rounded-lg"
+                              style={{
+                                backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                                borderColor: darkModeStyles.border(darkMode),
+                                opacity: snowmobile.availableSpots === 0 ? 0.5 : 1,
+                              }}
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h5 className="font-semibold" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
+                                      {snowmobile.name}
+                                    </h5>
+                                    
+                                    {/* Status badges */}
+                                    {snowmobile.availableSpots === 0 ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                        ⛔ Full
+                                      </span>
+                                    ) : snowmobile.availableSpots === 1 ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        ⚠️ Only 1 spot left!
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        ✓ {snowmobile.availableSpots} spots available
+                                      </span>
+                                    )}
+                                  </div>
+                                  {snowmobile.licensePlate && (
+                                    <p className="text-sm" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                                      {snowmobile.licensePlate}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium" style={{ 
+                                    color: snowmobile.availableSpots > 0 ? '#10b981' : '#ef4444' 
+                                  }}>
+                                    {snowmobile.availableSpots} / {snowmobile.maxPassengers} available
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-3 mt-3">
+                                <label className="text-sm font-medium" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
+                                  Passengers:
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => decrementSnowmobile(snowmobile.id)}
+                                    className="h-8 w-8 rounded border"
+                                    style={{
+                                      backgroundColor: darkModeStyles.inputBg(darkMode),
+                                      borderColor: darkModeStyles.inputBorder(darkMode),
+                                      color: darkModeStyles.textPrimary(darkMode),
+                                    }}
+                                    disabled={!selectedSnowmobiles[snowmobile.id] || snowmobile.availableSpots === 0}
+                                  >
+                                    –
+                                  </button>
+                                  <div className="w-8 text-center font-bold" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
+                                    {selectedSnowmobiles[snowmobile.id] || 0}
+                                  </div>
+                                  <button
+                                    onClick={() => incrementSnowmobile(snowmobile.id, snowmobile.maxPassengers, snowmobile.availableSpots, Number(participants))}
+                                    className="h-8 w-8 rounded border"
+                                    style={{
+                                      backgroundColor: darkModeStyles.inputBg(darkMode),
+                                      borderColor: darkModeStyles.inputBorder(darkMode),
+                                      color: darkModeStyles.textPrimary(darkMode),
+                                    }}
+                                    disabled={
+                                      (selectedSnowmobiles[snowmobile.id] || 0) >= 2 || 
+                                      (selectedSnowmobiles[snowmobile.id] || 0) >= snowmobile.availableSpots ||
+                                      Object.values(selectedSnowmobiles).reduce((sum, count) => sum + count, 0) >= participants
+                                    }
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          <div className="mt-4 p-3 rounded-lg" style={{
+                            backgroundColor: getTotalAssigned() === participants
+                              ? darkMode ? '#065f46' : '#d1fae5'
+                              : darkMode ? '#7f1d1d' : '#fee2e2',
+                            borderColor: getTotalAssigned() === participants
+                              ? '#10b981'
+                              : '#ef4444',
+                            border: '1px solid',
+                          }}>
+                            <p className="text-sm font-medium">
+                              Total assigned: {getTotalAssigned()} / {participants}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
