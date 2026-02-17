@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model Guest {
@@ -51,18 +51,18 @@ model Departure {
 }
 
 model Booking {
-  id                   Int                        @id @default(autoincrement())
+  id                   Int                           @id @default(autoincrement())
   guestId              Int
   departureId          Int?
   participants         Int
   totalPrice           Float
-  status               String                     @default("confirmed")
-  approvalStatus       String                     @default("pending")
+  status               String                        @default("confirmed")
+  approvalStatus       String                        @default("pending")
   adminMessage         String?
   rejectionReason      String?
   notes                String?
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
   guestEmail           String
   guestName            String
   packageId            Int
@@ -70,12 +70,12 @@ model Booking {
   phone                String?
   bookingDate          String?
   bookingTime          String?
-  paymentIntentId      String?                    @unique
-  paymentStatus        String                     @default("pending")
+  paymentIntentId      String?                       @unique
+  paymentStatus        String                        @default("pending")
   paymentMethod        String?
-  departure            Departure?                 @relation(fields: [departureId], references: [id])
-  guest                Guest                      @relation(fields: [guestId], references: [id])
-  package              SafariPackage              @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  departure            Departure?                    @relation(fields: [departureId], references: [id])
+  guest                Guest                         @relation(fields: [guestId], references: [id])
+  package              SafariPackage                 @relation(fields: [packageId], references: [id], onDelete: Cascade)
   participantGear      ParticipantGear[]
   snowmobileBookings   BookingSnowmobileAssignment[]
 }
@@ -107,36 +107,43 @@ model Admin {
 }
 
 model Snowmobile {
-  id                    Int                          @id @default(autoincrement())
-  name                  String
-  licensePlate          String?
-  model                 String?
-  year                  Int?
-  hourlyRate            Float?
-  pricing               Json?
-  imageUrl              String?
-  quantity              Int       @default(1)
-  status                String    @default("available")
-  disabled              Boolean   @default(false)
-  description           String?
-  
+  id           Int     @id @default(autoincrement())
+  name         String
+  licensePlate String?
+  model        String?
+  year         Int?
+  hourlyRate   Float?
+  pricing      Json?
+  imageUrl     String?
+  quantity     Int     @default(1)
+  status       String  @default("available")
+  disabled     Boolean @default(false)
+  description  String?
+
   // Technical specifications
-  engineSize            String?   // e.g., "600cm3 2-tahtimoottori"
-  driveSystem           String?   // e.g., "Hihnaveto"
-  seating               String?   // e.g., "1-paikkainen", "2-paikkainen"
-  startSystem           String?   // e.g., "vetokäynnistys", "sähköstartti"
-  targetAudience        String?   // e.g., "Aloittelijaystävällinen"
-  features              String?   // Multi-line features list
-  kilometerlimit        String?   // e.g., "200km"
-  extraKmPrice          String?   // e.g., "0.50€/km"
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  engineSize     String? // e.g., "600cm3 2-tahtimoottori"
+  driveSystem    String? // e.g., "Hihnaveto"
+  seating        String? // e.g., "1-paikkainen", "2-paikkainen"
+  startSystem    String? // e.g., "vetokäynnistys", "sähköstartti"
+  targetAudience String? // e.g., "Aloittelijaystävällinen"
+  features       String? // Multi-line features list
+  kilometerlimit String? // e.g., "200km"
+  extraKmPrice   String? // e.g., "0.50€/km"
+
+  // Maintenance fields
+  maintenanceReason    String? // Reason for maintenance
+  maintenanceNotes     String? // Additional notes about maintenance
+  maintenanceStartDate DateTime? // When maintenance started
+  maintenanceEndDate   DateTime? // When maintenance ended/expected to end
+  maintenanceCost      Decimal?  @db.Decimal(10, 2) // Cost of maintenance
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // relationships
-  departureAssignments  SafariSnowmobileAssignment[]
-  rentalBookings        SnowmobileRental[]
-  bookingAssignments    BookingSnowmobileAssignment[]
+  departureAssignments SafariSnowmobileAssignment[]
+  rentalBookings       SnowmobileRental[]
+  bookingAssignments   BookingSnowmobileAssignment[]
 }
 
 model SafariSnowmobileAssignment {
@@ -151,25 +158,24 @@ model SafariSnowmobileAssignment {
 }
 
 model SnowmobileRental {
-  id               Int        @id @default(autoincrement())
-  snowmobileId     Int
-  guestId          Int
-  startTime        DateTime
-  endTime          DateTime
-  totalPrice       Decimal    @db.Decimal(10, 2)
-  status           String     @default("pending")
-  notes            String?
-  approvalStatus   String     @default("pending")
-  adminMessage     String?
-  rejectionReason  String?
-  paymentIntentId  String?    @unique
-  paymentStatus    String?    @default("pending")
-  paymentMethod    String?    
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  guest            Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
-  snowmobile       Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
-
+  id              Int        @id @default(autoincrement())
+  snowmobileId    Int
+  guestId         Int
+  startTime       DateTime
+  endTime         DateTime
+  totalPrice      Decimal    @db.Decimal(10, 2)
+  status          String     @default("pending")
+  notes           String?
+  approvalStatus  String     @default("pending")
+  adminMessage    String?
+  rejectionReason String?
+  paymentIntentId String?    @unique
+  paymentStatus   String?    @default("pending")
+  paymentMethod   String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  guest           Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  snowmobile      Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
 }
 
 model ContactMessage {
@@ -184,24 +190,24 @@ model ContactMessage {
 }
 
 model BookingSnowmobileAssignment {
-  id              Int        @id @default(autoincrement())
-  bookingId       Int
-  snowmobileId    Int
-  passengerCount  Int        @default(1)
-  createdAt       DateTime   @default(now())
-  booking         Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  snowmobile      Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
+  id             Int        @id @default(autoincrement())
+  bookingId      Int
+  snowmobileId   Int
+  passengerCount Int        @default(1)
+  createdAt      DateTime   @default(now())
+  booking        Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  snowmobile     Snowmobile @relation(fields: [snowmobileId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
 }
 
 model AdditionalService {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  price       Decimal  @db.Decimal(10, 2)
-  active      Boolean  @default(true)
-  displayOrder Int     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

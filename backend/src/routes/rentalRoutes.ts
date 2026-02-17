@@ -3,6 +3,7 @@ import {
   getAvailableSnowmobiles,
   createSnowmobileRental,
   getSnowmobiles,
+  getAllSnowmobilesForAdmin,
   createSnowmobile,
   getSingleReservations,
   updateRentalStatus,
@@ -14,13 +15,25 @@ import {
   updateSnowmobile,
   toggleSnowmobileMaintenance,
   getSnowmobileRentalStatus,
-} from '../controllers/rentalController';
+} from "../controllers/rentalController";
 
 export async function rentalRoutes(app: FastifyInstance) {
-  // Get all snowmobiles
+  // Get all snowmobiles (public - only enabled)
   app.get("/snowmobiles", async (req, reply) => {
     try {
       const snowmobiles = await getSnowmobiles();
+      return reply.send(snowmobiles);
+    } catch (e: any) {
+      const c = e?.status ?? 500;
+      if (!e?.status) app.log.error(e);
+      return reply.code(c).send(e);
+    }
+  });
+
+  // Get all snowmobiles for admin (including disabled and maintenance info)
+  app.get("/snowmobiles/admin/all", async (req, reply) => {
+    try {
+      const snowmobiles = await getAllSnowmobilesForAdmin();
       return reply.send(snowmobiles);
     } catch (e: any) {
       const c = e?.status ?? 500;
@@ -42,7 +55,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Get available snowmobiles
-  app.get('/snowmobiles/available', async (req, reply) => {
+  app.get("/snowmobiles/available", async (req, reply) => {
     try {
       const { startTime, endTime } = req.query as {
         startTime: string;
@@ -57,7 +70,7 @@ export async function rentalRoutes(app: FastifyInstance) {
 
       const available = await getAvailableSnowmobiles(
         new Date(startTime),
-        new Date(endTime)
+        new Date(endTime),
       );
       return reply.send(available);
     } catch (e: any) {
@@ -68,7 +81,7 @@ export async function rentalRoutes(app: FastifyInstance) {
   });
 
   // Create a new snowmobile (admin only)
-  app.post('/snowmobiles', async (req, reply) => {
+  app.post("/snowmobiles", async (req, reply) => {
     try {
       const snowmobile = await createSnowmobile(req.body);
       return reply.code(201).send(snowmobile);
@@ -159,7 +172,10 @@ export async function rentalRoutes(app: FastifyInstance) {
   app.patch("/snowmobiles/:id/maintenance", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const snowmobile = await toggleSnowmobileMaintenance(parseInt(id), req.body);
+      const snowmobile = await toggleSnowmobileMaintenance(
+        parseInt(id),
+        req.body,
+      );
       return reply.send(snowmobile);
     } catch (e: any) {
       const c = e?.status ?? 500;
@@ -173,7 +189,7 @@ export async function rentalRoutes(app: FastifyInstance) {
     try {
       const { departureId } = req.query as { departureId?: string };
       const status = await getSnowmobileRentalStatus(
-        departureId ? parseInt(departureId) : undefined
+        departureId ? parseInt(departureId) : undefined,
       );
       return reply.send(status);
     } catch (e: any) {

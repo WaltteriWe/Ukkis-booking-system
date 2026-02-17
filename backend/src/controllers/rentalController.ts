@@ -43,8 +43,10 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   // We fetch departures that start up to 24 hours before the rental end time
   // (assuming no safari lasts more than 24 hours)
   const maxSafariDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-  const earliestPossibleDeparture = new Date(endTime.getTime() - maxSafariDuration);
-  
+  const earliestPossibleDeparture = new Date(
+    endTime.getTime() - maxSafariDuration,
+  );
+
   const safariAssignments = await prisma.safariSnowmobileAssignment.findMany({
     where: {
       departure: {
@@ -78,19 +80,21 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
   // 2. The safari departure has bookings (is actually booked)
   const conflictingAssignments = safariAssignments.filter((assignment) => {
     const safariStart = assignment.departure.departureTime;
-    const safariDurationMs = assignment.departure.package.durationMin * 60 * 1000;
+    const safariDurationMs =
+      assignment.departure.package.durationMin * 60 * 1000;
     const safariEnd = new Date(safariStart.getTime() + safariDurationMs);
-    
+
     // Check if there's time overlap
     const hasOverlap = safariEnd > startTime && safariStart < endTime;
-    
+
     if (!hasOverlap) {
       return false;
     }
-    
+
     // Check if the safari has any approved or pending bookings
-    const hasBookings = assignment.departure.bookings && assignment.departure.bookings.length > 0;
-    
+    const hasBookings =
+      assignment.departure.bookings && assignment.departure.bookings.length > 0;
+
     // Only mark snowmobile as unavailable if the safari is actually booked
     return hasBookings;
   });
@@ -105,12 +109,14 @@ export async function getAvailableSnowmobiles(startTime: Date, endTime: Date) {
 
 export async function createSnowmobileRental(body: unknown) {
   const schema = z.object({
-    snowmobiles: z.array(
-      z.object({
-        snowmobileId: z.number().int().positive(),
-        quantity: z.number().int().positive(),
-      })
-    ).optional(),
+    snowmobiles: z
+      .array(
+        z.object({
+          snowmobileId: z.number().int().positive(),
+          quantity: z.number().int().positive(),
+        }),
+      )
+      .optional(),
     snowmobileId: z.number().int().positive().optional(),
     guestEmail: z.string().email(),
     guestName: z.string().min(1),
@@ -134,11 +140,11 @@ export async function createSnowmobileRental(body: unknown) {
   }
 
   // Support both old single snowmobile format and new multiple snowmobiles format
-  const snowmobilesToRent = data.snowmobiles 
-    ? data.snowmobiles 
-    : data.snowmobileId 
-    ? [{ snowmobileId: data.snowmobileId, quantity: 1 }] 
-    : [];
+  const snowmobilesToRent = data.snowmobiles
+    ? data.snowmobiles
+    : data.snowmobileId
+      ? [{ snowmobileId: data.snowmobileId, quantity: 1 }]
+      : [];
 
   if (snowmobilesToRent.length === 0) {
     throw {
@@ -150,7 +156,9 @@ export async function createSnowmobileRental(body: unknown) {
   // Check if all snowmobiles are available
   const available = await getAvailableSnowmobiles(data.startTime, data.endTime);
   for (const item of snowmobilesToRent) {
-    const isAvailable = available.some((sm: any) => sm.id === item.snowmobileId);
+    const isAvailable = available.some(
+      (sm: any) => sm.id === item.snowmobileId,
+    );
     if (!isAvailable) {
       throw {
         status: 400,
@@ -193,7 +201,9 @@ export async function createSnowmobileRental(body: unknown) {
           guestId: guest.id,
           startTime: data.startTime,
           endTime: data.endTime,
-          totalPrice: data.totalPrice / snowmobilesToRent.reduce((acc, s) => acc + s.quantity, 0), // Distribute price
+          totalPrice:
+            data.totalPrice /
+            snowmobilesToRent.reduce((acc, s) => acc + s.quantity, 0), // Distribute price
           notes: data.notes,
           status: "pending",
         },
@@ -213,13 +223,20 @@ export async function createSnowmobileRental(body: unknown) {
       error: "Failed to create rental",
     };
   }
-  
+
   return rentals[0];
 }
 
 export async function getSnowmobiles() {
   return await prisma.snowmobile.findMany({
     where: { disabled: false },
+    orderBy: { name: "asc" },
+  });
+}
+
+// Get all snowmobiles for admin (including maintenance info)
+export async function getAllSnowmobilesForAdmin() {
+  return await prisma.snowmobile.findMany({
     orderBy: { name: "asc" },
   });
 }
@@ -392,7 +409,6 @@ export async function rejectSnowmobileRental(id: number, body: unknown) {
   return rental;
 }
 
-
 export async function assignSnowmobilesToDeparture(body: unknown) {
   const schema = z.object({
     departureId: z.number().int().positive(),
@@ -449,38 +465,42 @@ export async function assignSnowmobilesToDeparture(body: unknown) {
   }
 
   // Check if any snowmobiles are assigned to other departures during the safari time
-  const conflictingAssignments = await prisma.safariSnowmobileAssignment.findMany({
-    where: {
-      AND: [
-        { snowmobileId: { in: data.snowmobileIds } },
-        { departureId: { not: data.departureId } },
-      ],
-    },
-    include: {
-      snowmobile: true,
-      departure: {
-        include: {
-          package: {
-            select: { name: true, durationMin: true },
+  const conflictingAssignments =
+    await prisma.safariSnowmobileAssignment.findMany({
+      where: {
+        AND: [
+          { snowmobileId: { in: data.snowmobileIds } },
+          { departureId: { not: data.departureId } },
+        ],
+      },
+      include: {
+        snowmobile: true,
+        departure: {
+          include: {
+            package: {
+              select: { name: true, durationMin: true },
+            },
           },
         },
       },
-    },
-  });
+    });
 
   // Filter for actual time conflicts
   const timeConflicts = conflictingAssignments.filter((assignment) => {
     const otherStart = assignment.departure.departureTime;
-    const otherDurationMs = assignment.departure.package.durationMin * 60 * 1000;
+    const otherDurationMs =
+      assignment.departure.package.durationMin * 60 * 1000;
     const otherEnd = new Date(otherStart.getTime() + otherDurationMs);
-    
+
     // Check if there's time overlap
     return otherEnd > safariStart && otherStart < safariEnd;
   });
 
   if (timeConflicts.length > 0) {
     const conflictNames = timeConflicts
-      .map((c) => `${c.snowmobile.name} (assigned to ${c.departure.package.name})`)
+      .map(
+        (c) => `${c.snowmobile.name} (assigned to ${c.departure.package.name})`,
+      )
       .join(", ");
     throw {
       status: 400,
@@ -505,8 +525,8 @@ export async function assignSnowmobilesToDeparture(body: unknown) {
           include: {
             snowmobile: true,
           },
-        })
-      )
+        }),
+      ),
     );
 
     return assignments;
@@ -534,7 +554,7 @@ export async function getAllDepartureAssignments() {
         },
       },
     },
-    orderBy: { departureTime: 'desc' },
+    orderBy: { departureTime: "desc" },
   });
 
   return departures.map((dep) => ({
@@ -579,13 +599,15 @@ export async function updateSnowmobile(id: number, body: unknown) {
     where: { id },
     data: {
       name: data.name || undefined,
-      licensePlate: data.licensePlate !== undefined ? data.licensePlate : undefined,
+      licensePlate:
+        data.licensePlate !== undefined ? data.licensePlate : undefined,
       model: data.model !== undefined ? data.model : undefined,
       year: data.year !== undefined ? data.year : undefined,
       hourlyRate: data.hourlyRate !== undefined ? data.hourlyRate : undefined,
       imageUrl: data.imageUrl !== undefined ? data.imageUrl : undefined,
       quantity: data.quantity || undefined,
-      description: data.description !== undefined ? data.description : undefined,
+      description:
+        data.description !== undefined ? data.description : undefined,
     },
   });
 }
@@ -593,13 +615,34 @@ export async function updateSnowmobile(id: number, body: unknown) {
 export async function toggleSnowmobileMaintenance(id: number, body: unknown) {
   const schema = z.object({
     disabled: z.boolean(),
+    maintenanceReason: z.string().optional(),
+    maintenanceNotes: z.string().optional(),
+    maintenanceEndDate: z.string().datetime().optional(),
+    maintenanceCost: z.number().optional(),
   });
 
   const data = schema.parse(body);
 
+  // Prepare update data
+  const updateData: any = { disabled: data.disabled };
+
+  if (data.disabled) {
+    // When enabling maintenance mode
+    updateData.maintenanceStartDate = new Date();
+    updateData.maintenanceReason = data.maintenanceReason || null;
+    updateData.maintenanceNotes = data.maintenanceNotes || null;
+    updateData.maintenanceCost = data.maintenanceCost || null;
+    if (data.maintenanceEndDate) {
+      updateData.maintenanceEndDate = new Date(data.maintenanceEndDate);
+    }
+  } else {
+    // When disabling maintenance mode (re-enabling snowmobile)
+    updateData.maintenanceEndDate = new Date();
+  }
+
   return await prisma.snowmobile.update({
     where: { id },
-    data: { disabled: data.disabled },
+    data: updateData,
   });
 }
 
@@ -609,11 +652,11 @@ export async function toggleSnowmobileMaintenance(id: number, body: unknown) {
  */
 export async function getSnowmobileRentalStatus(departureId?: number) {
   const now = new Date();
-  
+
   // If departureId is provided, get the departure details
   let safariStart: Date | null = null;
   let safariEnd: Date | null = null;
-  
+
   if (departureId) {
     const departure = await prisma.departure.findUnique({
       where: { id: departureId },
@@ -623,7 +666,7 @@ export async function getSnowmobileRentalStatus(departureId?: number) {
         },
       },
     });
-    
+
     if (departure) {
       safariStart = departure.departureTime;
       const safariDurationMs = departure.package.durationMin * 60 * 1000;
@@ -636,12 +679,14 @@ export async function getSnowmobileRentalStatus(departureId?: number) {
     where: {
       approvalStatus: { in: ["approved", "pending"] },
       endTime: { gte: now }, // Only future or ongoing rentals
-      ...(safariStart && safariEnd ? {
-        AND: [
-          { startTime: { lt: safariEnd } },
-          { endTime: { gt: safariStart } },
-        ],
-      } : {}),
+      ...(safariStart && safariEnd
+        ? {
+            AND: [
+              { startTime: { lt: safariEnd } },
+              { endTime: { gt: safariStart } },
+            ],
+          }
+        : {}),
     },
     include: {
       snowmobile: true,
@@ -652,24 +697,27 @@ export async function getSnowmobileRentalStatus(departureId?: number) {
         },
       },
     },
-    orderBy: { startTime: 'asc' },
+    orderBy: { startTime: "asc" },
   });
 
   // Group by snowmobile ID
-  const rentalsBySnowmobile = rentals.reduce((acc, rental) => {
-    if (!acc[rental.snowmobileId]) {
-      acc[rental.snowmobileId] = [];
-    }
-    acc[rental.snowmobileId].push({
-      rentalId: rental.id,
-      guestName: rental.guest.name,
-      guestEmail: rental.guest.email,
-      startTime: rental.startTime,
-      endTime: rental.endTime,
-      approvalStatus: rental.approvalStatus,
-    });
-    return acc;
-  }, {} as Record<number, any[]>);
+  const rentalsBySnowmobile = rentals.reduce(
+    (acc, rental) => {
+      if (!acc[rental.snowmobileId]) {
+        acc[rental.snowmobileId] = [];
+      }
+      acc[rental.snowmobileId].push({
+        rentalId: rental.id,
+        guestName: rental.guest.name,
+        guestEmail: rental.guest.email,
+        startTime: rental.startTime,
+        endTime: rental.endTime,
+        approvalStatus: rental.approvalStatus,
+      });
+      return acc;
+    },
+    {} as Record<number, any[]>,
+  );
 
   return rentalsBySnowmobile;
 }

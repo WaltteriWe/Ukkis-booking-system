@@ -17,6 +17,7 @@ import type { CreateBookingRequest } from "@/lib/api";
 import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { DepartureSelector } from "@/components/DepartureSelector";
+import { DepartureList } from "@/components/DepartureList";
 import OnSitePaymentModal from "@/components/OnSitePaymentModal";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
@@ -173,6 +174,7 @@ export default function Bookings() {
     if (departure) {
       setSelectedDeparture(departure.id);
       setSelectedDepartureData(departure);
+      setDate(format(new Date(departure.departureTime), "yyyy-MM-dd"));
       setTime(format(new Date(departure.departureTime), "HH:mm"));
       
       // Load available snowmobiles for this departure
@@ -718,12 +720,29 @@ export default function Bookings() {
                 </p>
 
                 <div className="mt-6 space-y-6">
+                  {/* ✅ Show all departures immediately */}
+                  <div>
+                    <label
+                      className="mb-4 block text-sm font-semibold"
+                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
+                    >
+                      {t("selectADeparture") || "Select a Departure"}
+                    </label>
+                    <DepartureList
+                      packageId={selectedTour!.id}
+                      onSelectDeparture={handleDepartureSelect}
+                      selectedDeparture={selectedDepartureData}
+                      filterDate={date ? new Date(date) : undefined}
+                    />
+                  </div>
+
+                  {/* Optional: Calendar filter */}
                   <div>
                     <label
                       className="mb-2 block text-sm font-semibold"
                       style={{ color: darkModeStyles.textPrimary(darkMode) }}
                     >
-                      {t("chooseDate")}
+                      {t("filterByDate") || "Filter by Date (Optional)"}
                     </label>
                     <AvailabilityCalendar
                       packageId={selectedTour!.id}
@@ -731,29 +750,15 @@ export default function Bookings() {
                       onDateSelect={(newDate) => {
                         if (newDate) {
                           setDate(format(newDate, "yyyy-MM-dd"));
+                        } else {
+                          setDate("");
                         }
                       }}
                     />
-
-                    {/* ✅ New: Show departures for selected date */}
-                    {date && (
-                      <div className="mt-6">
-                        <DepartureSelector
-                          packageId={selectedTour!.id}
-                          selectedDate={date ? new Date(date) : undefined}
-                          onSelectDeparture={handleDepartureSelect}
-                          selectedDeparture={
-                            selectedDeparture
-                              ? packageDepartures.find(
-                                  (d) => d.id === selectedDeparture
-                                ) || null
-                              : null
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
+                </div>
 
+                <div className="mt-6 space-y-6">
                   <div>
                     <label
                       className="block text-sm font-semibold"

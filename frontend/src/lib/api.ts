@@ -450,6 +450,18 @@ export async function getSnowmobiles() {
   return response.json();
 }
 
+// Get all snowmobiles for admin (including disabled and maintenance info)
+export async function getSnowmobilesForAdmin() {
+  const response = await fetch(`${API_BASE_URL}/snowmobiles/admin/all`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new Error(`Failed to fetch snowmobiles (${response.status}): ${errorText}`);
+  }
+  return response.json();
+}
+
 export async function getAvailableSnowmobiles(
   startTime: string,
   endTime: string

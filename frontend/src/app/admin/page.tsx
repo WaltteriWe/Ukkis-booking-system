@@ -15,6 +15,7 @@ import {
   approveSnowmobileRental,
   rejectSnowmobileRental,
   getSnowmobiles,
+  getSnowmobilesForAdmin,
   getDepartures,
   getContactMessages,
   deleteContactMessage,
@@ -323,6 +324,14 @@ export default function AdminPage() {
   );
   const [editingSnowmobileData, setEditingSnowmobileData] = useState<any>({});
   const [disabledSnowmobiles, setDisabledSnowmobiles] = useState<number[]>([]);
+  
+  // Maintenance form states
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [maintenanceSnowmobileId, setMaintenanceSnowmobileId] = useState<number | null>(null);
+  const [maintenanceReason, setMaintenanceReason] = useState("");
+  const [maintenanceNotes, setMaintenanceNotes] = useState("");
+  const [maintenanceEndDate, setMaintenanceEndDate] = useState("");
+  const [maintenanceCost, setMaintenanceCost] = useState("");
 
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
     null
@@ -389,7 +398,7 @@ export default function AdminPage() {
 
   const loadSnowmobilesAndDepartures = useCallback(async () => {
     try {
-      const snowmobilesData = await getSnowmobiles();
+      const snowmobilesData = await getSnowmobilesForAdmin();
       setSnowmobiles(snowmobilesData);
       await loadDepartures();
     } catch (error) {
@@ -891,29 +900,73 @@ export default function AdminPage() {
     try {
       const isCurrentlyDisabled = disabledSnowmobiles.includes(snowmobileId);
       
+      // If enabling maintenance, show modal for details
+      if (!isCurrentlyDisabled) {
+        setMaintenanceSnowmobileId(snowmobileId);
+        setMaintenanceReason("");
+        setMaintenanceNotes("");
+        setMaintenanceEndDate("");
+        setMaintenanceCost("");
+        setShowMaintenanceModal(true);
+        return;
+      }
+      
+      // If disabling maintenance (re-enabling), just do it
       const response = await fetch(`/api/snowmobiles/${snowmobileId}/maintenance`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${adminToken}`
         },
-        body: JSON.stringify({ disabled: !isCurrentlyDisabled }),
+        body: JSON.stringify({ disabled: false }),
       });
 
       if (response.ok) {
-        setDisabledSnowmobiles((prev) =>
-          isCurrentlyDisabled
-            ? prev.filter((id) => id !== snowmobileId)
-            : [...prev, snowmobileId]
-        );
-        alert(
-          isCurrentlyDisabled
-            ? "Snowmobile re-enabled"
-            : "Snowmobile disabled for maintenance"
-        );
+        setDisabledSnowmobiles((prev) => prev.filter((id) => id !== snowmobileId));
+        alert("Snowmobile re-enabled");
+        await loadSnowmobiles();
       }
     } catch (error) {
       console.error("Failed to toggle maintenance:", error);
+      alert("Failed to update snowmobile status");
+    }
+  }
+
+  async function handleSubmitMaintenance() {
+    if (!maintenanceSnowmobileId) return;
+    
+    try {
+      const payload: any = {
+        disabled: true,
+        maintenanceReason: maintenanceReason || undefined,
+        maintenanceNotes: maintenanceNotes || undefined,
+      };
+      
+      if (maintenanceEndDate) {
+        payload.maintenanceEndDate = new Date(maintenanceEndDate).toISOString();
+      }
+      
+      if (maintenanceCost) {
+        payload.maintenanceCost = parseFloat(maintenanceCost);
+      }
+      
+      const response = await fetch(`/api/snowmobiles/${maintenanceSnowmobileId}/maintenance`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setDisabledSnowmobiles((prev) => [...prev, maintenanceSnowmobileId]);
+        setShowMaintenanceModal(false);
+        alert("Snowmobile disabled for maintenance");
+        await loadSnowmobiles();
+      }
+    } catch (error) {
+      console.error("Failed to set maintenance:", error);
       alert("Failed to update snowmobile status");
     }
   }
@@ -1113,6 +1166,92 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  // ========================================
+  // MAINTENANCE MODAL
+  // ========================================
+
+  if (showMaintenanceModal) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <h2 className="text-2xl font-bold mb-4">Set Maintenance</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Reason for Maintenance <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={maintenanceReason}
+                onChange={(e) => setMaintenanceReason(e.target.value)}
+                placeholder="e.g., Routine service, Engine repair, Damage"
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Additional Notes
+              </label>
+              <textarea
+                value={maintenanceNotes}
+                onChange={(e) => setMaintenanceNotes(e.target.value)}
+                placeholder="Any additional details about the maintenance..."
+                rows={4}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Expected Completion Date (optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={maintenanceEndDate}
+                onChange={(e) => setMaintenanceEndDate(e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Maintenance Cost (€) (optional)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={maintenanceCost}
+                onChange={(e) => setMaintenanceCost(e.target.value)}
+                placeholder="e.g., 150.00"
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleSubmitMaintenance}
+                className="flex-1 bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+              >
+                Set Maintenance
+              </button>
+              <button
+                onClick={() => {
+                  setShowMaintenanceModal(false);
+                  setMaintenanceSnowmobileId(null);
+                }}
+                className="px-4 py-2 border rounded hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -2636,19 +2775,76 @@ export default function AdminPage() {
                       .map((sm) => (
                         <div
                           key={sm.id}
-                          className="border border-red-300 rounded-lg p-4 bg-red-50"
+                          className="border border-red-300 rounded-lg p-6 bg-red-50"
                         >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-bold text-lg">{sm.name}</h3>
-                              <p className="text-sm text-gray-600">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">🔧</span>
+                                <h3 className="font-bold text-xl">{sm.name}</h3>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">
                                 {sm.licensePlate || "No plate"} •{" "}
                                 {sm.model || "No model"}
                               </p>
+                              
+                              {(sm as any).maintenanceReason && (
+                                <div className="mb-3">
+                                  <p className="text-sm font-semibold text-gray-700">
+                                    Reason:
+                                  </p>
+                                  <p className="text-sm text-gray-800">
+                                    {(sm as any).maintenanceReason}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {(sm as any).maintenanceNotes && (
+                                <div className="mb-3">
+                                  <p className="text-sm font-semibold text-gray-700">
+                                    Notes:
+                                  </p>
+                                  <p className="text-sm text-gray-800">
+                                    {(sm as any).maintenanceNotes}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+                                {(sm as any).maintenanceStartDate && (
+                                  <div>
+                                    <p className="font-semibold text-gray-700">Started:</p>
+                                    <p className="text-gray-800">
+                                      {new Date((sm as any).maintenanceStartDate).toLocaleString()}
+                                    </p>
+                                  </div>
+                                )}
+                                
+                                {(sm as any).maintenanceEndDate && (
+                                  <div>
+                                    <p className="font-semibold text-gray-700">Expected End:</p>
+                                    <p className="text-gray-800">
+                                      {new Date((sm as any).maintenanceEndDate).toLocaleString()}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {(sm as any).maintenanceCost && (
+                                <div className="mt-3 pt-3 border-t border-red-200">
+                                  <p className="text-sm font-semibold text-gray-700">
+                                    Cost:
+                                  </p>
+                                  <p className="text-lg font-bold text-gray-900">
+                                    €{parseFloat((sm as any).maintenanceCost).toFixed(2)}
+                                  </p>
+                                </div>
+                              )}
                             </div>
+                            
                             <button
                               onClick={() => handleToggleMaintenance(sm.id)}
-                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                              className="ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex-shrink-0"
                             >
                               Re-enable
                             </button>
