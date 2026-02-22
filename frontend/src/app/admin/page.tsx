@@ -111,6 +111,8 @@ interface Booking {
   createdAt: string;
   bookingDate?: string;
   bookingTime?: string;
+  guestName: string;
+  guestEmail: string;
   guest: {
     id: number;
     email: string;
@@ -156,6 +158,8 @@ interface singleReservations {
   createdAt: string;
   startTime: string;
   endTime: string;
+  guestName?: string;
+  guestEmail?: string;
   guest: {
     id: number;
     email: string;
@@ -238,6 +242,7 @@ export default function AdminPage() {
     description: "",
     price: 0,
     displayOrder: 0,
+    perParticipant: false,
   });
   const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
   const [editingServiceData, setEditingServiceData] = useState<any>({});
@@ -376,7 +381,11 @@ export default function AdminPage() {
       }
 
       setTours(toursResponse.items);
-      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      // Sort bookings by ID descending (newest first)
+      const sortedBookings = Array.isArray(bookingsData) 
+        ? [...bookingsData].sort((a, b) => b.id - a.id)
+        : [];
+      setBookings(sortedBookings);
       setSingleReservations(
         Array.isArray(reservationsData) ? reservationsData : []
       );
@@ -502,7 +511,8 @@ export default function AdminPage() {
     () =>
       bookings.flatMap((b) =>
         (b.participantGear || []).map((gear, i) => ({
-          id: gear.id,
+          // Create unique ID combining booking ID and index to prevent conflicts
+          id: `${b.id}-${i}`,
           bookingId: b.id,
           name: gear.name || `Participant ${i + 1}`,
           boots: gear.boots || "N/A",
@@ -1027,7 +1037,7 @@ export default function AdminPage() {
     try {
       await createAdditionalService(newService);
       alert("Service created successfully!");
-      setNewService({ name: "", description: "", price: 0, displayOrder: 0 });
+      setNewService({ name: "", description: "", price: 0, displayOrder: 0, perParticipant: false });
       await loadData();
     } catch (error) {
       console.error("Failed to create service:", error);
@@ -1045,6 +1055,7 @@ export default function AdminPage() {
         price: service.price || 0,
         displayOrder: service.displayOrder || 0,
         active: service.active !== undefined ? service.active : true,
+        perParticipant: service.perParticipant || false,
       });
     }
   }
@@ -3042,9 +3053,9 @@ export default function AdminPage() {
                   <div key={booking.id} className="p-6">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-bold">{booking.guest.name}</h3>
+                        <h3 className="font-bold">{booking.guestName}</h3>
                         <p className="text-sm text-gray-600">
-                          {booking.guest.email}
+                          {booking.guestEmail}
                         </p>
                         <p className="text-sm">
                           {booking.departure?.package?.name} •{" "}
@@ -3125,9 +3136,9 @@ export default function AdminPage() {
                 <div key={rental.id} className="p-6">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-bold">{rental.guest.name}</h3>
+                      <h3 className="font-bold">{rental.guestName || rental.guest.name}</h3>
                       <p className="text-sm text-gray-600">
-                        {rental.guest.email}
+                        {rental.guestEmail || rental.guest.email}
                       </p>
                       <p className="text-sm">
                         {rental.snowmobile?.name || "Snowmobile"} •{" "}
@@ -3587,6 +3598,27 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newService.perParticipant}
+                      onChange={(e) =>
+                        setNewService({
+                          ...newService,
+                          perParticipant: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium">
+                      Price per participant
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1 ml-6">
+                    If checked, price will be multiplied by number of participants. Otherwise, it's a fixed price for the whole safari.
+                  </p>
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-1">
                     Display Order
                   </label>
@@ -3681,6 +3713,27 @@ export default function AdminPage() {
                               rows={2}
                             />
                           </div>
+                          <div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editingServiceData.perParticipant || false}
+                                onChange={(e) =>
+                                  setEditingServiceData({
+                                    ...editingServiceData,
+                                    perParticipant: e.target.checked,
+                                  })
+                                }
+                                className="w-4 h-4 rounded border-gray-300"
+                              />
+                              <span className="text-sm font-medium">
+                                Price per participant
+                              </span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1 ml-6">
+                              If checked, price will be multiplied by number of participants. Otherwise, it's a fixed price for the whole safari.
+                            </p>
+                          </div>
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium mb-1">
@@ -3756,6 +3809,18 @@ export default function AdminPage() {
                               <div className="flex items-center gap-4 text-sm">
                                 <span className="font-semibold text-blue-600">
                                   €{Number(service.price).toFixed(2)}
+                                  {service.perParticipant && (
+                                    <span className="ml-2 text-xs text-gray-600">/ participant</span>
+                                  )}
+                                </span>
+                                <span
+                                  className={`px-2 py-1 text-xs rounded ${
+                                    service.perParticipant
+                                      ? "bg-purple-100 text-purple-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {service.perParticipant ? "Per Participant" : "Fixed Price"}
                                 </span>
                                 <span className="text-gray-500">
                                   Display Order: {service.displayOrder}

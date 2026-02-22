@@ -6,8 +6,7 @@ import {
   updateBookingStatus,
   getAvailability,
   approveBooking,
-  rejectBooking,
-  syncDepartureReservedCounts,
+  rejectBooking,  syncDepartureReservedCounts,
 } from "../controllers/bookingController";
 
 export async function bookingRoutes(app: FastifyInstance) {

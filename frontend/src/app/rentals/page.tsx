@@ -172,9 +172,11 @@ export default function SnowmobileRentalPage() {
       let modelPrice = 0;
 
       if (hourlyRate > 0) {
-        modelPrice = Math.ceil(hours) * hourlyRate;
+        // ✅ Use exact hours for more accurate pricing (not ceiling)
+        modelPrice = hours * hourlyRate;
       } else {
         // ✅ Fallback to tier-based pricing
+        // Select tier based on which duration bracket the rental falls into
         const durationKey =
           hours <= 2
             ? "2h"
@@ -190,8 +192,8 @@ export default function SnowmobileRentalPage() {
         if (tierPrice && tierPrice > 0) {
           modelPrice = tierPrice;
         } else {
-          // ✅ Final fallback: default hourly rate of €50/hour
-          modelPrice = Math.ceil(hours) * 50;
+          // ✅ Final fallback: default hourly rate of €50/hour with exact hours
+          modelPrice = hours * 50;
         }
       }
 
@@ -684,6 +686,100 @@ export default function SnowmobileRentalPage() {
                 </div>
               </div>
 
+              {/* Pricing Tier Information */}
+              {selectedSnowmobiles.length > 0 && (
+                <div
+                  className="p-4 rounded-lg border"
+                  style={{
+                    backgroundColor: darkMode ? "#16243a" : "#f9fafb",
+                    borderColor: darkMode ? "#2d1a3a" : "#e5e7eb",
+                  }}
+                >
+                  <h3
+                    className="font-semibold mb-3 text-sm"
+                    style={{ color: darkMode ? "white" : colors.darkGray }}
+                  >
+                    {t("pricingInformation") || "Pricing Information"}
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    {selectedSnowmobiles.map((item) => {
+                      const model = snowmobileModels.find((sm) => sm.id === item.snowmobileId);
+                      if (!model) return null;
+
+                      if (model.hourlyRate && model.hourlyRate > 0) {
+                        return (
+                          <div
+                            key={item.snowmobileId}
+                            className="pb-2 border-b"
+                            style={{
+                              borderColor: darkMode ? "#2d1a3a" : "#e5e7eb",
+                            }}
+                          >
+                            <p
+                              className="font-medium"
+                              style={{ color: darkMode ? "white" : colors.darkGray }}
+                            >
+                              {model.name}
+                            </p>
+                            <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                              Hourly rate: €{model.hourlyRate}/hour
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      if (model.pricing) {
+                        return (
+                          <div
+                            key={item.snowmobileId}
+                            className="pb-2 border-b"
+                            style={{
+                              borderColor: darkMode ? "#2d1a3a" : "#e5e7eb",
+                            }}
+                          >
+                            <p
+                              className="font-medium mb-2"
+                              style={{ color: darkMode ? "white" : colors.darkGray }}
+                            >
+                              {model.name}
+                            </p>
+                            <div className="space-y-1 text-xs">
+                              {model.pricing["2h"] > 0 && (
+                                <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                                  2h: €{model.pricing["2h"]} (Start: 09:00-18:00)
+                                </p>
+                              )}
+                              {model.pricing["4h"] > 0 && (
+                                <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                                  4h: €{model.pricing["4h"]} (Start: 09:00-16:00)
+                                </p>
+                              )}
+                              {model.pricing["6h"] > 0 && (
+                                <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                                  6h: €{model.pricing["6h"]} (Start: 09:00-14:00)
+                                </p>
+                              )}
+                              {model.pricing["8h"] > 0 && (
+                                <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                                  8h: €{model.pricing["8h"]} (Start: 09:00-12:00)
+                                </p>
+                              )}
+                              {model.pricing["vrk"] > 0 && (
+                                <p style={{ color: darkMode ? "#a0a0a0" : "#666" }}>
+                                  Full day: €{model.pricing["vrk"]} (Start: 09:00-10:00)
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* ✅ Availability Status */}
               {selectedSnowmobiles.length > 0 && selectedDate && (
                 <div
@@ -713,7 +809,7 @@ export default function SnowmobileRentalPage() {
                         className="text-sm"
                         style={{ color: darkMode ? "white" : colors.darkGray }}
                       >
-                        {t("durationLabel")}: {Math.ceil(hours)} {t("hours")}
+                        {t("durationLabel")}: {hours.toFixed(1)} {t("hours")}
                       </p>
                       <p
                         className="text-lg font-bold mt-2"
@@ -721,7 +817,7 @@ export default function SnowmobileRentalPage() {
                           color: darkMode ? "#10b981" : colors.navy,
                         }}
                       >
-                        {t("estimatedTotal")}: €{total}
+                        {t("estimatedTotal")}: €{total.toFixed(2)}
                       </p>
                       <p
                         className="text-sm mt-2"
@@ -911,7 +1007,7 @@ export default function SnowmobileRentalPage() {
                       color: darkMode ? "#10b981" : colors.navy,
                     }}
                   >
-                    {t("total")}: €{total}
+                    {t("total")}: €{total.toFixed(2)}
                   </p>
                 </div>
 

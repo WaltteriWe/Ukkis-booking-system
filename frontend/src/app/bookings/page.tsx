@@ -18,7 +18,10 @@ import { colors } from "@/lib/constants";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { DepartureSelector } from "@/components/DepartureSelector";
 import { DepartureList } from "@/components/DepartureList";
+import { DepartureListSelector } from "@/components/DepartureListSelector";
+import { DepartureCalendarSelector } from "@/components/DepartureCalendarSelector";
 import OnSitePaymentModal from "@/components/OnSitePaymentModal";
+import SnowmobileModal from "@/components/SnowmobileModal";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -64,7 +67,7 @@ type Tour = {
   isActive: boolean;
 };
 
-type Addon = { id: string; title: string; desc: string; price: number };
+type Addon = { id: string; title: string; desc: string; price: number; perParticipant?: boolean };
 
 type Departure = {
   id: number;
@@ -148,6 +151,10 @@ export default function Bookings() {
   });
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [selectedDepartureData, setSelectedDepartureData] = useState<any>(null);
+  
+  // Modal state for snowmobile details
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSnowmobileForModal, setSelectedSnowmobileForModal] = useState<any>(null);
 
   // Use snowmobile selection hook
   const {
@@ -169,6 +176,12 @@ export default function Bookings() {
 
   const toggleAddon = (id: string) =>
     setAddons((a) => ({ ...a, [id]: !a[id] }));
+
+  // Open modal for snowmobile details
+  const openSnowmobileModal = (snowmobile: any) => {
+    setSelectedSnowmobileForModal(snowmobile);
+    setIsModalOpen(true);
+  };
 
   const handleDepartureSelect = useCallback(async (departure: any) => {
     if (departure) {
@@ -382,6 +395,7 @@ export default function Bookings() {
           title: s.name,
           desc: s.description || "",
           price: Number(s.price),
+          perParticipant: s.perParticipant || false,
         }));
         console.log("Formatted services:", formattedServices);
         setAdditionalServices(formattedServices);
@@ -405,7 +419,7 @@ export default function Bookings() {
 
   // ✅ Calculate total with participant-scaled add-ons
   const addonsCost = useMemo(() => 
-    selectedAddons.reduce((sum, a) => sum + a.price * participants, 0),
+    selectedAddons.reduce((sum, a) => sum + (a.perParticipant ? a.price * participants : a.price), 0),
     [selectedAddons, participants]
   );
   
@@ -720,7 +734,7 @@ export default function Bookings() {
                 </p>
 
                 <div className="mt-6 space-y-6">
-                  {/* ✅ Show all departures immediately */}
+                  {/* ✅ Departure Calendar Selector - calendar + filtered list */}
                   <div>
                     <label
                       className="mb-4 block text-sm font-semibold"
@@ -728,32 +742,10 @@ export default function Bookings() {
                     >
                       {t("selectADeparture") || "Select a Departure"}
                     </label>
-                    <DepartureList
+                    <DepartureCalendarSelector
                       packageId={selectedTour!.id}
-                      onSelectDeparture={handleDepartureSelect}
                       selectedDeparture={selectedDepartureData}
-                      filterDate={date ? new Date(date) : undefined}
-                    />
-                  </div>
-
-                  {/* Optional: Calendar filter */}
-                  <div>
-                    <label
-                      className="mb-2 block text-sm font-semibold"
-                      style={{ color: darkModeStyles.textPrimary(darkMode) }}
-                    >
-                      {t("filterByDate") || "Filter by Date (Optional)"}
-                    </label>
-                    <AvailabilityCalendar
-                      packageId={selectedTour!.id}
-                      selectedDate={date ? new Date(date) : undefined}
-                      onDateSelect={(newDate) => {
-                        if (newDate) {
-                          setDate(format(newDate, "yyyy-MM-dd"));
-                        } else {
-                          setDate("");
-                        }
-                      }}
+                      onSelectDeparture={handleDepartureSelect}
                     />
                   </div>
                 </div>
@@ -814,11 +806,22 @@ export default function Bookings() {
                   {/* Gear Size Selection */}
                   <div className="mt-6">
                     <h4
-                      className="text-lg font-semibold mb-4"
+                      className="text-lg font-semibold mb-2"
                       style={{ color: darkModeStyles.textPrimary(darkMode) }}
                     >
                       {t("sizeDisclaimer")}
                     </h4>
+                    <Link 
+                      href="/contact"
+                      className="inline-block mb-4 text-sm px-4 py-2 rounded-lg border-2 transition-all hover:shadow-md"
+                      style={{
+                        backgroundColor: darkMode ? "#10b981" : "#10b981",
+                        borderColor: darkMode ? "#059669" : "#059669",
+                        color: "#ffffff",
+                      }}
+                    >
+                      📞 {t("contactCustomerService") || "Contact Customer Service"}
+                    </Link>
                     <div className="space-y-6">
                       {Array.from({ length: participants }, (_, i) => (
                         <div
@@ -1063,51 +1066,85 @@ export default function Bookings() {
                           {availableSnowmobiles.map((snowmobile) => (
                             <div
                               key={snowmobile.id}
-                              className="p-4 border rounded-lg"
+                              className="border rounded-lg overflow-hidden"
                               style={{
                                 backgroundColor: darkModeStyles.bgSecondary(darkMode),
                                 borderColor: darkModeStyles.border(darkMode),
                                 opacity: snowmobile.availableSpots === 0 ? 0.5 : 1,
                               }}
                             >
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h5 className="font-semibold" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
-                                      {snowmobile.name}
-                                    </h5>
+                              {/* Header with Image and Title */}
+                              <div className="flex items-start gap-3 p-4 border-b" style={{ borderColor: darkModeStyles.border(darkMode) }}>
+                                {/* Thumbnail Image - Clickable */}
+                                {snowmobile.imageUrl && (
+                                  <button
+                                    onClick={() => openSnowmobileModal(snowmobile)}
+                                    className="shrink-0 w-20 h-20 rounded-lg overflow-hidden hover:opacity-80 transition-opacity group relative bg-gray-200"
+                                    style={{ backgroundColor: darkMode ? '#334155' : '#e5e7eb' }}
+                                    title="View details"
+                                  >
+                                    <Image
+                                      src={getImageUrl(snowmobile.imageUrl) || "/images/placeholderTour.jpg"}
+                                      alt={snowmobile.name}
+                                      width={80}
+                                      height={80}
+                                      className="object-cover"
+                                      style={{ width: '80px', height: '80px' }}
+                                      unoptimized
+                                    />
+                                    <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                      <span className="text-white opacity-0 group-hover:opacity-100 text-xl">ℹ️</span>
+                                    </div>
+                                  </button>
+                                )}
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      {/* Title - Clickable */}
+                                      <button
+                                        onClick={() => openSnowmobileModal(snowmobile)}
+                                        className="text-left hover:underline"
+                                      >
+                                        <h5 className="font-semibold" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
+                                          {snowmobile.name}
+                                        </h5>
+                                      </button>
+                                      {snowmobile.licensePlate && (
+                                        <p className="text-xs mt-1" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
+                                          {snowmobile.licensePlate}
+                                        </p>
+                                      )}
+                                    </div>
                                     
                                     {/* Status badges */}
-                                    {snowmobile.availableSpots === 0 ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                        ⛔ Full
-                                      </span>
-                                    ) : snowmobile.availableSpots === 1 ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        ⚠️ Only 1 spot left!
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                        ✓ {snowmobile.availableSpots} spots available
-                                      </span>
-                                    )}
+                                    <div className="shrink-0">
+                                      {snowmobile.availableSpots === 0 ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                          ⛔ Full
+                                        </span>
+                                      ) : snowmobile.availableSpots === 1 ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                          ⚠️ 1 left
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                          ✓ {snowmobile.availableSpots}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  {snowmobile.licensePlate && (
-                                    <p className="text-sm" style={{ color: darkModeStyles.textSecondary(darkMode) }}>
-                                      {snowmobile.licensePlate}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-medium" style={{ 
+                                  
+                                  <div className="text-xs font-medium mt-1" style={{ 
                                     color: snowmobile.availableSpots > 0 ? '#10b981' : '#ef4444' 
                                   }}>
-                                    {snowmobile.availableSpots} / {snowmobile.maxPassengers} available
-                                  </p>
+                                    {snowmobile.availableSpots} / {snowmobile.maxPassengers} spots available
+                                  </div>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center gap-3 mt-3">
+                              {/* Passenger Selection */}
+                              <div className="flex items-center gap-3 px-4 py-3">
                                 <label className="text-sm font-medium" style={{ color: darkModeStyles.textPrimary(darkMode) }}>
                                   Passengers:
                                 </label>
@@ -1231,8 +1268,11 @@ export default function Bookings() {
                         style={{ color: "#0070f3" }}
                       >
                         €{addon.price}
-                        {participants > 1 &&
-                          ` × ${participants} = €${addon.price * participants}`}
+                        {addon.perParticipant ? (
+                          participants > 1 ? ` × ${participants} = €${addon.price * participants}` : " / participant"
+                        ) : (
+                          <span className="text-sm font-normal text-gray-500"> (fixed price)</span>
+                        )}
                       </div>
                     </div>
                     ))
@@ -1552,7 +1592,10 @@ export default function Bookings() {
                         className="text-lg font-bold"
                         style={{ color: "#0070f3" }}
                       >
-                        +€{addon.price}
+                        +€{addon.perParticipant ? addon.price * participants : addon.price}
+                        {addon.perParticipant && participants > 1 && (
+                          <span className="text-sm font-normal text-gray-500"> (€{addon.price} × {participants})</span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1620,15 +1663,15 @@ export default function Bookings() {
 
               {/* Payment Modal */}
               {showPayment && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
                   <div
-                    className="rounded-2xl p-8 max-w-md w-full shadow-2xl"
+                    className="rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl"
                     style={{
                       backgroundColor: darkModeStyles.bgPrimary(darkMode),
                     }}
                   >
                     <h3
-                      className="text-2xl font-bold mb-6"
+                      className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6"
                       style={{ color: darkModeStyles.textPrimary(darkMode) }}
                     >
                       Complete Your Booking
@@ -1644,16 +1687,14 @@ export default function Bookings() {
           )}
         </section>
       </header>
+      
+      {/* Snowmobile Details Modal */}
+      <SnowmobileModal
+        snowmobile={selectedSnowmobileForModal}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }
 
-// YOUR EXISTING HELPER COMPONENTS - UNCHANGED
-function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex justify-between text-sm text-[#3b4463]">
-      <span>{label}</span>
-      <span className="font-semibold text-[#101651]">{value}</span>
-    </div>
-  );
-}

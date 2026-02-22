@@ -198,44 +198,8 @@ export function AvailabilityCalendar({ packageId, selectedDate, onDateSelect }: 
         }}
       />
 
-      {/* ✅ Legend with dark mode support */}
-      <div className="flex gap-4 text-sm flex-wrap">
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-4 h-4 rounded" 
-            style={{ 
-              backgroundColor: darkMode ? `${colors.teal}20` : `${colors.teal}30`,
-            }}
-          />
-          <span style={{ color: darkModeStyles.textPrimary(darkMode) }}>
-            Available
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-4 h-4 rounded" 
-            style={{ 
-              backgroundColor: darkMode ? `${colors.pink}25` : `${colors.pink}40`,
-            }}
-          />
-          <span style={{ color: darkModeStyles.textPrimary(darkMode) }}>
-            Limited Spots
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-4 h-4 rounded" 
-            style={{ 
-              backgroundColor: darkMode ? "#475569" : `${colors.darkGray}40`,
-            }}
-          />
-          <span style={{ color: darkModeStyles.textPrimary(darkMode) }}>
-            Fully Booked
-          </span>
-        </div>
-      </div>
+      
 
-      {/* ✅ Loading state with dark mode support */}
       {loading && (
         <p 
           className="text-center text-sm" 

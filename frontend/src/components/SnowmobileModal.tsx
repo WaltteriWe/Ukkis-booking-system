@@ -4,6 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { colors } from "@/lib/constants";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface SnowmobileModalProps {
   snowmobile: any;
@@ -87,10 +88,12 @@ export default function SnowmobileModal({
         {/* Image Section */}
         {imageUrl && (
           <div className="relative w-full h-48 sm:h-64 md:h-80">
-            <img
+            <Image
               src={imageUrl}
               alt={snowmobile.name}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
             />
           </div>
         )}
@@ -284,7 +287,7 @@ export default function SnowmobileModal({
                   feature.trim() && (
                     <li key={index} className="flex items-start">
                       <span
-                        className="mr-2 sm:mr-3 text-base sm:text-lg flex-shrink-0"
+                        className="mr-2 sm:mr-3 text-base sm:text-lg shrink-0"
                         style={{ color: colors.teal }}
                       >
                         ✓
@@ -337,19 +340,19 @@ export default function SnowmobileModal({
                 style={{ color: darkMode ? "#cbd5e1" : colors.darkGray }}
               >
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Moottorikelkka</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Ajovarusteet</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Liikennevakuutus (omavastuu vahinkotapauksissa 1000 euroa)</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Kainuun alueen uraluvat</span>
                 </li>
               </ul>
@@ -368,11 +371,11 @@ export default function SnowmobileModal({
                 style={{ color: darkMode ? "#cbd5e1" : colors.darkGray }}
               >
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Polttoaine ei sisälly vuokraan</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Vuokraamon pihalla on tankkausmahdollisuus</span>
                 </li>
               </ul>
@@ -391,23 +394,23 @@ export default function SnowmobileModal({
                 style={{ color: darkMode ? "#cbd5e1" : colors.darkGray }}
               >
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Moottorikelkan vuokraajan on oltava vähintään 18-vuotias</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Vuokraaja on vastuussa kelkasta, eikä saa luovuttaa sitä kolmannelle osapuolelle</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Moottorikelkan kuljettajan on oltava vähintään 15-vuotias (alle 15-vuotias vain vanhempien seurassa)</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Kainuun alueella on käytössä uraluvat. Urilla ajolla ei vaadita ajokorttia. Moottorikelkkaa saa kuljettaa vähintään 15-vuotias ilman ajokorttia</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 flex-shrink-0">•</span>
+                  <span className="mr-2 shrink-0">•</span>
                   <span>Moottorikäyttöisen ajoneuvon kuljettaminen alkoholin tai huumaavien aineiden tai lääkkeiden vaikutuksen alaisena on vastoin Suomen lakeja</span>
                 </li>
               </ul>

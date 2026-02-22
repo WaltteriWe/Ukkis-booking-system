@@ -44,11 +44,12 @@ export async function createAdditionalService(
   reply: FastifyReply
 ) {
   try {
-    const { name, description, price, displayOrder } = request.body as {
+    const { name, description, price, displayOrder, perParticipant } = request.body as {
       name: string;
       description?: string;
       price: number;
       displayOrder?: number;
+      perParticipant?: boolean;
     };
 
     const service = await prisma.additionalService.create({
@@ -57,6 +58,7 @@ export async function createAdditionalService(
         description: description || null,
         price,
         displayOrder: displayOrder || 0,
+        perParticipant: perParticipant ?? false,
         active: true,
       },
     });
@@ -75,12 +77,13 @@ export async function updateAdditionalService(
 ) {
   try {
     const { id } = request.params as { id: string };
-    const { name, description, price, active, displayOrder } = request.body as {
+    const { name, description, price, active, displayOrder, perParticipant } = request.body as {
       name?: string;
       description?: string;
       price?: number;
       active?: boolean;
       displayOrder?: number;
+      perParticipant?: boolean;
     };
 
     const service = await prisma.additionalService.update({
@@ -91,6 +94,7 @@ export async function updateAdditionalService(
         ...(price !== undefined && { price }),
         ...(active !== undefined && { active }),
         ...(displayOrder !== undefined && { displayOrder }),
+        ...(perParticipant !== undefined && { perParticipant }),
       },
     });
 

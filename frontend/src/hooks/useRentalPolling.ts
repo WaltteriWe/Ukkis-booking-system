@@ -2,25 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 
 interface Rental {
   id: number;
-  snowmobileId: number;
   guestId: number;
-  startTime: string;
-  endTime: string;
-  totalPrice: number;
+  departureId: number;
+  participants: number;
+  totalPrice: number | string;
   status: string;
   approvalStatus?: string;
-  adminMessage?: string;
   rejectionReason?: string;
   notes?: string;
-  snowmobile?: {
-    name: string;
-    licensePlate?: string;
-    model?: string;
-  };
-  guest?: {
-    name: string;
+  createdAt: string;
+  startTime: string;
+  endTime: string;
+  guestName?: string;
+  guestEmail?: string;
+  guest: {
+    id: number;
     email: string;
+    name: string;
     phone?: string;
+  };
+  departure: {
+    id: number;
+    departureTime: string;
+    reserved: number;
+    package: {
+      id: number;
+      name: string;
+      slug: string;
+    };
+  };
+  snowmobile?: {
+    id: number;
+    name: string;
   };
 }
 

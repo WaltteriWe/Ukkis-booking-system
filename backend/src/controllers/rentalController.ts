@@ -121,6 +121,7 @@ export async function createSnowmobileRental(body: unknown) {
     guestEmail: z.string().email(),
     guestName: z.string().min(1),
     phone: z.string().optional(),
+    participants: z.number().int().positive().default(1),
     startTime: z.string().transform((val) => new Date(val)),
     endTime: z.string().transform((val) => new Date(val)),
     totalPrice: z.number().positive(),
@@ -199,6 +200,9 @@ export async function createSnowmobileRental(body: unknown) {
         data: {
           snowmobileId: item.snowmobileId,
           guestId: guest.id,
+          guestName: data.guestName,
+          guestEmail: data.guestEmail,
+          participants: data.participants || 1,
           startTime: data.startTime,
           endTime: data.endTime,
           totalPrice:

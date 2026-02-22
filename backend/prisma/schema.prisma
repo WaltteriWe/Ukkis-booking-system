@@ -161,6 +161,9 @@ model SnowmobileRental {
   id              Int        @id @default(autoincrement())
   snowmobileId    Int
   guestId         Int
+  guestName       String?
+  guestEmail      String?
+  participants    Int        @default(1)
   startTime       DateTime
   endTime         DateTime
   totalPrice      Decimal    @db.Decimal(10, 2)
@@ -202,12 +205,13 @@ model BookingSnowmobileAssignment {
 }
 
 model AdditionalService {
-  id           Int      @id @default(autoincrement())
-  name         String
-  description  String?
-  price        Decimal  @db.Decimal(10, 2)
-  active       Boolean  @default(true)
-  displayOrder Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  active         Boolean  @default(true)
+  perParticipant Boolean  @default(false)
+  displayOrder   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

@@ -10,17 +10,42 @@ interface Booking {
   approvalStatus?: string;
   adminMessage?: string;
   rejectionReason?: string;
-  guest?: {
-    name: string;
+  notes?: string;
+  createdAt: string;
+  bookingDate?: string;
+  bookingTime?: string;
+  guestName: string;
+  guestEmail: string;
+  guest: {
+    id: number;
     email: string;
+    name: string;
     phone?: string;
   };
-  departure?: {
+  departure: {
+    id: number;
     departureTime: string;
-    package?: {
+    capacity: number;
+    reserved: number;
+    package: {
+      id: number;
       name: string;
+      slug: string;
     };
   };
+  package?: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  participantGear?: {
+    id: number;
+    name: string;
+    overalls: string;
+    boots: string;
+    gloves: string;
+    helmet: string;
+  }[];
 }
 
 export function useBookingPolling(
