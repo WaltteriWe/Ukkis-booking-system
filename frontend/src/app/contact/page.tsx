@@ -159,13 +159,13 @@ export default function Contact() {
                     {t("phone")}
                   </h3>
                   <a
-                    href="tel:+358401306777"
+                    href="tel:+358401316777"
                     className="hover:underline text-sm"
                     style={{
                       color: darkMode ? "rgba(255, 255, 255, 0.7)" : "#666",
                     }}
                   >
-                    +358 40 1306777
+                    +358 40 1316777
                   </a>
                 </div>
               </div>
