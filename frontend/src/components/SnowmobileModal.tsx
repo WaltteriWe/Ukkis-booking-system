@@ -16,7 +16,9 @@ const getImageUrl = (url?: string) => {
   if (!url) return undefined;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/uploads")) {
-    return `http://localhost:3001${url}`;
+    // In dev, use localhost:3001; in production, use current domain
+    const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+    return isDev ? `http://localhost:3001${url}` : url;
   }
   return url;
 };

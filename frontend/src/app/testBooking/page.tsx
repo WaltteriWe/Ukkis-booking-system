@@ -36,8 +36,9 @@ const getImageUrl = (url?: string) => {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   // If relative URL starting with /uploads, prepend backend base URL
   if (url.startsWith("/uploads")) {
-    // Backend runs on port 3001
-    return `http://localhost:3001${url}`;
+    // In dev, use localhost:3001; in production, use current domain
+    const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+    return isDev ? `http://localhost:3001${url}` : url;
   }
   return url;
 };

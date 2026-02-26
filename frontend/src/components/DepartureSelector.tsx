@@ -60,7 +60,7 @@ export function DepartureSelector({
         const dateEnd = new Date(selectedDate);
         dateEnd.setUTCHours(23, 59, 59, 999);
         
-        const url = `http://localhost:3001/api/departures?packageId=${packageId}&from=${encodeURIComponent(dateStart.toISOString())}&to=${encodeURIComponent(dateEnd.toISOString())}`;
+        const url = `/api/departures?packageId=${packageId}&from=${encodeURIComponent(dateStart.toISOString())}&to=${encodeURIComponent(dateEnd.toISOString())}`;
         console.log("Fetching departures from:", url);
         
         const response = await fetch(url);

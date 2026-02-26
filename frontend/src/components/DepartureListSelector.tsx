@@ -46,7 +46,7 @@ export function DepartureListSelector({
       try {
         setLoading(true);
         const now = new Date();
-        const url = `http://localhost:3001/api/departures?packageId=${packageId}&from=${encodeURIComponent(now.toISOString())}&onlyAvailable=true`;
+        const url = `/api/departures?packageId=${packageId}&from=${encodeURIComponent(now.toISOString())}&onlyAvailable=true`;
         
         const response = await fetch(url);
         const data = await response.json();
