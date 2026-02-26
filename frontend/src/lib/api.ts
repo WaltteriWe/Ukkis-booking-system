@@ -419,27 +419,6 @@ export async function adminLogin(email: string, password: string) {
   return response.json() as Promise<AdminAuthResponse>;
 }
 
-export async function adminRegister(
-  name: string,
-  email: string,
-  password: string
-) {
-  const response = await fetch(`${API_BASE_URL}/admin/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
-  });
-
-  if (!response.ok) {
-    const err = await response
-      .json()
-      .catch(() => ({ error: "Registration failed" }));
-    throw new Error(err.error || "Registration failed");
-  }
-
-  return response.json() as Promise<AdminAuthResponse>;
-}
-
 // Snowmobile Rental API calls
 export async function getSnowmobiles() {
   const response = await fetch(`${API_BASE_URL}/snowmobiles`);

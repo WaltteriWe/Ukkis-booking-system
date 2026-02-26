@@ -10,7 +10,6 @@ import {
   getBookings,
   approveBooking,
   rejectBooking,
-  adminRegister,
   getSingleReservations,
   approveSnowmobileRental,
   rejectSnowmobileRental,
@@ -260,8 +259,6 @@ export default function AdminPage() {
     active: true,
   });
 
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
@@ -742,24 +739,6 @@ export default function AdminPage() {
     }
   };
 
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const res = await adminRegister(authName, authEmail, authPassword);
-      if (res.token) {
-        try {
-          localStorage.setItem("adminToken", res.token);
-        } catch {}
-        setAdminToken(res.token);
-      } else {
-        alert(res.message || "Registration successful");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed";
-      alert(msg);
-    }
-  }
-
   function handleLogout() {
     try {
       localStorage.removeItem("adminToken");
@@ -1112,24 +1091,8 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-4">
-            Admin {authMode === "login" ? "Login" : "Register"}
-          </h2>
-          <form
-            onSubmit={authMode === "login" ? handleLogin : handleRegister}
-            className="space-y-4"
-          >
-            {authMode === "register" && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  value={authName}
-                  onChange={(e) => setAuthName(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  required
-                />
-              </div>
-            )}
+          <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Email</label>
               <input
@@ -1150,25 +1113,12 @@ export default function AdminPage() {
                 required
               />
             </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-              >
-                {authMode === "login" ? "Login" : "Register"}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setAuthMode(authMode === "login" ? "register" : "login")
-                }
-                className="px-4 py-2 border rounded"
-              >
-                {authMode === "login"
-                  ? "Switch to Register"
-                  : "Switch to Login"}
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded w-full"
+            >
+              Login
+            </button>
           </form>
         </div>
       </div>

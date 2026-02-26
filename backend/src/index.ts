@@ -45,7 +45,6 @@ async function main() {
     { method: "GET", path: "/api/snowmobiles" },
     { method: "GET", path: "/api/operating-hours" }, // Get operating hours (public)
     { method: "GET", path: "/api/operating-hours/range" }, // Get operating hours range (public)
-    { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
     { method: "GET", path: "/uploads/" }, // Static files (images) - public
   ];

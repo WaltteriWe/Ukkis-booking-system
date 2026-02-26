@@ -1,18 +1,10 @@
 import "dotenv/config";
-import { Prisma, PrismaClient } from "../../generated/prisma";
+import { PrismaClient } from "../../generated/prisma";
 import { z } from "zod";
 import crypto from "crypto";
-import { FastifyReply, FastifyRequest } from "fastify";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
-
-const registerSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
-});
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -30,35 +22,6 @@ function signToken(adminId: number) {
     expiresIn: "7d",
   });
   return token;
-}
-
-export async function registerAdmin(body: unknown) {
-  try {
-    const data = registerSchema.parse(body);
-
-    // ensure unique email
-    const existing = await prisma.admin.findUnique({
-      where: { email: data.email },
-    });
-    if (existing) throw { status: 409, error: "AdminExists" };
-
-    const { salt, hash } = hashPassword(data.password);
-
-    const admin = await prisma.admin.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        passwordHash: hash,
-        passwordSalt: salt,
-      },
-    });
-
-    const token = signToken(admin.id);
-    return { token };
-  } catch (e: any) {
-    if (e?.issues) throw { status: 400, error: e.issues };
-    throw e;
-  }
 }
 
 export async function loginAdmin(body: any) {

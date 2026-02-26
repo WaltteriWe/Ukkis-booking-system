@@ -141,6 +141,7 @@ export const translations: Record<Language, Record<string, string>> = {
     maxCapacityReached: "Maximum capacity reached",
     participantsWarning: "for the selected departure",
     inTheNextStep: "in the next step",
+    about: "Additional Information:",
 
     // Snowmobile Rental
     contactForRental:"Rent a Snowmobile for Your Private Adventure, booking calendar will be added soon.",
@@ -167,6 +168,11 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Return to Home",
     continueToBooking: "Continue to contact details and payment",
     availableNow: "Available Now",
+
+    //temp Rentals Page
+    tempRentalTitle: "Snowmobile Rental",
+    tempRentalSubtitle: "Contact us to rent a snowmobile for your private adventure",
+    moreInfo: "For more information and to book your snowmobile rental, please reach out to us.",
 
     // Tours Section
     bookingsPageTitle: "Bookings",
@@ -421,6 +427,7 @@ export const translations: Record<Language, Record<string, string>> = {
     maxCapacityReached: "Maksimikapasiteetti saavutettu",
     participantsWarning: "valitulle lähdölle",
     inTheNextStep: "seuraavassa vaiheessa",
+    about: "Tarkemmat tiedot:",
 
     // Snowmobile Rental
     rentSnowmobileTitle:
@@ -449,6 +456,12 @@ export const translations: Record<Language, Record<string, string>> = {
     returnHome: "Palaa etusivulle",
     continueToBooking: "Jatka yhteystietoihin ja maksamiseen",
     availableNow: "Saatavilla nyt",
+
+    // Temp rentals Page
+    tempRentalCompanyName: "Ukkohalla Safaris and Adventures",
+    tempRentalTitle: "Moottorikelkkavuokraus",
+    tempRentalSubtitle: "Ota yhteyttä moottorikelkan vuokrausta varten",
+    moreInfo: "Lisätietoja ja moottorikelkkavuokrauksen varaamiseksi ota meihin yhteyttä.",
 
     // Tours Section
     bookingsPageTitle: "Safari varaukset",
