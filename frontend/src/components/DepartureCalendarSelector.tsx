@@ -93,17 +93,6 @@ export function DepartureCalendarSelector({
     }
   };
 
-  const getAvailabilityColor = (
-    reserved: number,
-    capacity: number,
-    isDark: boolean
-  ) => {
-    const percentage = (reserved / capacity) * 100;
-    if (percentage >= 100) return isDark ? "#475569" : "#d1d5db";
-    if (percentage >= 75) return isDark ? `${colors.pink}60` : `${colors.pink}50`;
-    return isDark ? `${colors.teal}60` : `${colors.teal}40`;
-  };
-
   const getAvailabilityStatus = (reserved: number, capacity: number) => {
     const available = capacity - reserved;
     if (available <= 0) return "Full";
@@ -116,7 +105,6 @@ export function DepartureCalendarSelector({
       {/* Calendar */}
       <div>
         <AvailabilityCalendar
-          packageId={packageId}
           selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
         />
@@ -141,9 +129,11 @@ export function DepartureCalendarSelector({
             </div>
           ) : filteredDepartures.length === 0 ? (
             <div
-              className="p-4 rounded-md border text-center text-sm"
+              className="p-4 rounded-md text-center text-sm"
               style={{
                 backgroundColor: darkModeStyles.bgSecondary(darkMode),
+                borderWidth: '1px',
+                borderStyle: 'solid',
                 borderColor: darkModeStyles.border(darkMode),
                 color: darkModeStyles.textSecondary(darkMode),
               }}
@@ -156,21 +146,19 @@ export function DepartureCalendarSelector({
                 .sort((a, b) => new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime())
                 .map((departure) => {
                   const isSelected = selectedDeparture?.id === departure.id;
-                  const availabilityColor = getAvailabilityColor(
-                    departure.reserved,
-                    departure.capacity,
-                    darkMode
-                  );
+                  
 
                   return (
                     <button
                       key={departure.id}
                       onClick={() => onSelectDeparture(isSelected ? null : departure)}
-                      className={`w-full text-left p-3 rounded-md border transition-all hover:shadow-sm ${
+                      className={`w-full text-left p-3 rounded-md transition-all hover:shadow-sm ${
                         isSelected ? "ring-2 ring-offset-1" : ""
                       }`}
                       style={{
                         backgroundColor: darkModeStyles.bgPrimary(darkMode),
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
                         borderColor: isSelected
                           ? darkModeStyles.accent(darkMode)
                           : darkModeStyles.border(darkMode),
@@ -187,7 +175,7 @@ export function DepartureCalendarSelector({
                           <div
                             className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              backgroundColor: availabilityColor,
+                              backgroundColor: darkMode ? "#1e293b" : "#f3f4f6",
                               color: darkMode ? "#f1f5f9" : "#1f2937",
                             }}
                           >

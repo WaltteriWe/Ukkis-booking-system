@@ -13,6 +13,7 @@ import { uploadRoutes } from "./routes/uploadRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { rentalRoutes } from "./routes/rentalRoutes";
 import additionalServiceRoutes from "./routes/additionalServiceRoutes";
+import { operatingHoursRoutes } from "./routes/operatingHoursRoutes";
 import { requireAuth } from "../middleware/auth";
 
 async function main() {
@@ -42,6 +43,8 @@ async function main() {
     { method: "POST", path: "/api/send-confirmation" }, // Send email (customer)
     { method: "POST", path: "/api/snowmobile-rentals" }, // Create rental (customer)
     { method: "GET", path: "/api/snowmobiles" },
+    { method: "GET", path: "/api/operating-hours" }, // Get operating hours (public)
+    { method: "GET", path: "/api/operating-hours/range" }, // Get operating hours range (public)
     { method: "POST", path: "/api/admin/register" },
     { method: "POST", path: "/api/admin/login" },
     { method: "GET", path: "/uploads/" }, // Static files (images) - public
@@ -86,6 +89,7 @@ async function main() {
   await app.register(adminRoutes, { prefix: API_PREFIX });
   await app.register(rentalRoutes, { prefix: API_PREFIX });
   await app.register(additionalServiceRoutes, { prefix: API_PREFIX });
+  await app.register(operatingHoursRoutes, { prefix: API_PREFIX });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: "0.0.0.0" });

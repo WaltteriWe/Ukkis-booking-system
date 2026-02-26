@@ -35,6 +35,7 @@ import { useDepartureManagement } from "@/hooks/useDepartureManagement";
 import { useContactMessagePolling } from '@/hooks/useContactMessagePolling';
 import { useBookingPolling } from '@/hooks/useBookingPolling';
 import { useRentalPolling } from '@/hooks/useRentalPolling';
+import OperatingHoursManagement from "@/components/admin/OperatingHoursManagement";
 
 // Helper to get full image URL (backend serves images)
 const getImageUrl = (url?: string) => {
@@ -233,6 +234,7 @@ export default function AdminPage() {
     | "snowmobiles"
     | "messages"
     | "additionalServices"
+    | "operatingHours"
   >("packages");
 
   // Additional Services state
@@ -1436,6 +1438,19 @@ export default function AdminPage() {
             }`}
           >
             Additional Services ({additionalServices.length})
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("operatingHours");
+              setShowCreateForm(false);
+            }}
+            className={`px-4 py-2 font-medium border-b-2 ${
+              activeTab === "operatingHours"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            🕒 Operating Hours
           </button>
         </div>
 
@@ -3045,9 +3060,14 @@ export default function AdminPage() {
             <div className="divide-y">
               {bookings.map((booking) => {
                 // Parse additional services from notes
-                const addonsMatch = booking.notes?.match(/Add-ons: (.+)/);
+                const addonsMatch = booking.notes?.match(/Add-ons: (.+?)(\n|$)/);
                 const addonsText = addonsMatch ? addonsMatch[1].trim() : "";
                 const hasAddons = addonsText && addonsText !== "";
+
+                // Parse additional information from notes
+                const additionalInfoMatch = booking.notes?.match(/Additional Information:\s*\n(.+)/s);
+                const additionalInfoText = additionalInfoMatch ? additionalInfoMatch[1].trim() : "";
+                const hasAdditionalInfo = additionalInfoText && additionalInfoText !== "";
 
                 return (
                   <div key={booking.id} className="p-6">
@@ -3072,6 +3092,14 @@ export default function AdminPage() {
                               Additional Services:
                             </p>
                             <p className="text-sm text-blue-800">{addonsText}</p>
+                          </div>
+                        )}
+                        {hasAdditionalInfo && (
+                          <div className="mt-2 p-3 bg-amber-50 rounded border border-amber-200">
+                            <p className="text-xs font-semibold text-amber-900 mb-1">
+                              ℹ️ Customer Notes (Allergies/Dietary Restrictions):
+                            </p>
+                            <p className="text-sm text-amber-900 whitespace-pre-wrap">{additionalInfoText}</p>
                           </div>
                         )}
                         <p className="font-medium mt-2">€{booking.totalPrice}</p>
@@ -3849,6 +3877,13 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Operating Hours Tab */}
+        {activeTab === "operatingHours" && (
+          <div>
+            <OperatingHoursManagement />
           </div>
         )}
       </div>

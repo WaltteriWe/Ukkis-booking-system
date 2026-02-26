@@ -215,3 +215,16 @@ model AdditionalService {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model OperatingHours {
+  id          Int      @id @default(autoincrement())
+  date        DateTime? // null = default hours, otherwise specific date override
+  openingTime String   @default("08:00") // Format: "HH:mm"
+  closingTime String   @default("18:00") // Format: "HH:mm"
+  isClosed    Boolean  @default(false) // If true, no rentals on this day
+  notes       String?  // Optional notes about special hours
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date]) // Ensure only one entry per date
+}

@@ -745,3 +745,72 @@ export async function deleteAdditionalService(id: number) {
   if (!response.ok) throw new Error("Failed to delete additional service");
   return response.json();
 }
+
+// Operating Hours API calls
+export async function getOperatingHours(date?: string) {
+  const url = date 
+    ? `${API_BASE_URL}/operating-hours?date=${date}`
+    : `${API_BASE_URL}/operating-hours`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch operating hours");
+  return response.json();
+}
+
+export async function getAllOperatingHours() {
+  const response = await fetch(`${API_BASE_URL}/operating-hours/all`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to fetch all operating hours");
+  return response.json();
+}
+
+export async function getOperatingHoursRange(startDate: string, endDate: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/operating-hours/range?startDate=${startDate}&endDate=${endDate}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch operating hours range");
+  return response.json();
+}
+
+export async function setDefaultOperatingHours(data: {
+  openingTime: string;
+  closingTime: string;
+  isClosed?: boolean;
+  notes?: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/operating-hours/default`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to set default operating hours");
+  return response.json();
+}
+
+export async function setDateOperatingHours(data: {
+  date: string;
+  openingTime: string;
+  closingTime: string;
+  isClosed?: boolean;
+  notes?: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/operating-hours/date`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to set date-specific operating hours");
+  return response.json();
+}
+
+export async function deleteDateOperatingHours(date: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/operating-hours/date?date=${date}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to delete date-specific operating hours");
+  return response.json();
+}

@@ -1,25 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
-import { format } from "date-fns";
 import { colors } from "@/lib/constants";
 import { useTheme } from "@/context/ThemeContext";
 
-type DayStatus = "available" | "limited" | "full";
-
-interface AvailabilityData {
-  [date: string]: 
-  {
-    booked: number;
-    capacity: number;
-    status: DayStatus;
-  }
-}
-
 interface AvailabilityCalendarProps {
-  packageId: number;
   selectedDate: Date | undefined;
   onDateSelect: (date: Date | undefined) => void;
 }
@@ -32,68 +18,11 @@ const darkModeStyles = {
   border: (isDark: boolean) => isDark ? "#334155" : "#e5e7eb",
 };
 
-export function AvailabilityCalendar({ packageId, selectedDate, onDateSelect }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ selectedDate, onDateSelect }: AvailabilityCalendarProps) {
   const { darkMode } = useTheme();
-  const [availability, setAvailability] = useState<AvailabilityData>({});
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [loading, setLoading] = useState(false);
-
-  useEffect (() => {
-    
-    async function loadAvailability() {
-      try {
-        setLoading(true);
-        const monthStr = format(currentMonth, 'yyyy-MM-dd');
-        const response = await fetch(`http://localhost:3001/api/bookings/availability/${packageId}/${monthStr}`);
-        const data: AvailabilityData = await response.json();
-        setAvailability(data);
-      } catch (error) {
-        console.error("Failed to load availability:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadAvailability();
-  }, [packageId, currentMonth]);
-
-  const modifiers = {
-    available: (date: Date) => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      return availability[dateStr]?.status === "available" || !availability[dateStr];
-    },
-    limited: (date: Date) => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      return availability[dateStr]?.status === "limited";
-    },
-    full: (date: Date) => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      return availability[dateStr]?.status === "full";
-    },
-  };
-
-  // ✅ Dynamic modifier styles based on dark mode
-  const modifierStyles = {
-    available: {
-      backgroundColor: darkMode ? `${colors.teal}20` : `${colors.teal}30`,
-      color: darkMode ? "#f1f5f9" : colors.navy,
-      fontWeight: "bold",
-    },
-    limited: { 
-      backgroundColor: darkMode ? `${colors.pink}25` : `${colors.pink}40`,
-      color: darkMode ? "#f1f5f9" : colors.navy,
-      fontWeight: 'bold',
-    },
-    full: { 
-      backgroundColor: darkMode ? "#475569" : `${colors.darkGray}40`,
-      color: darkMode ? "#94a3b8" : colors.white,
-      textDecoration: 'line-through',
-    },
-  };
 
   const disabledDays = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return availability[dateStr]?.status === 'full' || date < new Date();
+    return date < new Date();
   };
 
   return (
@@ -188,26 +117,14 @@ export function AvailabilityCalendar({ packageId, selectedDate, onDateSelect }: 
         selected={selectedDate}
         onSelect={onDateSelect}
         disabled={disabledDays}
-        modifiers={modifiers}
-        onMonthChange={setCurrentMonth}
-        modifiersStyles={modifierStyles}
-        className="border rounded-lg p-4"
+        className="rounded-lg p-4"
         style={{ 
           backgroundColor: darkModeStyles.bgPrimary(darkMode),
+          borderWidth: '1px',
+          borderStyle: 'solid',
           borderColor: darkModeStyles.border(darkMode),
         }}
       />
-
-      
-
-      {loading && (
-        <p 
-          className="text-center text-sm" 
-          style={{ color: darkModeStyles.textSecondary(darkMode) }}
-        >
-          Loading availability...
-        </p>
-      )}
     </div>
   );
 }

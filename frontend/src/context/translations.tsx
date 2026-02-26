@@ -107,6 +107,8 @@ export const translations: Record<Language, Record<string, string>> = {
     contactCustomerService: "Contact Customer Service",
     gearSizes: "Gear Sizes for Each Participant",
     participant: "Participant",
+    ParticipantDetails: "Participant Details",
+    
     participantName: "Participant Name",
     enterNameFor: "Enter name for",
     overalls: "Overalls",
@@ -178,6 +180,12 @@ export const translations: Record<Language, Record<string, string>> = {
     people: "people",
     person: "person",
     selectedTour: "Selected",
+    additionalInformation: "Additional Information",
+    additionalInfoPlaceholder:
+      "Please let us know about any allergies, dietary restrictions, mobility concerns, or other important information...",
+    characters: "characters",
+    additionalInfoHint:
+      "This information will be shared with our team to ensure we can provide the best possible experience.",
 
     // Safari Tour Names & Descriptions (by slug)
     tour_snowmobile_name: "Snowmobile Safari",
@@ -380,6 +388,7 @@ export const translations: Record<Language, Record<string, string>> = {
     contactCustomerService: "Ota yhteyttä asiakaspalveluun",
     gearSizes: "Varusteiden koot jokaiselle osallistujalle",
     participant: "Osallistuja",
+    ParticipantDetails: "Osallistujan tiedot",
     participantName: "Osallistujan nimi",
     enterNameFor: "Anna nimi",
     overalls: "Haalarit",
@@ -454,7 +463,12 @@ export const translations: Record<Language, Record<string, string>> = {
     people: "henkilöä",
     person: "henkilö",
     selectedTour: "Valittu",
-
+    additionalInformation: "Lisätiedot",
+    additionalInfoPlaceholder:
+      "Kerro meille mahdollisista allergioista, ruokarajoituksista, liikuntarajoitteista tai muista tärkeistä tiedoista...",
+    characters: "merkkiä",
+    additionalInfoHint:
+      "Tiedot jaetaan tiimimme kanssa varmistaaksemme, että voimme tarjota parhaan mahdollisen kokemuksen.",
     // Safari Tour Names & Descriptions (by slug)
     tour_snowmobile_name: "Moottorikelkkasafari",
     tour_snowmobile_desc:
